@@ -32,6 +32,10 @@ const generateSchema = z.object({
   referenceImages: z.array(refImageSchema).optional(),
   /** Set for edits — the generated asset being revised. */
   parentAssetId: z.string().optional(),
+  /** Edit model (may differ from the generation model/provider). */
+  editModelKey: z.string().optional(),
+  /** References attached to an edit (separate from generation references). */
+  editReferenceImages: z.array(refImageSchema).optional(),
 });
 
 export const generateImage = createServerFn({ method: "POST" })
@@ -46,15 +50,19 @@ export const generateImage = createServerFn({ method: "POST" })
     const { uploadImageBytes, downloadImageBase64, storagePath } =
       await import("../supabase/storage.server");
 
-    const cap = getCapability(data.modelKey);
+    const isEdit = !!data.parentAssetId;
+    const genCap = getCapability(data.modelKey);
+    // Edits dispatch to the chosen edit model (may be a different provider).
+    const cap = isEdit && data.editModelKey ? getCapability(data.editModelKey) : genCap;
+    if (cap.status === "coming-soon") throw new Error(`${cap.label} isn't available yet.`);
+    if (isEdit && !cap.editCapable) {
+      throw new Error(`${cap.label} can't be used to edit.`);
+    }
 
-    const refs = data.referenceImages ?? [];
+    // Active references this turn: edit refs when editing, else generation refs.
+    const refs = isEdit ? (data.editReferenceImages ?? []) : (data.referenceImages ?? []);
     if (refs.length > cap.maxReferenceImages) {
       throw new Error(`${cap.label} supports at most ${cap.maxReferenceImages} reference images`);
-    }
-    const isEdit = !!data.parentAssetId;
-    if (isEdit && !cap.supportsEditing) {
-      throw new Error(`${cap.label} does not support editing`);
     }
 
     // Confirm the session belongs to the user (RLS also enforces this).

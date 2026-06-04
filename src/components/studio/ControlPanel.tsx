@@ -37,16 +37,25 @@ export function ControlPanel() {
           {MODEL_ORDER.map((key) => {
             const cap = MODEL_CAPABILITIES[key];
             const active = key === modelKey;
+            const soon = cap.status === "coming-soon";
             return (
               <button
                 key={key}
                 type="button"
+                disabled={soon}
                 onClick={() => setModel(key)}
                 className={`rounded-md border px-3 py-2 text-left transition-colors ${
                   active ? "border-primary bg-primary/10" : "border-border hover:bg-accent"
-                }`}
+                } ${soon ? "cursor-not-allowed opacity-50 hover:bg-transparent" : ""}`}
               >
-                <span className="block text-sm font-medium">{cap.label}</span>
+                <span className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium">{cap.label}</span>
+                  {soon && (
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[0.6rem] font-medium uppercase text-muted-foreground">
+                      Soon
+                    </span>
+                  )}
+                </span>
                 <span className="block text-xs text-muted-foreground">{cap.blurb}</span>
               </button>
             );

@@ -1,27 +1,64 @@
-// Replicate adapter — the multi-model router for everything that isn't an
-// official Google/OpenAI model. Server-only (.server.ts).
+// Replicate adapter — the multi-model router for FLUX (Pro Ultra / Kontext),
+// Ideogram, Grok, Reve, SD3.5, etc. Server-only (.server.ts).
 //
 // Each Replicate model has a DIFFERENT input schema (the per-provider JSON pain
-// flagged in the kickoff call). That mapping lives in `buildInput` below; extend
-// it per-model as the real model list is confirmed with Cliff.
+// from the kickoff call). `buildInput` dispatches per model slug; extend it as
+// the model list grows.
 
 import Replicate from "replicate";
 import process from "node:process";
 
-import { getCapability } from "./capabilities";
-import type { GenerateInput, GenerateResult, ImageProvider } from "./types";
+import { getCapability, type ModelCapability } from "./capabilities";
+import type { GenerateInput, GenerateResult, ImageProvider, RefImage } from "./types";
 
-function buildInput(input: GenerateInput): Record<string, unknown> {
-  // Generic mapping that works for most text-to-image Replicate models.
-  // Override per-model here when a model needs different field names.
-  return {
-    prompt: input.systemInstruction
-      ? `${input.systemInstruction}\n\n${input.prompt}`
-      : input.prompt,
-    aspect_ratio: input.settings.aspectRatio,
-    num_outputs: 1, // we fan out N calls ourselves for a consistent grid
-    output_format: "png",
-  };
+function dataUri(img: RefImage): string {
+  return `data:${img.mimeType};base64,${img.dataBase64}`;
+}
+
+function buildInput(cap: ModelCapability, input: GenerateInput): Record<string, unknown> {
+  const slug = cap.providerModelId;
+  const prompt = input.systemInstruction
+    ? `${input.systemInstruction}\n\n${input.prompt}`
+    : input.prompt;
+  const aspect_ratio = input.settings.aspectRatio;
+
+  // ---- Edit / image-to-image ----
+  if (input.editParentImage) {
+    const image = dataUri(input.editParentImage);
+    if (slug.includes("flux-kontext")) {
+      return {
+        prompt,
+        input_image: image,
+        aspect_ratio: "match_input_image",
+        output_format: "png",
+      };
+    }
+    if (slug.includes("grok-imagine")) {
+      return { prompt, image }; // Grok edit ignores aspect_ratio
+    }
+    // FLUX Ultra image-to-image
+    return { prompt, image_prompt: image, aspect_ratio, output_format: "png" };
+  }
+
+  // ---- Text-to-image ----
+  if (slug.includes("flux-1.1-pro-ultra")) {
+    const base: Record<string, unknown> = {
+      prompt,
+      aspect_ratio,
+      output_format: "png",
+      raw: false,
+    };
+    if (input.referenceImages?.[0]) base.image_prompt = dataUri(input.referenceImages[0]);
+    return base;
+  }
+  if (slug.includes("ideogram")) {
+    return { prompt, aspect_ratio };
+  }
+  if (slug.includes("grok-imagine")) {
+    return { prompt, aspect_ratio };
+  }
+  // SD3.5 / Reve / generic text-to-image
+  return { prompt, aspect_ratio, num_outputs: 1, output_format: "png" };
 }
 
 function toUrl(item: unknown): string | null {
@@ -57,14 +94,12 @@ export function getReplicateProvider(): ImageProvider {
 
       const replicate = new Replicate({ auth });
       const cap = getCapability(input.modelKey);
-      const reqInput = buildInput(input);
+      const reqInput = buildInput(cap, input);
 
       const n = Math.max(1, input.settings.numImages);
       const settled = await Promise.allSettled(
         Array.from({ length: n }, () =>
-          replicate.run(cap.providerModelId as `${string}/${string}`, {
-            input: reqInput,
-          }),
+          replicate.run(cap.providerModelId as `${string}/${string}`, { input: reqInput }),
         ),
       );
 

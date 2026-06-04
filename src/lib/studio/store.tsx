@@ -28,6 +28,7 @@ import {
 } from "../api/session.functions";
 import { generateImage } from "../api/image.functions";
 import {
+  EDIT_MODEL_ORDER,
   getCapability,
   isModelKey,
   MODEL_ORDER,
@@ -88,6 +89,10 @@ function defaultControls(): Controls {
   return { modelKey, presetId: null, settings: defaultSettings(modelKey) };
 }
 
+function firstLiveEditModel(): ModelKey {
+  return EDIT_MODEL_ORDER.find((k) => getCapability(k).status === "live") ?? EDIT_MODEL_ORDER[0];
+}
+
 interface StudioContextValue {
   sessions: SessionSummary[];
   isLoadingSessions: boolean;
@@ -113,9 +118,15 @@ interface StudioContextValue {
   references: PendingRef[];
   addReferences: (refs: PendingRef[]) => void;
   removeReference: (id: string) => void;
+
   editParent: EditTarget | null;
   enterEdit: (target: EditTarget) => void;
   exitEdit: () => void;
+  editModelKey: ModelKey | null;
+  setEditModel: (k: ModelKey) => void;
+  editReferences: PendingRef[];
+  addEditReferences: (refs: PendingRef[]) => void;
+  removeEditReference: (id: string) => void;
 
   submit: () => void;
   isGenerating: boolean;
@@ -132,6 +143,8 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const [prompt, setPrompt] = useState("");
   const [references, setReferences] = useState<PendingRef[]>([]);
   const [editParent, setEditParent] = useState<EditTarget | null>(null);
+  const [editModelKey, setEditModelKey] = useState<ModelKey | null>(null);
+  const [editReferences, setEditReferences] = useState<PendingRef[]>([]);
   const [pendingTurn, setPendingTurn] = useState<StudioContextValue["pendingTurn"]>(null);
   const lastSync = useRef<string | null>(null);
   const didInit = useRef(false);
@@ -179,21 +192,28 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     }
   }, [sessionQuery.data]);
 
-  const selectSession = useCallback((id: string) => {
-    setActiveSessionId(id);
+  const resetComposer = useCallback(() => {
     setPrompt("");
     setReferences([]);
     setEditParent(null);
+    setEditModelKey(null);
+    setEditReferences([]);
   }, []);
+
+  const selectSession = useCallback(
+    (id: string) => {
+      setActiveSessionId(id);
+      resetComposer();
+    },
+    [resetComposer],
+  );
 
   const newSession = useCallback(() => {
     lastSync.current = null;
     setActiveSessionId(null);
     setControls(defaultControls());
-    setPrompt("");
-    setReferences([]);
-    setEditParent(null);
-  }, []);
+    resetComposer();
+  }, [resetComposer]);
 
   const renameSession = useCallback(
     (id: string, title: string) => {
@@ -251,6 +271,26 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const enterEdit = useCallback((target: EditTarget) => {
+    setEditParent(target);
+    setEditReferences([]);
+    setEditModelKey(firstLiveEditModel());
+  }, []);
+  const exitEdit = useCallback(() => {
+    setEditParent(null);
+    setEditModelKey(null);
+    setEditReferences([]);
+  }, []);
+  const setEditModel = useCallback((k: ModelKey) => setEditModelKey(k), []);
+  const addEditReferences = useCallback(
+    (refs: PendingRef[]) => setEditReferences((r) => [...r, ...refs]),
+    [],
+  );
+  const removeEditReference = useCallback(
+    (id: string) => setEditReferences((r) => r.filter((x) => x.id !== id)),
+    [],
+  );
+
   const submit = useCallback(() => {
     const text = prompt.trim();
     // Synchronous guard: blocks a second click during the create-session phase,
@@ -260,6 +300,8 @@ export function StudioProvider({ children }: { children: ReactNode }) {
 
     const refs = references;
     const parent = editParent;
+    const editModel = editModelKey;
+    const editRefs = editReferences;
     const { modelKey, presetId, settings } = controls;
 
     void (async () => {
@@ -273,9 +315,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
           await qc.invalidateQueries({ queryKey: ["sessions"] });
         }
 
-        setPrompt("");
-        setReferences([]);
-        setEditParent(null);
+        resetComposer();
         setPendingTurn({ promptText: text, type: parent ? "edit" : "generate" });
 
         await generateMut.mutateAsync({
@@ -292,6 +332,10 @@ export function StudioProvider({ children }: { children: ReactNode }) {
             },
             referenceImages: refs.map((r) => ({ mimeType: r.mimeType, dataBase64: r.dataBase64 })),
             parentAssetId: parent?.assetId,
+            editModelKey: parent ? (editModel ?? undefined) : undefined,
+            editReferenceImages: parent
+              ? editRefs.map((r) => ({ mimeType: r.mimeType, dataBase64: r.dataBase64 }))
+              : undefined,
           },
         });
 
@@ -307,7 +351,19 @@ export function StudioProvider({ children }: { children: ReactNode }) {
         submitting.current = false;
       }
     })();
-  }, [prompt, references, editParent, controls, activeSessionId, generateMut, createMut, qc]);
+  }, [
+    prompt,
+    references,
+    editParent,
+    editModelKey,
+    editReferences,
+    controls,
+    activeSessionId,
+    generateMut,
+    createMut,
+    qc,
+    resetComposer,
+  ]);
 
   const value = useMemo<StudioContextValue>(
     () => ({
@@ -333,8 +389,13 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       addReferences,
       removeReference,
       editParent,
-      enterEdit: setEditParent,
-      exitEdit: () => setEditParent(null),
+      enterEdit,
+      exitEdit,
+      editModelKey,
+      setEditModel,
+      editReferences,
+      addEditReferences,
+      removeEditReference,
       submit,
       isGenerating: generateMut.isPending,
       pendingTurn,
@@ -358,6 +419,13 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       addReferences,
       removeReference,
       editParent,
+      enterEdit,
+      exitEdit,
+      editModelKey,
+      setEditModel,
+      editReferences,
+      addEditReferences,
+      removeEditReference,
       submit,
       generateMut.isPending,
       pendingTurn,
