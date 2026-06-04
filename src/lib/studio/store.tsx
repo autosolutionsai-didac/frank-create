@@ -15,6 +15,7 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 import {
   createSession,
@@ -138,6 +139,7 @@ const StudioContext = createContext<StudioContextValue | null>(null);
 export function StudioProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
 
+  const [authReady, setAuthReady] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [controls, setControls] = useState<Controls>(defaultControls);
   const [prompt, setPrompt] = useState("");
@@ -150,11 +152,36 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const didInit = useRef(false);
   const submitting = useRef(false);
 
-  const sessionsQuery = useQuery({ queryKey: ["sessions"], queryFn: () => listSessions() });
+  useEffect(() => {
+    let cancelled = false;
+
+    void supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return;
+      setAuthReady(!!data.session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
+      setAuthReady(!!session);
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const sessionsQuery = useQuery({
+    queryKey: ["sessions"],
+    queryFn: () => listSessions(),
+    enabled: authReady,
+  });
   const sessionQuery = useQuery({
     queryKey: ["session", activeSessionId],
     queryFn: () => getSession({ data: { sessionId: activeSessionId as string } }),
-    enabled: !!activeSessionId,
+    enabled: authReady && !!activeSessionId,
   });
 
   const createMut = useMutation({ mutationFn: () => createSession({ data: {} }) });
@@ -368,14 +395,14 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const value = useMemo<StudioContextValue>(
     () => ({
       sessions: sessionsQuery.data ?? [],
-      isLoadingSessions: sessionsQuery.isLoading,
+      isLoadingSessions: !authReady || sessionsQuery.isLoading,
       activeSessionId,
       selectSession,
       newSession,
       renameSession,
       removeSession,
       session: sessionQuery.data ?? null,
-      isLoadingSession: sessionQuery.isLoading && !!activeSessionId,
+      isLoadingSession: authReady && sessionQuery.isLoading && !!activeSessionId,
       modelKey: controls.modelKey,
       settings: controls.settings,
       frankBodyMode: controls.frankBodyMode,
@@ -401,6 +428,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       pendingTurn,
     }),
     [
+      authReady,
       sessionsQuery.data,
       sessionsQuery.isLoading,
       activeSessionId,
