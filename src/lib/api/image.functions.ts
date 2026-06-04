@@ -60,7 +60,38 @@ export const generateImage = createServerFn({ method: "POST" })
     if (!sessionRow) throw new Error("Session not found");
     const session = sessionRow as { id: string; title: string };
 
-    // 1) user message
+    // Resolve the parent image bytes for an edit (read-only).
+    let editParentImage: GenerateInput["editParentImage"];
+    if (data.parentAssetId) {
+      const { data: parent } = await supabase
+        .from("assets")
+        .select("storage_path")
+        .eq("id", data.parentAssetId)
+        .maybeSingle();
+      const parentRow = parent as Pick<AssetRow, "storage_path"> | null;
+      if (!parentRow) throw new Error("Parent image not found");
+      editParentImage = await downloadImageBase64(supabase, parentRow.storage_path);
+    }
+
+    // Generate FIRST — if the provider throws, nothing is persisted, so we never
+    // leave an orphaned user turn or stray Storage objects behind.
+    const preset = getPreset(data.presetId);
+    const input: GenerateInput = {
+      modelKey: cap.modelKey,
+      prompt: data.prompt,
+      systemInstruction: preset ? composeSystemInstruction(preset) : undefined,
+      settings: {
+        aspectRatio: data.settings.aspectRatio as GenerateInput["settings"]["aspectRatio"],
+        imageSize: data.settings.imageSize,
+        numImages: data.settings.numImages,
+        thinkingLevel: data.settings.thinkingLevel,
+      },
+      referenceImages: refs,
+      editParentImage,
+    };
+    const result = await getProvider(cap.provider).generate(input);
+
+    // 1) user message (persist only after a successful generation)
     const { data: userMsg, error: userErr } = await supabase
       .from("messages")
       .insert({
@@ -91,37 +122,7 @@ export const generateImage = createServerFn({ method: "POST" })
       });
     }
 
-    // Resolve the parent image bytes for an edit.
-    let editParentImage: GenerateInput["editParentImage"];
-    if (data.parentAssetId) {
-      const { data: parent } = await supabase
-        .from("assets")
-        .select("storage_path")
-        .eq("id", data.parentAssetId)
-        .maybeSingle();
-      const parentRow = parent as Pick<AssetRow, "storage_path"> | null;
-      if (!parentRow) throw new Error("Parent image not found");
-      editParentImage = await downloadImageBase64(supabase, parentRow.storage_path);
-    }
-
-    // 2) generate
-    const preset = getPreset(data.presetId);
-    const input: GenerateInput = {
-      modelKey: cap.modelKey,
-      prompt: data.prompt,
-      systemInstruction: preset ? composeSystemInstruction(preset) : undefined,
-      settings: {
-        aspectRatio: data.settings.aspectRatio as GenerateInput["settings"]["aspectRatio"],
-        imageSize: data.settings.imageSize,
-        numImages: data.settings.numImages,
-        thinkingLevel: data.settings.thinkingLevel,
-      },
-      referenceImages: refs,
-      editParentImage,
-    };
-    const result = await getProvider(cap.provider).generate(input);
-
-    // 3) assistant message + generated assets
+    // 2) assistant message + generated assets
     const { data: aiMsg, error: aiErr } = await supabase
       .from("messages")
       .insert({

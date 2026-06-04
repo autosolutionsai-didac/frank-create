@@ -79,6 +79,18 @@ bun run build  # production build
 bun lint       # eslint
 ```
 
+### Deployment (Cloudflare Workers)
+
+Secrets are read via `process.env` **inside** handlers, which on Workers
+requires:
+
+- `nodejs_compat` enabled and `compatibility_date >= 2024-09-23` (the Buffer/
+  process polyfills the Gemini/Replicate/Supabase server code relies on).
+- All env vars bound as **Worker secrets/vars** (not just baked into the client
+  build): `GEMINI_API_KEY`, `REPLICATE_API_TOKEN`, `SUPABASE_SERVICE_ROLE_KEY`,
+  and also `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` (these need to exist at
+  **both** build time for `import.meta.env` and runtime for `process.env`).
+
 ## Models
 
 `src/lib/providers/capabilities.ts` is the single source of truth. Verified

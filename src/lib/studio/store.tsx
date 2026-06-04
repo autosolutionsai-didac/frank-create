@@ -134,6 +134,8 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const [editParent, setEditParent] = useState<EditTarget | null>(null);
   const [pendingTurn, setPendingTurn] = useState<StudioContextValue["pendingTurn"]>(null);
   const lastSync = useRef<string | null>(null);
+  const didInit = useRef(false);
+  const submitting = useRef(false);
 
   const sessionsQuery = useQuery({ queryKey: ["sessions"], queryFn: () => listSessions() });
   const sessionQuery = useQuery({
@@ -153,10 +155,13 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     mutationFn: (vars: Parameters<typeof generateImage>[0]) => generateImage(vars),
   });
 
-  // Default the active session to the most recent one.
+  // On first load only, default the active session to the most recent one.
+  // Guarded so a later "New" (which sets activeSessionId to null) is respected.
   useEffect(() => {
-    if (activeSessionId == null && (sessionsQuery.data?.length ?? 0) > 0) {
-      setActiveSessionId(sessionsQuery.data![0].id);
+    if (didInit.current || sessionsQuery.data === undefined) return;
+    didInit.current = true;
+    if (activeSessionId == null && sessionsQuery.data.length > 0) {
+      setActiveSessionId(sessionsQuery.data[0].id);
     }
   }, [activeSessionId, sessionsQuery.data]);
 
@@ -215,7 +220,16 @@ export function StudioProvider({ children }: { children: ReactNode }) {
 
   const setModel = useCallback(
     (k: ModelKey) =>
-      setControls((c) => ({ ...c, modelKey: k, settings: clampSettings(k, c.settings) })),
+      setControls((c) => ({
+        ...c,
+        modelKey: k,
+        // Reset image count to the new model's default (e.g. Replicate models
+        // default to 1) so switching doesn't fan out unexpected parallel calls.
+        settings: {
+          ...clampSettings(k, c.settings),
+          numImages: getCapability(k).defaultSettings.numImages,
+        },
+      })),
     [],
   );
   const setSettings = useCallback(
@@ -239,7 +253,10 @@ export function StudioProvider({ children }: { children: ReactNode }) {
 
   const submit = useCallback(() => {
     const text = prompt.trim();
-    if (!text || generateMut.isPending) return;
+    // Synchronous guard: blocks a second click during the create-session phase,
+    // before generateMut.isPending flips.
+    if (!text || submitting.current) return;
+    submitting.current = true;
 
     const refs = references;
     const parent = editParent;
@@ -277,14 +294,17 @@ export function StudioProvider({ children }: { children: ReactNode }) {
             parentAssetId: parent?.assetId,
           },
         });
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Generation failed");
-      } finally {
-        setPendingTurn(null);
+
+        // Refetch the persisted turn BEFORE clearing the optimistic one (no flash).
         if (sid) {
           await qc.invalidateQueries({ queryKey: ["session", sid] });
           await qc.invalidateQueries({ queryKey: ["sessions"] });
         }
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Generation failed");
+      } finally {
+        setPendingTurn(null);
+        submitting.current = false;
       }
     })();
   }, [prompt, references, editParent, controls, activeSessionId, generateMut, createMut, qc]);
