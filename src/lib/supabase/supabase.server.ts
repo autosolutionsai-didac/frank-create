@@ -7,6 +7,7 @@
 
 import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { getRequest } from "@tanstack/react-start/server";
 import { getCookies, setCookie } from "@tanstack/react-start/server";
 
 import { getServerConfig } from "../config.server";
@@ -17,6 +18,19 @@ export function getSupabaseServerClient(): SupabaseClient {
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error("Supabase is not configured (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY)");
   }
+
+  const authorization = getRequest().headers.get("authorization");
+  if (authorization?.startsWith("Bearer ")) {
+    return createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: authorization,
+        },
+      },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  }
+
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
