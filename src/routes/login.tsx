@@ -15,7 +15,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { error } = Route.useSearch();
+  const { error, redirect } = Route.useSearch();
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -23,21 +23,21 @@ function LoginPage() {
 
     void supabase.auth.getUser().then(({ data }) => {
       if (cancelled || !data.user) return;
-      void navigate({ to: "/", replace: true });
+      void navigate({ to: redirect || "/", replace: true });
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session?.user) return;
-      void navigate({ to: "/", replace: true });
+      void navigate({ to: redirect || "/", replace: true });
     });
 
     return () => {
       cancelled = true;
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, redirect]);
 
   async function signIn() {
     setBusy(true);
@@ -53,7 +53,7 @@ function LoginPage() {
 
     const { data } = await supabase.auth.getUser();
     if (data.user) {
-      await navigate({ to: "/", replace: true });
+      await navigate({ to: redirect || "/", replace: true });
       return;
     }
 
