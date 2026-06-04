@@ -8,7 +8,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getRequest } from "@tanstack/react-start/server";
-import { getCookies, setCookie, getWebRequest } from "@tanstack/react-start/server";
+import { getCookies, setCookie } from "@tanstack/react-start/server";
 
 import { getServerConfig } from "../config.server";
 
