@@ -8,7 +8,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getRequest } from "@tanstack/react-start/server";
-import { getCookies, setCookie } from "@tanstack/react-start/server";
+import { getCookies, setCookie, getWebRequest } from "@tanstack/react-start/server";
 
 import { getServerConfig } from "../config.server";
 
@@ -31,7 +31,13 @@ export function getSupabaseServerClient(): SupabaseClient {
     });
   }
 
+  const request = getWebRequest();
+  const authHeader = request?.headers.get("Authorization");
+
   return createServerClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: authHeader ? { Authorization: authHeader } : {},
+    },
     cookies: {
       getAll() {
         return Object.entries(getCookies()).map(([name, value]) => ({ name, value }));

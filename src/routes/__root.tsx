@@ -120,7 +120,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
   }),
   beforeLoad: async () => {
-    if (typeof window === "undefined") return { user: null };
+    if (typeof window === "undefined") {
+      const { getSupabaseServerClient } = await import("../lib/supabase/supabase.server");
+      const { data } = await getSupabaseServerClient().auth.getUser();
+      return { user: data.user ? { id: data.user.id, email: data.user.email ?? "" } : null };
+    }
     const { data } = await supabase.auth.getUser();
     const user = data.user ? { id: data.user.id, email: data.user.email ?? "" } : null;
     return { user };
