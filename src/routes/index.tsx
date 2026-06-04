@@ -1,8 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { StudioLayout } from "@/components/studio/StudioLayout";
 
 export const Route = createFileRoute("/")({
+  beforeLoad: ({ context }) => {
+    if (!context.user) {
+      throw redirect({ to: "/login" });
+    }
+  },
   head: () => ({
     meta: [
       { title: "Frank Body Image Studio" },
@@ -17,5 +22,6 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  return <StudioLayout />;
+  const { user } = Route.useRouteContext();
+  return <StudioLayout userEmail={user?.email} />;
 }

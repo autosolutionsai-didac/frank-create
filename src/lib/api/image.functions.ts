@@ -1,8 +1,6 @@
-// Image generation server functions. These hold the secret API keys and proxy
-// every provider call — keys never reach the browser.
-//
-// Phase 0: returns base64 images directly (no DB). Phase 1 will additionally
-// upload bytes to Supabase Storage and write messages/assets rows.
+// Image generation/editing server function. Holds the secret API keys, proxies
+// the provider, persists results to Supabase Storage + DB, and tracks edit
+// lineage via parent_asset_id. RLS scopes every write to the signed-in user.
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -10,11 +8,9 @@ import { z } from "zod";
 import { getCapability } from "../providers/capabilities";
 import { composeSystemInstruction, getPreset } from "../presets";
 import type { GenerateInput } from "../providers/types";
+import type { AssetRow } from "../supabase/types";
 
-const refImageSchema = z.object({
-  mimeType: z.string(),
-  dataBase64: z.string(),
-});
+const refImageSchema = z.object({ mimeType: z.string(), dataBase64: z.string() });
 
 const settingsSchema = z.object({
   aspectRatio: z.string(),
@@ -24,50 +20,151 @@ const settingsSchema = z.object({
 });
 
 const generateSchema = z.object({
+  sessionId: z.string(),
   modelKey: z.string(),
   prompt: z.string().min(1, "A prompt is required"),
-  presetId: z.string().optional(),
+  presetId: z.string().nullable().optional(),
   settings: settingsSchema,
   referenceImages: z.array(refImageSchema).optional(),
-  editParentImage: refImageSchema.optional(),
+  /** Set for edits — the generated asset being revised. */
+  parentAssetId: z.string().optional(),
 });
 
 export const generateImage = createServerFn({ method: "POST" })
   .inputValidator(generateSchema)
-  .handler(async ({ data }) => {
-    // Server-only modules imported here are tree-shaken from the client bundle.
+  .handler(async ({ data }): Promise<{ ok: true; count: number }> => {
+    const { getSupabaseServerClient, requireUser } = await import("../supabase/supabase.server");
     const { getProvider } = await import("../providers/index.server");
+    const { uploadImageBytes, downloadImageBase64, storagePath } =
+      await import("../supabase/storage.server");
 
+    const supabase = getSupabaseServerClient();
+    const user = await requireUser(supabase);
     const cap = getCapability(data.modelKey);
 
-    // Enforce per-model reference cap server-side (do not trust the client).
-    const refCount = data.referenceImages?.length ?? 0;
-    if (refCount > cap.maxReferenceImages) {
+    const refs = data.referenceImages ?? [];
+    if (refs.length > cap.maxReferenceImages) {
       throw new Error(`${cap.label} supports at most ${cap.maxReferenceImages} reference images`);
     }
-    if (data.editParentImage && !cap.supportsEditing) {
+    const isEdit = !!data.parentAssetId;
+    if (isEdit && !cap.supportsEditing) {
       throw new Error(`${cap.label} does not support editing`);
     }
 
-    // Compose brand rules into the system instruction (server-side).
-    const preset = getPreset(data.presetId);
-    const systemInstruction = preset ? composeSystemInstruction(preset) : undefined;
+    // Confirm the session belongs to the user (RLS also enforces this).
+    const { data: sessionRow } = await supabase
+      .from("sessions")
+      .select("id, title")
+      .eq("id", data.sessionId)
+      .maybeSingle();
+    if (!sessionRow) throw new Error("Session not found");
+    const session = sessionRow as { id: string; title: string };
 
+    // 1) user message
+    const { data: userMsg, error: userErr } = await supabase
+      .from("messages")
+      .insert({
+        session_id: data.sessionId,
+        user_id: user.id,
+        role: "user",
+        message_type: isEdit ? "edit" : "generate",
+        prompt_text: data.prompt,
+        settings_snapshot_json: data.settings,
+      })
+      .select("id")
+      .single();
+    if (userErr || !userMsg) throw new Error(userErr?.message ?? "Failed to record prompt");
+    const userMessageId = (userMsg as { id: string }).id;
+
+    // Persist reference images as assets on the user message.
+    for (const ref of refs) {
+      const assetId = crypto.randomUUID();
+      const path = storagePath(user.id, data.sessionId, "reference", assetId);
+      await uploadImageBytes(supabase, path, ref);
+      await supabase.from("assets").insert({
+        id: assetId,
+        session_id: data.sessionId,
+        message_id: userMessageId,
+        user_id: user.id,
+        asset_type: "reference",
+        storage_path: path,
+      });
+    }
+
+    // Resolve the parent image bytes for an edit.
+    let editParentImage: GenerateInput["editParentImage"];
+    if (data.parentAssetId) {
+      const { data: parent } = await supabase
+        .from("assets")
+        .select("storage_path")
+        .eq("id", data.parentAssetId)
+        .maybeSingle();
+      const parentRow = parent as Pick<AssetRow, "storage_path"> | null;
+      if (!parentRow) throw new Error("Parent image not found");
+      editParentImage = await downloadImageBase64(supabase, parentRow.storage_path);
+    }
+
+    // 2) generate
+    const preset = getPreset(data.presetId);
     const input: GenerateInput = {
       modelKey: cap.modelKey,
       prompt: data.prompt,
-      systemInstruction,
+      systemInstruction: preset ? composeSystemInstruction(preset) : undefined,
       settings: {
         aspectRatio: data.settings.aspectRatio as GenerateInput["settings"]["aspectRatio"],
         imageSize: data.settings.imageSize,
         numImages: data.settings.numImages,
         thinkingLevel: data.settings.thinkingLevel,
       },
-      referenceImages: data.referenceImages,
-      editParentImage: data.editParentImage,
+      referenceImages: refs,
+      editParentImage,
     };
+    const result = await getProvider(cap.provider).generate(input);
 
-    const provider = getProvider(cap.provider);
-    const result = await provider.generate(input);
-    return { images: result.images, thoughts: result.thoughts };
+    // 3) assistant message + generated assets
+    const { data: aiMsg, error: aiErr } = await supabase
+      .from("messages")
+      .insert({
+        session_id: data.sessionId,
+        user_id: user.id,
+        role: "assistant",
+        message_type: isEdit ? "edit" : "generate",
+        prompt_text: result.thoughts ?? null,
+        settings_snapshot_json: data.settings,
+      })
+      .select("id")
+      .single();
+    if (aiErr || !aiMsg) throw new Error(aiErr?.message ?? "Failed to record result");
+    const aiMessageId = (aiMsg as { id: string }).id;
+
+    for (const image of result.images) {
+      const assetId = crypto.randomUUID();
+      const path = storagePath(user.id, data.sessionId, "generated", assetId);
+      await uploadImageBytes(supabase, path, image);
+      await supabase.from("assets").insert({
+        id: assetId,
+        session_id: data.sessionId,
+        message_id: aiMessageId,
+        user_id: user.id,
+        asset_type: isEdit ? "edited" : "generated",
+        storage_path: path,
+        parent_asset_id: data.parentAssetId ?? null,
+        model_key: cap.modelKey,
+        prompt_snapshot: data.prompt,
+        metadata_json: data.settings,
+      });
+    }
+
+    // 4) persist controls + title + bump updated_at
+    await supabase
+      .from("sessions")
+      .update({
+        active_model_key: data.modelKey,
+        active_preset_id: data.presetId ?? null,
+        settings_json: data.settings,
+        title: session.title === "Untitled" ? data.prompt.slice(0, 48) : session.title,
+      })
+      .eq("id", data.sessionId);
+
+    return { ok: true, count: result.images.length };
   });

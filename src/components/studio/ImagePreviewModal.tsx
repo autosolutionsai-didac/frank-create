@@ -8,23 +8,31 @@ import {
   DialogFooter,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { toDataUrl } from "@/lib/image-utils";
-import { useStudio, type StudioImage } from "@/lib/studio/store";
+import type { AssetView } from "@/lib/api/session.functions";
+import { useStudio } from "@/lib/studio/store";
 
 interface Props {
-  image: StudioImage | null;
+  image: AssetView | null;
   onClose: () => void;
 }
 
 export function ImagePreviewModal({ image, onClose }: Props) {
-  const { dispatch } = useStudio();
+  const { enterEdit } = useStudio();
 
-  function download() {
+  async function download() {
     if (!image) return;
-    const a = document.createElement("a");
-    a.href = toDataUrl(image);
-    a.download = `frank-body-${image.id.slice(0, 8)}.png`;
-    a.click();
+    try {
+      const res = await fetch(image.url);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `frank-body-${image.id.slice(0, 8)}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(image.url, "_blank");
+    }
   }
 
   return (
@@ -33,7 +41,7 @@ export function ImagePreviewModal({ image, onClose }: Props) {
         <DialogTitle className="sr-only">Image preview</DialogTitle>
         {image && (
           <img
-            src={toDataUrl(image)}
+            src={image.url}
             alt="Generated"
             className="max-h-[70vh] w-full rounded-md object-contain"
           />
@@ -41,13 +49,13 @@ export function ImagePreviewModal({ image, onClose }: Props) {
         <DialogFooter className="sm:justify-center">
           <Button
             onClick={() => {
-              if (image) dispatch({ type: "ENTER_EDIT", parent: image });
+              if (image) enterEdit({ assetId: image.id, url: image.url });
               onClose();
             }}
           >
             <Pencil /> Edit this
           </Button>
-          <Button variant="outline" onClick={download}>
+          <Button variant="outline" onClick={() => void download()}>
             <Download /> Download
           </Button>
           <DialogClose asChild>

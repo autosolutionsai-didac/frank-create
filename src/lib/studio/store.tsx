@@ -1,75 +1,55 @@
-// Client-side Image Studio state (Phase 0: in-memory; Phase 1 swaps this for
-// Supabase-backed React Query data). Holds sessions, the active conversation,
-// the per-session controls, and transient composer state (prompt, references,
-// edit target).
+// Image Studio client state, backed by Supabase via server functions + React
+// Query. Server data (sessions, the active conversation) lives in the query
+// cache; transient composer state (prompt, references, edit target) and the
+// current control values live in local state.
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createContext,
+  useCallback,
   useContext,
+  useEffect,
   useMemo,
-  useReducer,
-  type Dispatch,
+  useRef,
+  useState,
   type ReactNode,
 } from "react";
+import { toast } from "sonner";
 
-import { getCapability, MODEL_ORDER, type ModelCapability } from "../providers/capabilities";
-import { getPreset } from "../presets";
-import type { GenerationSettings, ModelKey, RefImage } from "../providers/types";
+import {
+  createSession,
+  deleteSession,
+  getSession,
+  listSessions,
+  updateSession,
+  type SessionDetail,
+  type SessionSettings,
+  type SessionSummary,
+} from "../api/session.functions";
+import { generateImage } from "../api/image.functions";
+import {
+  getCapability,
+  isModelKey,
+  MODEL_ORDER,
+  type ModelCapability,
+} from "../providers/capabilities";
+import type { AspectRatio, GenerationSettings, ImageSize, ModelKey } from "../providers/types";
 
-export interface StudioImage extends RefImage {
+export interface PendingRef {
   id: string;
-  parentId?: string;
+  mimeType: string;
+  dataBase64: string;
 }
 
-export interface StudioMessage {
-  id: string;
-  role: "user" | "assistant";
-  type: "generate" | "edit";
-  promptText?: string;
-  images?: StudioImage[];
-  pending?: boolean;
-  error?: string;
+export interface EditTarget {
+  assetId: string;
+  url: string;
 }
 
-export interface StudioSession {
-  id: string;
-  title: string;
+interface Controls {
   modelKey: ModelKey;
   presetId: string | null;
   settings: GenerationSettings;
-  messages: StudioMessage[];
-}
-
-export interface PendingRef extends RefImage {
-  id: string;
-}
-
-interface State {
-  sessions: StudioSession[];
-  activeId: string;
-  prompt: string;
-  references: PendingRef[];
-  editParent: StudioImage | null;
-}
-
-type Action =
-  | { type: "NEW_SESSION" }
-  | { type: "SELECT_SESSION"; id: string }
-  | { type: "SET_MODEL"; modelKey: ModelKey }
-  | { type: "SET_SETTINGS"; settings: Partial<GenerationSettings> }
-  | { type: "SET_PRESET"; presetId: string | null }
-  | { type: "SET_PROMPT"; prompt: string }
-  | { type: "ADD_REFERENCES"; refs: PendingRef[] }
-  | { type: "REMOVE_REFERENCE"; id: string }
-  | { type: "CLEAR_REFERENCES" }
-  | { type: "ENTER_EDIT"; parent: StudioImage }
-  | { type: "EXIT_EDIT" }
-  | { type: "BEGIN_TURN"; assistantId: string }
-  | { type: "TURN_SUCCESS"; assistantId: string; images: StudioImage[] }
-  | { type: "TURN_ERROR"; assistantId: string; error: string };
-
-function id(): string {
-  return crypto.randomUUID();
 }
 
 function defaultSettings(modelKey: ModelKey): GenerationSettings {
@@ -77,19 +57,6 @@ function defaultSettings(modelKey: ModelKey): GenerationSettings {
   return { aspectRatio: d.aspectRatio, imageSize: d.imageSize, numImages: d.numImages };
 }
 
-function createSession(): StudioSession {
-  const modelKey = MODEL_ORDER[0];
-  return {
-    id: id(),
-    title: "Untitled",
-    modelKey,
-    presetId: null,
-    settings: defaultSettings(modelKey),
-    messages: [],
-  };
-}
-
-/** Clamp settings to what a model actually supports. */
 function clampSettings(modelKey: ModelKey, settings: GenerationSettings): GenerationSettings {
   const cap = getCapability(modelKey);
   return {
@@ -104,150 +71,279 @@ function clampSettings(modelKey: ModelKey, settings: GenerationSettings): Genera
   };
 }
 
-function initState(): State {
-  const first = createSession();
-  return {
-    sessions: [first],
-    activeId: first.id,
-    prompt: "",
-    references: [],
-    editParent: null,
-  };
+function coerceSettings(modelKey: ModelKey, raw: SessionSettings): GenerationSettings {
+  const d = defaultSettings(modelKey);
+  return clampSettings(modelKey, {
+    aspectRatio:
+      typeof raw.aspectRatio === "string" ? (raw.aspectRatio as AspectRatio) : d.aspectRatio,
+    imageSize: typeof raw.imageSize === "string" ? (raw.imageSize as ImageSize) : d.imageSize,
+    numImages: typeof raw.numImages === "number" ? raw.numImages : d.numImages,
+    thinkingLevel:
+      raw.thinkingLevel === "Low" || raw.thinkingLevel === "High" ? raw.thinkingLevel : undefined,
+  });
 }
 
-function updateActive(state: State, fn: (s: StudioSession) => StudioSession): StudioSession[] {
-  return state.sessions.map((s) => (s.id === state.activeId ? fn(s) : s));
-}
-
-function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case "NEW_SESSION": {
-      const s = createSession();
-      return {
-        ...state,
-        sessions: [s, ...state.sessions],
-        activeId: s.id,
-        prompt: "",
-        references: [],
-        editParent: null,
-      };
-    }
-    case "SELECT_SESSION":
-      return { ...state, activeId: action.id, prompt: "", references: [], editParent: null };
-    case "SET_MODEL":
-      return {
-        ...state,
-        sessions: updateActive(state, (s) => ({
-          ...s,
-          modelKey: action.modelKey,
-          settings: clampSettings(action.modelKey, s.settings),
-        })),
-      };
-    case "SET_SETTINGS":
-      return {
-        ...state,
-        sessions: updateActive(state, (s) => ({
-          ...s,
-          settings: clampSettings(s.modelKey, { ...s.settings, ...action.settings }),
-        })),
-      };
-    case "SET_PRESET": {
-      const preset = getPreset(action.presetId);
-      return {
-        ...state,
-        sessions: updateActive(state, (s) => ({
-          ...s,
-          presetId: action.presetId,
-          settings: preset
-            ? clampSettings(s.modelKey, { ...s.settings, ...preset.defaultSettings })
-            : s.settings,
-        })),
-      };
-    }
-    case "SET_PROMPT":
-      return { ...state, prompt: action.prompt };
-    case "ADD_REFERENCES":
-      return { ...state, references: [...state.references, ...action.refs] };
-    case "REMOVE_REFERENCE":
-      return { ...state, references: state.references.filter((r) => r.id !== action.id) };
-    case "CLEAR_REFERENCES":
-      return { ...state, references: [] };
-    case "ENTER_EDIT":
-      return { ...state, editParent: action.parent };
-    case "EXIT_EDIT":
-      return { ...state, editParent: null };
-    case "BEGIN_TURN": {
-      const isEdit = state.editParent !== null;
-      const userMsg: StudioMessage = {
-        id: id(),
-        role: "user",
-        type: isEdit ? "edit" : "generate",
-        promptText: state.prompt,
-      };
-      const assistantMsg: StudioMessage = {
-        id: action.assistantId,
-        role: "assistant",
-        type: isEdit ? "edit" : "generate",
-        pending: true,
-      };
-      const title = state.prompt.slice(0, 48) || "Untitled";
-      return {
-        ...state,
-        prompt: "",
-        references: [],
-        editParent: null,
-        sessions: updateActive(state, (s) => ({
-          ...s,
-          title: s.messages.length === 0 ? title : s.title,
-          messages: [...s.messages, userMsg, assistantMsg],
-        })),
-      };
-    }
-    case "TURN_SUCCESS":
-      return {
-        ...state,
-        sessions: state.sessions.map((s) => ({
-          ...s,
-          messages: s.messages.map((m) =>
-            m.id === action.assistantId ? { ...m, pending: false, images: action.images } : m,
-          ),
-        })),
-      };
-    case "TURN_ERROR":
-      return {
-        ...state,
-        sessions: state.sessions.map((s) => ({
-          ...s,
-          messages: s.messages.map((m) =>
-            m.id === action.assistantId ? { ...m, pending: false, error: action.error } : m,
-          ),
-        })),
-      };
-    default:
-      return state;
-  }
+function defaultControls(): Controls {
+  const modelKey = MODEL_ORDER[0];
+  return { modelKey, presetId: null, settings: defaultSettings(modelKey) };
 }
 
 interface StudioContextValue {
-  state: State;
-  dispatch: Dispatch<Action>;
-  activeSession: StudioSession;
+  sessions: SessionSummary[];
+  isLoadingSessions: boolean;
+  activeSessionId: string | null;
+  selectSession: (id: string) => void;
+  newSession: () => void;
+  renameSession: (id: string, title: string) => void;
+  removeSession: (id: string) => void;
+
+  session: SessionDetail | null;
+  isLoadingSession: boolean;
+
+  modelKey: ModelKey;
+  settings: GenerationSettings;
+  presetId: string | null;
   capability: ModelCapability;
+  setModel: (k: ModelKey) => void;
+  setSettings: (p: Partial<GenerationSettings>) => void;
+  setPreset: (id: string | null) => void;
+
+  prompt: string;
+  setPrompt: (s: string) => void;
+  references: PendingRef[];
+  addReferences: (refs: PendingRef[]) => void;
+  removeReference: (id: string) => void;
+  editParent: EditTarget | null;
+  enterEdit: (target: EditTarget) => void;
+  exitEdit: () => void;
+
+  submit: () => void;
+  isGenerating: boolean;
+  pendingTurn: { promptText: string; type: "generate" | "edit" } | null;
 }
 
 const StudioContext = createContext<StudioContextValue | null>(null);
 
 export function StudioProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, initState);
-  const value = useMemo<StudioContextValue>(() => {
-    const activeSession = state.sessions.find((s) => s.id === state.activeId) ?? state.sessions[0];
-    return {
-      state,
-      dispatch,
-      activeSession,
-      capability: getCapability(activeSession.modelKey),
-    };
-  }, [state]);
+  const qc = useQueryClient();
+
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [controls, setControls] = useState<Controls>(defaultControls);
+  const [prompt, setPrompt] = useState("");
+  const [references, setReferences] = useState<PendingRef[]>([]);
+  const [editParent, setEditParent] = useState<EditTarget | null>(null);
+  const [pendingTurn, setPendingTurn] = useState<StudioContextValue["pendingTurn"]>(null);
+  const lastSync = useRef<string | null>(null);
+
+  const sessionsQuery = useQuery({ queryKey: ["sessions"], queryFn: () => listSessions() });
+  const sessionQuery = useQuery({
+    queryKey: ["session", activeSessionId],
+    queryFn: () => getSession({ data: { sessionId: activeSessionId as string } }),
+    enabled: !!activeSessionId,
+  });
+
+  const createMut = useMutation({ mutationFn: () => createSession({ data: {} }) });
+  const updateMut = useMutation({
+    mutationFn: (vars: { sessionId: string; title: string }) => updateSession({ data: vars }),
+  });
+  const deleteMut = useMutation({
+    mutationFn: (sessionId: string) => deleteSession({ data: { sessionId } }),
+  });
+  const generateMut = useMutation({
+    mutationFn: (vars: Parameters<typeof generateImage>[0]) => generateImage(vars),
+  });
+
+  // Default the active session to the most recent one.
+  useEffect(() => {
+    if (activeSessionId == null && (sessionsQuery.data?.length ?? 0) > 0) {
+      setActiveSessionId(sessionsQuery.data![0].id);
+    }
+  }, [activeSessionId, sessionsQuery.data]);
+
+  // When a different session loads, restore its persisted controls.
+  useEffect(() => {
+    const d = sessionQuery.data;
+    if (d && lastSync.current !== d.id) {
+      lastSync.current = d.id;
+      const modelKey = isModelKey(d.activeModelKey) ? d.activeModelKey : MODEL_ORDER[0];
+      setControls({
+        modelKey,
+        presetId: d.activePresetId,
+        settings: coerceSettings(modelKey, d.settings),
+      });
+    }
+  }, [sessionQuery.data]);
+
+  const selectSession = useCallback((id: string) => {
+    setActiveSessionId(id);
+    setPrompt("");
+    setReferences([]);
+    setEditParent(null);
+  }, []);
+
+  const newSession = useCallback(() => {
+    lastSync.current = null;
+    setActiveSessionId(null);
+    setControls(defaultControls());
+    setPrompt("");
+    setReferences([]);
+    setEditParent(null);
+  }, []);
+
+  const renameSession = useCallback(
+    (id: string, title: string) => {
+      updateMut.mutate(
+        { sessionId: id, title },
+        { onSuccess: () => void qc.invalidateQueries({ queryKey: ["sessions"] }) },
+      );
+    },
+    [qc, updateMut],
+  );
+
+  const removeSession = useCallback(
+    (id: string) => {
+      deleteMut.mutate(id, {
+        onSuccess: () => {
+          void qc.invalidateQueries({ queryKey: ["sessions"] });
+          if (id === activeSessionId) newSession();
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to delete session"),
+      });
+    },
+    [qc, deleteMut, activeSessionId, newSession],
+  );
+
+  const setModel = useCallback(
+    (k: ModelKey) =>
+      setControls((c) => ({ ...c, modelKey: k, settings: clampSettings(k, c.settings) })),
+    [],
+  );
+  const setSettings = useCallback(
+    (p: Partial<GenerationSettings>) =>
+      setControls((c) => ({ ...c, settings: clampSettings(c.modelKey, { ...c.settings, ...p }) })),
+    [],
+  );
+  const setPreset = useCallback(
+    (id: string | null) => setControls((c) => ({ ...c, presetId: id })),
+    [],
+  );
+
+  const addReferences = useCallback(
+    (refs: PendingRef[]) => setReferences((r) => [...r, ...refs]),
+    [],
+  );
+  const removeReference = useCallback(
+    (id: string) => setReferences((r) => r.filter((x) => x.id !== id)),
+    [],
+  );
+
+  const submit = useCallback(() => {
+    const text = prompt.trim();
+    if (!text || generateMut.isPending) return;
+
+    const refs = references;
+    const parent = editParent;
+    const { modelKey, presetId, settings } = controls;
+
+    void (async () => {
+      let sid = activeSessionId;
+      try {
+        if (!sid) {
+          const created = await createMut.mutateAsync();
+          sid = created.id;
+          lastSync.current = sid;
+          setActiveSessionId(sid);
+          await qc.invalidateQueries({ queryKey: ["sessions"] });
+        }
+
+        setPrompt("");
+        setReferences([]);
+        setEditParent(null);
+        setPendingTurn({ promptText: text, type: parent ? "edit" : "generate" });
+
+        await generateMut.mutateAsync({
+          data: {
+            sessionId: sid,
+            modelKey,
+            prompt: text,
+            presetId,
+            settings: {
+              aspectRatio: settings.aspectRatio,
+              imageSize: settings.imageSize,
+              numImages: settings.numImages,
+              thinkingLevel: settings.thinkingLevel,
+            },
+            referenceImages: refs.map((r) => ({ mimeType: r.mimeType, dataBase64: r.dataBase64 })),
+            parentAssetId: parent?.assetId,
+          },
+        });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Generation failed");
+      } finally {
+        setPendingTurn(null);
+        if (sid) {
+          await qc.invalidateQueries({ queryKey: ["session", sid] });
+          await qc.invalidateQueries({ queryKey: ["sessions"] });
+        }
+      }
+    })();
+  }, [prompt, references, editParent, controls, activeSessionId, generateMut, createMut, qc]);
+
+  const value = useMemo<StudioContextValue>(
+    () => ({
+      sessions: sessionsQuery.data ?? [],
+      isLoadingSessions: sessionsQuery.isLoading,
+      activeSessionId,
+      selectSession,
+      newSession,
+      renameSession,
+      removeSession,
+      session: sessionQuery.data ?? null,
+      isLoadingSession: sessionQuery.isLoading && !!activeSessionId,
+      modelKey: controls.modelKey,
+      settings: controls.settings,
+      presetId: controls.presetId,
+      capability: getCapability(controls.modelKey),
+      setModel,
+      setSettings,
+      setPreset,
+      prompt,
+      setPrompt,
+      references,
+      addReferences,
+      removeReference,
+      editParent,
+      enterEdit: setEditParent,
+      exitEdit: () => setEditParent(null),
+      submit,
+      isGenerating: generateMut.isPending,
+      pendingTurn,
+    }),
+    [
+      sessionsQuery.data,
+      sessionsQuery.isLoading,
+      activeSessionId,
+      selectSession,
+      newSession,
+      renameSession,
+      removeSession,
+      sessionQuery.data,
+      sessionQuery.isLoading,
+      controls,
+      setModel,
+      setSettings,
+      setPreset,
+      prompt,
+      references,
+      addReferences,
+      removeReference,
+      editParent,
+      submit,
+      generateMut.isPending,
+      pendingTurn,
+    ],
+  );
+
   return <StudioContext.Provider value={value}>{children}</StudioContext.Provider>;
 }
 

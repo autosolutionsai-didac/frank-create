@@ -12,7 +12,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { MODEL_CAPABILITIES, MODEL_ORDER } from "@/lib/providers/capabilities";
-import type { AspectRatio, ImageSize, ModelKey } from "@/lib/providers/types";
+import type { AspectRatio, ImageSize } from "@/lib/providers/types";
 import { FRANK_BODY_PRESETS } from "@/lib/presets";
 import { useStudio } from "@/lib/studio/store";
 
@@ -25,8 +25,8 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export function ControlPanel() {
-  const { activeSession, capability, dispatch } = useStudio();
-  const { settings, presetId } = activeSession;
+  const { modelKey, settings, presetId, capability, setModel, setSettings, setPreset } =
+    useStudio();
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-4">
@@ -36,12 +36,12 @@ export function ControlPanel() {
         <div className="grid gap-1.5">
           {MODEL_ORDER.map((key) => {
             const cap = MODEL_CAPABILITIES[key];
-            const active = key === activeSession.modelKey;
+            const active = key === modelKey;
             return (
               <button
                 key={key}
                 type="button"
-                onClick={() => dispatch({ type: "SET_MODEL", modelKey: key as ModelKey })}
+                onClick={() => setModel(key)}
                 className={`rounded-md border px-3 py-2 text-left transition-colors ${
                   active ? "border-primary bg-primary/10" : "border-border hover:bg-accent"
                 }`}
@@ -61,10 +61,7 @@ export function ControlPanel() {
           <ToggleGroup
             type="single"
             value={settings.thinkingLevel ?? "Low"}
-            onValueChange={(v) =>
-              v &&
-              dispatch({ type: "SET_SETTINGS", settings: { thinkingLevel: v as "Low" | "High" } })
-            }
+            onValueChange={(v) => v && setSettings({ thinkingLevel: v as "Low" | "High" })}
             className="justify-start"
           >
             <ToggleGroupItem value="Low">Low</ToggleGroupItem>
@@ -81,9 +78,7 @@ export function ControlPanel() {
           <Label className="text-xs">Aspect Ratio</Label>
           <Select
             value={settings.aspectRatio}
-            onValueChange={(v) =>
-              dispatch({ type: "SET_SETTINGS", settings: { aspectRatio: v as AspectRatio } })
-            }
+            onValueChange={(v) => setSettings({ aspectRatio: v as AspectRatio })}
           >
             <SelectTrigger className="w-full">
               <SelectValue />
@@ -102,9 +97,7 @@ export function ControlPanel() {
           <Label className="text-xs">Image Size</Label>
           <Select
             value={settings.imageSize}
-            onValueChange={(v) =>
-              dispatch({ type: "SET_SETTINGS", settings: { imageSize: v as ImageSize } })
-            }
+            onValueChange={(v) => setSettings({ imageSize: v as ImageSize })}
           >
             <SelectTrigger className="w-full">
               <SelectValue />
@@ -129,7 +122,7 @@ export function ControlPanel() {
             max={8}
             step={1}
             value={[settings.numImages]}
-            onValueChange={([v]) => dispatch({ type: "SET_SETTINGS", settings: { numImages: v } })}
+            onValueChange={([v]) => setSettings({ numImages: v })}
           />
         </div>
       </section>
@@ -144,9 +137,7 @@ export function ControlPanel() {
               <button
                 key={preset.id}
                 type="button"
-                onClick={() =>
-                  dispatch({ type: "SET_PRESET", presetId: active ? null : preset.id })
-                }
+                onClick={() => setPreset(active ? null : preset.id)}
                 className={`rounded-md border px-3 py-2 text-left transition-colors ${
                   active ? "border-primary bg-primary/10" : "border-border hover:bg-accent"
                 }`}
@@ -161,7 +152,7 @@ export function ControlPanel() {
             variant="ghost"
             size="sm"
             className="justify-start text-muted-foreground"
-            onClick={() => dispatch({ type: "SET_PRESET", presetId: null })}
+            onClick={() => setPreset(null)}
           >
             <Eraser /> Clear All
           </Button>
