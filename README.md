@@ -91,6 +91,32 @@ requires:
   and also `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` (these need to exist at
   **both** build time for `import.meta.env` and runtime for `process.env`).
 
+### Testing in Lovable Cloud
+
+When you connect **Supabase (Lovable Cloud)**, set these as project env vars /
+secrets — the names must match exactly:
+
+| Var | Notes |
+| --- | --- |
+| `VITE_SUPABASE_URL` | public; powers the browser client **and** the server |
+| `VITE_SUPABASE_ANON_KEY` | public; if your project shows a "publishable key", that's this |
+| `SUPABASE_SERVICE_ROLE_KEY` | server-only secret |
+| `GEMINI_API_KEY` | server-only secret |
+| `REPLICATE_API_TOKEN` | server-only, optional |
+
+Then:
+
+1. Run `supabase/migrations/0001_init.sql` then `0002_seed.sql` in the Supabase
+   SQL editor (tables + RLS + the private `studio-images` bucket + seed).
+2. Supabase → **Auth → Providers → Google**: enable it with your Google OAuth
+   client ID/secret, and add redirect URL `https://<your-app>/auth/callback`.
+3. Sign in with an `@frankbody.com` account (allow-list lives in
+   `src/lib/auth/auth.functions.ts`).
+
+Until Supabase is connected the app boots to the login page (it no longer
+crashes); generation and sign-in light up once the vars + migrations are in
+place.
+
 ## Models
 
 `src/lib/providers/capabilities.ts` is the single source of truth. Verified
