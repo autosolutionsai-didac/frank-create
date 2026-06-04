@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { lovable } from "@/integrations/lovable/index";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (search): { error?: string; redirect?: string } => ({
@@ -13,15 +14,50 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
+  const navigate = useNavigate();
   const { error } = Route.useSearch();
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void supabase.auth.getUser().then(({ data }) => {
+      if (cancelled || !data.user) return;
+      void navigate({ to: "/", replace: true });
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user) return;
+      void navigate({ to: "/", replace: true });
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
 
   async function signIn() {
     setBusy(true);
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
-    if (result.error || !result.redirected) setBusy(false);
+    if (result.error) {
+      setBusy(false);
+      return;
+    }
+
+    if (result.redirected) return;
+
+    const { data } = await supabase.auth.getUser();
+    if (data.user) {
+      await navigate({ to: "/", replace: true });
+      return;
+    }
+
+    setBusy(false);
   }
 
   const message =
