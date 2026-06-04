@@ -3,6 +3,7 @@
 
 import { getGeminiProvider } from "./gemini.server";
 import { getReplicateProvider } from "./replicate.server";
+import { getOpenAIProvider } from "./openai.server";
 import type { ImageProvider, ProviderId } from "./types";
 
 export function getProvider(id: ProviderId): ImageProvider {
@@ -12,7 +13,9 @@ export function getProvider(id: ProviderId): ImageProvider {
     case "replicate":
       return getReplicateProvider();
     case "openai":
-      throw new Error("OpenAI provider not wired yet (Phase 3)");
+      return getOpenAIProvider();
+    case "microsoft":
+      throw new Error("This model isn't available yet.");
     default:
       throw new Error(`Unknown provider: ${id as string}`);
   }

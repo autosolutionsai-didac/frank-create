@@ -1,12 +1,16 @@
 // Image generation/editing server function. Holds the secret API keys, proxies
 // the provider, persists results to Supabase Storage + DB, and tracks edit
-// lineage via parent_asset_id. RLS scopes every write to the signed-in user.
+// lineage via parent_asset_id. Auth + RLS come from Lovable's
+// `requireSupabaseAuth` middleware (Bearer token → context.supabase + userId).
 
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getCapability } from "../providers/capabilities";
-import { composeSystemInstruction, getPreset } from "../presets";
+import { composeFrankBodySystem } from "../frank-body";
+import { assertAllowedEmail } from "../auth/guard";
 import type { GenerateInput } from "../providers/types";
 import type { AssetRow } from "../supabase/types";
 
@@ -23,32 +27,43 @@ const generateSchema = z.object({
   sessionId: z.string(),
   modelKey: z.string(),
   prompt: z.string().min(1, "A prompt is required"),
-  presetId: z.string().nullable().optional(),
+  /** Frank Body Mode (Layer-1 style system), opt-in. */
+  frankBodyMode: z.boolean().optional(),
   settings: settingsSchema,
   referenceImages: z.array(refImageSchema).optional(),
   /** Set for edits — the generated asset being revised. */
   parentAssetId: z.string().optional(),
+  /** Edit model (may differ from the generation model/provider). */
+  editModelKey: z.string().optional(),
+  /** References attached to an edit (separate from generation references). */
+  editReferenceImages: z.array(refImageSchema).optional(),
 });
 
 export const generateImage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(generateSchema)
-  .handler(async ({ data }): Promise<{ ok: true; count: number }> => {
-    const { getSupabaseServerClient, requireUser } = await import("../supabase/supabase.server");
+  .handler(async ({ data, context }): Promise<{ ok: true; count: number }> => {
+    assertAllowedEmail(context.claims);
+    const supabase = context.supabase as unknown as SupabaseClient;
+    const userId = context.userId;
+
     const { getProvider } = await import("../providers/index.server");
     const { uploadImageBytes, downloadImageBase64, storagePath } =
       await import("../supabase/storage.server");
 
-    const supabase = getSupabaseServerClient();
-    const user = await requireUser(supabase);
-    const cap = getCapability(data.modelKey);
+    const isEdit = !!data.parentAssetId;
+    const genCap = getCapability(data.modelKey);
+    // Edits dispatch to the chosen edit model (may be a different provider).
+    const cap = isEdit && data.editModelKey ? getCapability(data.editModelKey) : genCap;
+    if (cap.status === "coming-soon") throw new Error(`${cap.label} isn't available yet.`);
+    if (isEdit && !cap.editCapable) {
+      throw new Error(`${cap.label} can't be used to edit.`);
+    }
 
-    const refs = data.referenceImages ?? [];
+    // Active references this turn: edit refs when editing, else generation refs.
+    const refs = isEdit ? (data.editReferenceImages ?? []) : (data.referenceImages ?? []);
     if (refs.length > cap.maxReferenceImages) {
       throw new Error(`${cap.label} supports at most ${cap.maxReferenceImages} reference images`);
-    }
-    const isEdit = !!data.parentAssetId;
-    if (isEdit && !cap.supportsEditing) {
-      throw new Error(`${cap.label} does not support editing`);
     }
 
     // Confirm the session belongs to the user (RLS also enforces this).
@@ -75,11 +90,10 @@ export const generateImage = createServerFn({ method: "POST" })
 
     // Generate FIRST — if the provider throws, nothing is persisted, so we never
     // leave an orphaned user turn or stray Storage objects behind.
-    const preset = getPreset(data.presetId);
     const input: GenerateInput = {
       modelKey: cap.modelKey,
       prompt: data.prompt,
-      systemInstruction: preset ? composeSystemInstruction(preset) : undefined,
+      systemInstruction: data.frankBodyMode ? composeFrankBodySystem() : undefined,
       settings: {
         aspectRatio: data.settings.aspectRatio as GenerateInput["settings"]["aspectRatio"],
         imageSize: data.settings.imageSize,
@@ -96,7 +110,7 @@ export const generateImage = createServerFn({ method: "POST" })
       .from("messages")
       .insert({
         session_id: data.sessionId,
-        user_id: user.id,
+        user_id: userId,
         role: "user",
         message_type: isEdit ? "edit" : "generate",
         prompt_text: data.prompt,
@@ -110,13 +124,13 @@ export const generateImage = createServerFn({ method: "POST" })
     // Persist reference images as assets on the user message.
     for (const ref of refs) {
       const assetId = crypto.randomUUID();
-      const path = storagePath(user.id, data.sessionId, "reference", assetId);
+      const path = storagePath(userId, data.sessionId, "reference", assetId);
       await uploadImageBytes(supabase, path, ref);
       await supabase.from("assets").insert({
         id: assetId,
         session_id: data.sessionId,
         message_id: userMessageId,
-        user_id: user.id,
+        user_id: userId,
         asset_type: "reference",
         storage_path: path,
       });
@@ -127,7 +141,7 @@ export const generateImage = createServerFn({ method: "POST" })
       .from("messages")
       .insert({
         session_id: data.sessionId,
-        user_id: user.id,
+        user_id: userId,
         role: "assistant",
         message_type: isEdit ? "edit" : "generate",
         prompt_text: result.thoughts ?? null,
@@ -140,13 +154,13 @@ export const generateImage = createServerFn({ method: "POST" })
 
     for (const image of result.images) {
       const assetId = crypto.randomUUID();
-      const path = storagePath(user.id, data.sessionId, "generated", assetId);
+      const path = storagePath(userId, data.sessionId, "generated", assetId);
       await uploadImageBytes(supabase, path, image);
       await supabase.from("assets").insert({
         id: assetId,
         session_id: data.sessionId,
         message_id: aiMessageId,
-        user_id: user.id,
+        user_id: userId,
         asset_type: isEdit ? "edited" : "generated",
         storage_path: path,
         parent_asset_id: data.parentAssetId ?? null,
@@ -156,13 +170,13 @@ export const generateImage = createServerFn({ method: "POST" })
       });
     }
 
-    // 4) persist controls + title + bump updated_at
+    // 3) persist controls + title + bump updated_at
     await supabase
       .from("sessions")
       .update({
         active_model_key: data.modelKey,
-        active_preset_id: data.presetId ?? null,
-        settings_json: data.settings,
+        active_preset_id: null, // legacy column; presets are now client-side prompts
+        settings_json: { ...data.settings, frankBodyMode: data.frankBodyMode ?? false },
         title: session.title === "Untitled" ? data.prompt.slice(0, 48) : session.title,
       })
       .eq("id", data.sessionId);

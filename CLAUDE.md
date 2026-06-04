@@ -17,111 +17,114 @@ bun lint             # eslint
 bun run format       # prettier --write
 ```
 
-No test framework is configured — there are no unit/e2e tests or a `test`
-script. Verification is `tsc` + `lint` + `build`, then manual QA against a live
-Supabase project (runtime needs real Supabase + Google OAuth + API keys; see
-`README.md` → Setup).
-
-After adding/renaming a route file, run `bun run build` (or `bun dev`) to
-regenerate `src/routeTree.gen.ts` before `tsc` will pass — typed `redirect`/
-`Link` targets resolve against that generated file.
+No test framework is configured. Verification is `tsc` + `lint` + `build`, then
+manual QA in Lovable Cloud (runtime needs Supabase connected + provider keys).
+After adding/renaming a route file, run `bun run build` to regenerate
+`src/routeTree.gen.ts` before `tsc` passes.
 
 ## Stack
 
-TanStack Start (SSR meta-framework on Vite + React 19), TypeScript strict,
-Tailwind v4, shadcn/ui (in `src/components/ui/`, pre-installed — reuse, don't add
-a UI library), TanStack Router (file-based routes) + React Query, Supabase
-(Postgres + Storage + Auth). Deploys to Cloudflare Workers (Nitro).
+TanStack Start (SSR on Vite + React 19), TypeScript, Tailwind v4, shadcn/ui (in
+`src/components/ui/`, pre-installed — reuse, don't add a UI library), TanStack
+Router (file-based) + React Query, Supabase (Postgres + Storage + Auth via
+**Lovable Cloud**). Deploys to Cloudflare Workers.
 
-## Secret-safety model (critical convention)
+## Auth & Supabase — Lovable-owned (critical)
 
-Secrets and provider/Supabase SDKs must never reach the client bundle. Two
-mechanisms enforce this:
+Lovable Cloud owns auth + the Supabase clients under `src/integrations/**`
+(auto-generated, **do not edit**; excluded from lint):
 
-- **`createServerFn(...).handler()`** (see `src/lib/api/*.functions.ts`): the
-  handler body runs server-only and is tree-shaken from the client. Server-only
-  imports used only inside the handler are stripped. This is the RPC boundary
-  the client calls.
-- **`*.server.ts` suffix** (e.g. `gemini.server.ts`, `supabase.server.ts`):
-  whole module is server-only. Note `server.ts` (no dot) is NOT treated this
-  way — the suffix must be `*.server.ts`.
+- **Client:** `src/integrations/supabase/client.ts` (`supabase`) + Lovable auth
+  (`src/integrations/lovable`). `src/routes/login.tsx` + `__root.tsx` use these.
+- **Server-fn auth:** a global client middleware (`attachSupabaseAuth`, wired in
+  `src/start.ts`) attaches `Authorization: Bearer <token>` to every server-fn
+  RPC; the server middleware **`requireSupabaseAuth`** validates it and provides
+  `context.supabase` (RLS-scoped, token-bound) + `context.userId` + `context.claims`.
+- **Admin:** `supabaseAdmin` (service role, bypasses RLS) for maintenance only.
+- Env (Lovable injects on connect): `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`,
+  `SUPABASE_SERVICE_ROLE_KEY`.
 
-Read secrets via `getServerConfig()` in `src/lib/config.server.ts` (or
-`process.env` directly) **inside** a handler — never at module scope. On
-Cloudflare Workers env binds per-request and module scope is shared across
-requests in an isolate. Likewise, **create the Supabase client per-request
-inside the handler**, never as a module singleton (it would leak one user's
-session into another's request). `eslint.config.js` bans the Next.js
-`server-only` package — use the `*.server.ts` convention instead.
+Our data server functions (`src/lib/api/*.functions.ts`) attach
+`.middleware([requireSupabaseAuth])` and use `context.supabase`/`context.userId`.
+Lovable's generated `Database` type is empty, so we keep the client loosely typed
+(`context.supabase as unknown as SupabaseClient`) and cast rows to the interfaces
+in `src/lib/supabase/types.ts`. The `@frankbody.com` restriction is enforced
+app-side in `src/lib/auth/guard.ts` (`assertAllowedEmail(context.claims)`).
+
+## Secret-safety model
+
+Provider SDKs/secrets must never reach the client bundle:
+
+- **`createServerFn(...).handler()`** bodies are server-only/tree-shaken.
+- **`*.server.ts` suffix** (e.g. `gemini.server.ts`) = whole module server-only.
+  Read provider secrets (`GEMINI_API_KEY`, `REPLICATE_API_TOKEN`, `OPENAI_API_KEY`)
+  via `process.env` **inside** a handler — never at module scope (Cloudflare binds
+  env per-request; isolates are shared).
 
 ## Provider engine (the central abstraction)
 
-`src/lib/providers/capabilities.ts` → `MODEL_CAPABILITIES` is the **single
-source of truth**. The UI reads it to decide which controls to render (model
-list, thinking toggle, allowed aspect ratios/resolutions, reference-image cap)
-and the server reads it to dispatch. The UI never imports a model SDK.
+`src/lib/providers/capabilities.ts` → `MODEL_CAPABILITIES` is the **single source
+of truth**. The UI reads it to render controls (model list, thinking toggle,
+aspect ratios/resolutions, ref cap, `status`, `is4K`); the server reads it to
+dispatch. The UI never imports a model SDK.
 
-- `getProvider(providerId)` (`index.server.ts`) returns an `ImageProvider`
-  adapter: `gemini.server.ts` (the ONLY file importing `@google/genai`) or
-  `replicate.server.ts` (multi-model router).
-- **Adding a model** = add a `MODEL_CAPABILITIES` entry (+ `MODEL_ORDER`); add a
-  new adapter only for a new provider. Mirror it into `0002_seed.sql`.
-- Model IDs are *preview* IDs that churn — they live only in `capabilities.ts`,
-  so a rename is a one-line edit.
+- `getProvider(providerId)` (`index.server.ts`) → an `ImageProvider` adapter:
+  `gemini.server.ts` (only file importing `@google/genai`), `replicate.server.ts`
+  (multi-model router; per-model `buildInput` + image-to-image edits via FLUX
+  Kontext / Grok / FLUX Ultra), `openai.server.ts` (only file importing `openai`;
+  GPT-Image generate + edit). `microsoft` is a placeholder that throws.
+- **Routing rule:** Gemini official; Replicate for everything it hosts; OpenAI
+  only where Replicate lacks it. `status: "coming-soon"` models (MAI) have no
+  adapter and render disabled. `is4K` flags genuine 4K (others get a size cap).
+- **Edit-model picker:** `EDIT_MODEL_ORDER` lists models offerable for editing.
+  Edits dispatch to the chosen `editModelKey` (may be a different provider than
+  the generation model); edit references are separate from generation references.
+- **Adding a model** = add a `MODEL_CAPABILITIES` entry (+ `MODEL_ORDER` and/or
+  `EDIT_MODEL_ORDER`); only add a new adapter for a new provider. Model IDs are
+  _preview_ IDs — they live only here, so a rename is a one-line edit.
 
-Generation invariants (in `gemini.server.ts` / `image.functions.ts`):
-- Image models reject `candidateCount > 1`, so **N images = N parallel
-  `generateContent` calls** (`Promise.allSettled`). Cost scales with count ×
-  resolution.
-- Reference-image caps are **6 (Pro) / 10 (NB2)**, enforced server-side from the
-  registry. Not 14 (the original mockup was wrong).
-- `image.functions.ts` calls the provider **before** any DB/Storage write, so a
-  generation failure never leaves an orphaned turn or stray objects.
+Generation invariants (`image.functions.ts`): N images = N parallel calls
+(`Promise.allSettled`); the provider runs **before** any DB/Storage write so a
+failure never leaves an orphaned turn; per-model reference caps enforced server-side.
 
-Presets (`src/lib/presets.ts`) are structured brand rules composed into the
-system instruction **server-side** (`composeSystemInstruction`) so they can't be
-tampered with from the client. Presets currently live in code; the `presets`
-table (seeded by `0002_seed.sql`) is the future source of truth.
+## Frank Body Mode & presets
 
-## Data model & auth
+- **Frank Body Mode** (`src/lib/frank-body.ts`): a GLOBAL, off-by-default toggle.
+  When ON, `composeFrankBodySystem()` (style descriptors + negative-prompt
+  library) is applied server-side to every model (as `systemInstruction` for
+  Gemini, prompt-prefix for Replicate/OpenAI). Layer-2 LoRA hook (`getLoraFor`,
+  trigger `FRANKBODY`) is stubbed. Persisted in `sessions.settings_json`.
+- **Presets** (`src/lib/presets.ts`): a SHARED, in-app-editable brand library
+  backed by Supabase — `src/lib/api/preset.functions.ts` (CRUD) + `usePresets`
+  (`['presets']` query). `presets.ts` is the seed/fallback list. In the control
+  panel: click a preset → editor modal (edit / Use prompt / delete); the **+**
+  creates one. "Use" pastes the prompt into the composer (`setPrompt`). Not a
+  hidden system instruction; independent of Frank Body Mode. `0003` seeds the
+  table, `0004` grants authenticated writes.
 
-Supabase schema in `supabase/migrations/0001_init.sql`:
-`sessions → messages (ordered by the `seq` identity column) → assets`. Assets
-carry `asset_type` (`reference` | `generated` | `edited`) and
-`parent_asset_id` — the edit **lineage** chain. Image bytes live in the private
-`studio-images` bucket keyed `userId/sessionId/{reference|generated}/<id>.png`
-and are served via short-lived signed URLs (never public).
+## Data model
 
-**RLS is the enforcement** — every owned table has `auth.uid() = user_id`, and
-the storage policy requires the path's first folder to equal `auth.uid()`. Pass
-`user_id` on every insert. The cookie-bound server client carries the user's JWT
-so RLS applies; the service-role admin client bypasses RLS and is for
-maintenance only.
+`supabase/migrations/`: `0001` schema (`sessions → messages [ordered by seq] →
+assets`, RLS `auth.uid()=user_id`, private `studio-images` bucket), `0002` seed,
+`0003` presets v2, `0004` presets writable (shared). Assets carry `asset_type`
+(`reference`|`generated`|`edited`)
 
-Auth (`src/lib/auth/auth.functions.ts`): Google OAuth, **restricted to
-`@frankbody.com`** (domain check + allow-list — change it here). Root
-`beforeLoad` (`__root.tsx`) calls `fetchUser` and puts the user on route
-context; `/` (`index.tsx`) redirects to `/login` when absent; `/auth/callback`
-exchanges the OAuth code (`exchangeOAuthCode`, which `throw`s a `redirect`). Use
-`supabase.auth.getUser()` (verifies the JWT), never `getSession()`, for guards.
+- `parent_asset_id` (edit lineage). Bytes live in the bucket
+  `userId/sessionId/{reference|generated}/<id>.png`, served via signed URLs.
+  **Migrations must be run in Lovable's Supabase** (the generated `Database` type
+  being empty means they haven't been applied yet).
 
 ## Client state
 
-`src/lib/studio/store.tsx` is a React context backing the whole UI:
-- **Server data** via React Query: `['sessions']` and `['session', id]`
-  (messages + assets resolved to signed URLs).
-- **Transient/local**: composer `prompt`, pending `references`, `editParent`,
-  and the per-session controls (`modelKey`/`settings`/`presetId`), restored from
-  the session on switch (guarded by the `lastSync` ref so an in-flight edit
-  isn't clobbered).
-- `submit()` creates a session if none is active, then generates; a synchronous
-  `submitting` ref blocks double-submits; an optimistic `pendingTurn` renders
-  immediately and is cleared only after the refetch settles. A `didInit` ref
-  makes the "New" button yield a blank draft instead of snapping back to the
-  most-recent session.
+`src/lib/studio/store.tsx` (React context): React Query for server data
+(`['sessions']`, `['session', id]`); local transient state for composer `prompt`,
+`references`, `editParent` + `editModelKey` + `editReferences`, and per-session
+controls (`modelKey`/`settings`/`frankBodyMode`, restored on switch via the
+`lastSync` ref). `submit()` creates a session if none active; a `submitting` ref
+blocks double-submits; an optimistic `pendingTurn`; a `didInit` ref keeps "New"
+as a blank draft.
 
 ## Routing
 
-File-based in `src/routes/` (NOT `src/pages/`). A dot in the filename is a path
-separator: `auth.callback.tsx` → `/auth/callback`. `src/routeTree.gen.ts` is
-generated — don't hand-edit it.
+File-based in `src/routes/` (`__root.tsx`, `index.tsx` [guarded], `login.tsx`).
+`src/routeTree.gen.ts` is generated — don't hand-edit.

@@ -3,17 +3,25 @@ import { ImagePlus, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { fileToDownscaledBase64, toDataUrl } from "@/lib/image-utils";
+import { getCapability } from "@/lib/providers/capabilities";
 import { useStudio } from "@/lib/studio/store";
 
-export function ReferenceUploader() {
-  const { references, addReferences, removeReference, capability } = useStudio();
+export function ReferenceUploader({ mode = "generate" }: { mode?: "generate" | "edit" }) {
+  const studio = useStudio();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const max = capability.maxReferenceImages;
+  const isEdit = mode === "edit";
+  const cap =
+    isEdit && studio.editModelKey ? getCapability(studio.editModelKey) : studio.capability;
+  const references = isEdit ? studio.editReferences : studio.references;
+  const add = isEdit ? studio.addEditReferences : studio.addReferences;
+  const remove = isEdit ? studio.removeEditReference : studio.removeReference;
+
+  const max = cap.maxReferenceImages;
   const count = references.length;
   const full = count >= max;
 
-  if (!capability.supportsMultiReference || max === 0) return null;
+  if (!cap.supportsMultiReference || max === 0) return null;
 
   async function onFiles(files: FileList | null) {
     if (!files) return;
@@ -25,7 +33,7 @@ export function ReferenceUploader() {
         ...(await fileToDownscaledBase64(f)),
       })),
     );
-    addReferences(encoded);
+    add(encoded);
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -57,7 +65,7 @@ export function ReferenceUploader() {
             <img src={toDataUrl(ref)} alt="reference" className="h-full w-full object-cover" />
             <button
               type="button"
-              onClick={() => removeReference(ref.id)}
+              onClick={() => remove(ref.id)}
               className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100"
               aria-label="Remove reference"
             >

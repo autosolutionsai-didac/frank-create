@@ -5,14 +5,28 @@
 // registry / UI) and the server (for the adapters).
 
 export type ModelKey =
+  // Google (official)
   | "nano-banana-pro"
   | "nano-banana-2"
-  | "nano-banana"
-  // Replicate placeholders — final list pending from Cliff.
-  | "flux-1.1-pro"
-  | "seedream-4";
+  | "nano-banana" // legacy
+  // OpenAI (official)
+  | "gpt-image-2"
+  | "gpt-image-1.5-hf"
+  | "chatgpt-image-latest-hf" // edit-only
+  // Replicate
+  | "flux-1.1-pro-ultra"
+  | "flux-kontext-max" // edit-only
+  | "reve-2"
+  | "grok-imagine"
+  | "ideogram-v3-quality"
+  | "flux-1.1-pro" // legacy
+  | "seedream-4" // legacy
+  // Coming soon (no adapter)
+  | "mai-image-2.5";
 
-export type ProviderId = "gemini" | "replicate" | "openai";
+export type ProviderId = "gemini" | "replicate" | "openai" | "microsoft";
+
+export type ModelStatus = "live" | "coming-soon";
 
 export type AspectRatio =
   | "1:1"
@@ -50,7 +64,7 @@ export interface GenerateInput {
   modelKey: ModelKey;
   /** This turn's user prompt (just the ask — brand rules go in systemInstruction). */
   prompt: string;
-  /** Composed brand/system rules (built server-side from a preset). */
+  /** Composed brand/system rules (built server-side: preset or Frank Body Mode). */
   systemInstruction?: string;
   settings: GenerationSettings;
   /** Reference images for initial generation and/or edits. */
