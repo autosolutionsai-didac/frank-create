@@ -31,8 +31,8 @@ export function getSupabaseServerClient(): SupabaseClient {
     });
   }
 
-  const request = getWebRequest();
-  const authHeader = request?.headers.get("Authorization");
+  const request = getRequest();
+  const authHeader = request?.headers.get("authorization");
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     global: {
