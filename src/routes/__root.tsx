@@ -12,7 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
-import { fetchUser } from "@/lib/auth/auth.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -119,8 +119,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
     ],
   }),
+  ssr: false,
   beforeLoad: async () => {
-    const user = await fetchUser();
+    const { data } = await supabase.auth.getUser();
+    const user = data.user ? { id: data.user.id, email: data.user.email ?? "" } : null;
     return { user };
   },
   shellComponent: RootShell,
