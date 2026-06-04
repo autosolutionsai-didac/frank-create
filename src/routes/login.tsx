@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { lovable } from "@/integrations/lovable/index";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (search): { error?: string; redirect?: string } => ({
@@ -18,16 +18,10 @@ function LoginPage() {
 
   async function signIn() {
     setBusy(true);
-    try {
-      const supabase = getSupabaseBrowserClient();
-      const { error: err } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
-      });
-      if (err) setBusy(false);
-    } catch {
-      setBusy(false);
-    }
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
+    if (result.error || !result.redirected) setBusy(false);
   }
 
   const message =
