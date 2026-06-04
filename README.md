@@ -1,141 +1,103 @@
 # Frank Body Image Studio
 
 Internal, brand-controlled AI image generation + editing for the Frank Body
-design team. Conversational, multi-turn editing with reference images, Frank
-Body presets, per-user private sessions, and 4K output.
+design team. Multi-model, conversational, multi-turn editing with a manual
+edit-model picker, an opt-in Frank Body Mode style system, paste-editable brand
+presets, per-user private sessions, and 4K output.
 
 Built on **TanStack Start** (React 19 + Vite, SSR) · **Tailwind v4** ·
-**shadcn/ui** · **Supabase** (Postgres + Storage + Auth) · provider adapters for
-**Google Gemini** (Nano Banana Pro / 2) and **Replicate**. Deploys to Cloudflare
-Workers.
+**shadcn/ui** · **Supabase via Lovable Cloud** (Postgres + Storage + Auth) ·
+provider adapters for **Google Gemini**, **Replicate**, and **OpenAI**. Deploys
+to Cloudflare Workers.
 
 ## Architecture
 
 ```
 src/lib/providers/        Provider engine (server-only adapters + capability registry)
-  capabilities.ts         Model registry → drives which UI controls render per model
-  gemini.server.ts        Nano Banana Pro/2 adapter (isolates @google/genai)
-  replicate.server.ts     Replicate multi-model router adapter
+  capabilities.ts         MODEL_CAPABILITIES + EDIT_MODEL_ORDER → drives the UI & dispatch
+  gemini.server.ts        Nano Banana Pro/2 (only file importing @google/genai)
+  replicate.server.ts     FLUX Ultra/Kontext, Reve, Grok, Ideogram, SD3.5 (per-model input + edits)
+  openai.server.ts        GPT-Image-2 / 1.5 / ChatGPT-image edit (only file importing openai)
   index.server.ts         getProvider() dispatch
-src/lib/presets.ts        Frank Body brand presets + system-instruction composition
-src/lib/supabase/         Server (cookie-bound + admin) & browser clients, storage, types
-src/lib/auth/             fetchUser / OAuth exchange / signOut server functions
+src/lib/frank-body.ts     Frank Body Mode: style + negative-prompt system (+ LoRA hook)
+src/lib/presets.ts        The 5 brand presets (paste an editable prompt)
 src/lib/api/              createServerFn endpoints: image (generate/edit), sessions
-src/lib/studio/store.tsx  Client state: React Query (server data) + local composer state
+src/lib/auth/guard.ts     @frankbody.com app-side restriction (claims-based)
+src/lib/supabase/         Row types + Storage helpers (client passed in)
+src/integrations/         Lovable-generated auth + Supabase clients (do not edit)
+src/lib/studio/store.tsx  Client state: React Query (server data) + composer/controls
 src/components/studio/    3-pane UI (sessions · conversation · controls)
-src/routes/               / (studio, guarded) · /login · /auth/callback
-supabase/migrations/      0001 schema + RLS + bucket · 0002 seed presets/capabilities
+supabase/migrations/      0001 schema+RLS+bucket · 0002 seed · 0003 presets v2
 ```
 
-Keys never reach the browser: every model call is proxied through a
-`createServerFn` server function that reads secrets from `process.env`.
-Per-user privacy is enforced by Postgres RLS; images live in a private Storage
-bucket and are served via short-lived signed URLs.
-
-## Setup
-
-### 1. Install
-
-```bash
-bun install
-```
-
-### 2. Supabase project
-
-1. Create a project at supabase.com.
-2. Run the migrations (SQL editor, or `supabase db push` with the CLI):
-   - `supabase/migrations/0001_init.sql` — tables, RLS, the private
-     `studio-images` bucket + per-user folder policies.
-   - `supabase/migrations/0002_seed.sql` — brand presets + model capabilities.
-3. **Auth → Providers → Google**: enable Google, add your Google Cloud OAuth
-   client ID/secret. In Google Cloud the authorized redirect URI is your
-   Supabase `…/auth/v1/callback`.
-4. **Auth → URL Configuration → Redirect URLs**: add
-   `http://localhost:3000/auth/callback` (dev) and your production
-   `…/auth/callback`.
-
-Access is restricted to `@frankbody.com` accounts (plus an optional allow-list)
-in `src/lib/auth/auth.functions.ts`.
-
-### 3. Environment
-
-Copy `.env.example` to `.env` and fill in:
-
-```
-GEMINI_API_KEY=            # server-only
-REPLICATE_API_TOKEN=       # server-only (Replicate models)
-VITE_SUPABASE_URL=         # public
-VITE_SUPABASE_ANON_KEY=    # public
-SUPABASE_SERVICE_ROLE_KEY= # server-only
-```
-
-In production set these as Cloudflare Worker secrets.
-
-### 4. Run
-
-```bash
-bun dev        # http://localhost:3000
-bun run build  # production build
-bun lint       # eslint
-```
-
-### Deployment (Cloudflare Workers)
-
-Secrets are read via `process.env` **inside** handlers, which on Workers
-requires:
-
-- `nodejs_compat` enabled and `compatibility_date >= 2024-09-23` (the Buffer/
-  process polyfills the Gemini/Replicate/Supabase server code relies on).
-- All env vars bound as **Worker secrets/vars** (not just baked into the client
-  build): `GEMINI_API_KEY`, `REPLICATE_API_TOKEN`, `SUPABASE_SERVICE_ROLE_KEY`,
-  and also `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` (these need to exist at
-  **both** build time for `import.meta.env` and runtime for `process.env`).
-
-### Testing in Lovable Cloud
-
-When you connect **Supabase (Lovable Cloud)**, set these as project env vars /
-secrets — the names must match exactly:
-
-| Var                         | Notes                                                          |
-| --------------------------- | -------------------------------------------------------------- |
-| `VITE_SUPABASE_URL`         | public; powers the browser client **and** the server           |
-| `VITE_SUPABASE_ANON_KEY`    | public; if your project shows a "publishable key", that's this |
-| `SUPABASE_SERVICE_ROLE_KEY` | server-only secret                                             |
-| `GEMINI_API_KEY`            | server-only secret                                             |
-| `REPLICATE_API_TOKEN`       | server-only, optional                                          |
-
-Then:
-
-1. Run `supabase/migrations/0001_init.sql` then `0002_seed.sql` in the Supabase
-   SQL editor (tables + RLS + the private `studio-images` bucket + seed).
-2. Supabase → **Auth → Providers → Google**: enable it with your Google OAuth
-   client ID/secret, and add redirect URL `https://<your-app>/auth/callback`.
-3. Sign in with an `@frankbody.com` account (allow-list lives in
-   `src/lib/auth/auth.functions.ts`).
-
-Until Supabase is connected the app boots to the login page (it no longer
-crashes); generation and sign-in light up once the vars + migrations are in
-place.
+Auth + Supabase are owned by **Lovable Cloud**: a Bearer-token middleware
+(`requireSupabaseAuth`) authenticates server functions and hands them an
+RLS-scoped client; keys never reach the browser (provider calls go through
+`createServerFn`). Per-user privacy is enforced by Postgres RLS; images live in
+a private bucket and are served via short-lived signed URLs.
 
 ## Models
 
-`src/lib/providers/capabilities.ts` is the single source of truth. Verified
-facts (preview model IDs may change — they're isolated to that one file):
+`src/lib/providers/capabilities.ts` is the single source of truth (preview model
+IDs may change — they're isolated to that file). Routing: Gemini official ·
+Replicate for everything it hosts · OpenAI where Replicate lacks it.
 
-| Model                     | ID                               | Refs | Sizes    | Thinking |
-| ------------------------- | -------------------------------- | ---- | -------- | -------- |
-| Nano Banana Pro           | `gemini-3-pro-image-preview`     | 6    | 1K/2K/4K | yes      |
-| Nano Banana 2             | `gemini-3.1-flash-image-preview` | 10   | 1K/2K    | no       |
-| Nano Banana               | `gemini-2.5-flash-image`         | 10   | 1K       | no       |
-| FLUX 1.1 Pro / Seedream 4 | Replicate slugs (placeholders)   | —    | —        | no       |
+| Model                                 | Provider           | 4K      | Edit                        |
+| ------------------------------------- | ------------------ | ------- | --------------------------- |
+| Nano Banana Pro                       | Gemini             | ✓       | ✓ (T1 full regen)           |
+| GPT-Image-2                           | OpenAI             | ✓       | ✓ (T2)                      |
+| FLUX 1.1 Pro Ultra                    | Replicate          | ✓ (4MP) | —                           |
+| Nano Banana 2                         | Gemini             | max 2K  | —                           |
+| Reve 2.0 / Grok Imagine / Ideogram v3 | Replicate          | badge   | Grok ✓                      |
+| GPT-Image 1.5 HF                      | OpenAI             | max 1K  | —                           |
+| FLUX Kontext Max / ChatGPT Image HF   | Replicate / OpenAI | —       | edit-only                   |
+| MAI-Image-2.5                         | Microsoft          | ✓       | — (coming soon, no adapter) |
 
 Notes: image models reject `candidateCount > 1`, so N images = N parallel calls
-(cost scales with count × resolution). Reference caps are **6/10**, not 14.
+(cost scales with count × resolution). 4K-only is enforced per model via
+`supportedResolutions`; non-4K models (NB2, GPT-Image 1.5) are kept but capped.
 
-## Open items before go-live
+## Frank Body Mode & presets
 
-- Confirm the final **Replicate model list** + per-model input mappings
-  (`replicate.server.ts` `buildInput`).
-- Replace the **placeholder brand rules** in `src/lib/presets.ts` /
-  `0002_seed.sql` with real guidance.
-- Verify preview model IDs against the live API with a real key.
+- **Frank Body Mode** — a global, **off-by-default** toggle that layers the Frank
+  Body style + negative-prompt system onto any prompt, on any model (opt-in).
+  Optional LoRA (trigger `FRANKBODY`) is a future Layer-2 enhancement.
+- **Presets** — the 5 brief presets (Clean Ecom, FB Lifestyle, FB Model Image,
+  Product Texture, Retail Mock) each paste a full **editable** prompt into the
+  composer. They work with or without Frank Body Mode.
+
+## Setup (Lovable Cloud)
+
+1. **Connect Supabase** in Lovable Cloud — it injects `SUPABASE_URL`,
+   `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
+2. **Run the migrations** in the Supabase SQL editor: `0001_init.sql`,
+   `0002_seed.sql`, `0003_presets_v2.sql` (tables + RLS + private `studio-images`
+   bucket + preset/capability seed). _Required_ — until then there are no tables.
+3. **Set provider secrets**: `GEMINI_API_KEY`, `REPLICATE_API_TOKEN`,
+   `OPENAI_API_KEY` (see `.env.example`).
+4. Auth/login is handled by Lovable; access is restricted to `@frankbody.com`
+   (`src/lib/auth/guard.ts`).
+
+## Commands
+
+```bash
+bun install
+bun dev          # http://localhost:3000
+bun run build    # production build (regenerates routeTree.gen.ts)
+bun lint
+bunx tsc --noEmit
+```
+
+## Roadmap (remaining from the V2 brief)
+
+- **LoRA training** (`ostris/flux-dev-lora-trainer` → `lucataco/flux-dev-lora`,
+  trigger `FRANKBODY`) — needs a curated 100–300 image dataset; wires into the
+  Frank Body Mode Layer-2 hook.
+- **Masked inpainting** — canvas brush → OpenAI `images.edit` with a mask (T3).
+- **Batch generation** — multiple prompt variations per session.
+
+## Open items
+
+- Verify preview model IDs + 4K support (Reve/Grok/Ideogram) against the live API.
+- Replace placeholder copy in `src/lib/frank-body.ts` and `src/lib/presets.ts`
+  with Cliff's validated brand prompts.
