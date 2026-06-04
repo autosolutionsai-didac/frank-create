@@ -55,7 +55,14 @@ export function getSupabaseServerClient(): SupabaseClient {
 export async function requireUser(
   supabase: SupabaseClient,
 ): Promise<{ id: string; email: string | null }> {
-  const { data } = await supabase.auth.getUser();
+  // With persistSession:false the client has no internal session, so
+  // getUser() (no-arg) returns null. Pull the bearer token from the request
+  // and pass it explicitly so the Auth server validates it.
+  const authorization = getRequest().headers.get("authorization");
+  const token = authorization?.startsWith("Bearer ")
+    ? authorization.slice("Bearer ".length)
+    : undefined;
+  const { data } = token ? await supabase.auth.getUser(token) : await supabase.auth.getUser();
   if (!data.user) throw new Error("Not authenticated");
   return { id: data.user.id, email: data.user.email ?? null };
 }
