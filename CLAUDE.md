@@ -94,15 +94,20 @@ failure never leaves an orphaned turn; per-model reference caps enforced server-
   library) is applied server-side to every model (as `systemInstruction` for
   Gemini, prompt-prefix for Replicate/OpenAI). Layer-2 LoRA hook (`getLoraFor`,
   trigger `FRANKBODY`) is stubbed. Persisted in `sessions.settings_json`.
-- **Presets** (`src/lib/presets.ts`): the 5 brief presets each paste a full,
-  EDITABLE prompt into the composer (`setPrompt(preset.prompt)`) — NOT a hidden
-  system instruction. Independent of Frank Body Mode. DB mirror seeded by `0003`.
+- **Presets** (`src/lib/presets.ts`): a SHARED, in-app-editable brand library
+  backed by Supabase — `src/lib/api/preset.functions.ts` (CRUD) + `usePresets`
+  (`['presets']` query). `presets.ts` is the seed/fallback list. In the control
+  panel: click a preset → editor modal (edit / Use prompt / delete); the **+**
+  creates one. "Use" pastes the prompt into the composer (`setPrompt`). Not a
+  hidden system instruction; independent of Frank Body Mode. `0003` seeds the
+  table, `0004` grants authenticated writes.
 
 ## Data model
 
 `supabase/migrations/`: `0001` schema (`sessions → messages [ordered by seq] →
 assets`, RLS `auth.uid()=user_id`, private `studio-images` bucket), `0002` seed,
-`0003` presets v2. Assets carry `asset_type` (`reference`|`generated`|`edited`)
+`0003` presets v2, `0004` presets writable (shared). Assets carry `asset_type`
+(`reference`|`generated`|`edited`)
 
 - `parent_asset_id` (edit lineage). Bytes live in the bucket
   `userId/sessionId/{reference|generated}/<id>.png`, served via signed URLs.

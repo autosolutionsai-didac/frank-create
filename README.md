@@ -62,8 +62,10 @@ Notes: image models reject `candidateCount > 1`, so N images = N parallel calls
 - **Frank Body Mode** — a global, **off-by-default** toggle that layers the Frank
   Body style + negative-prompt system onto any prompt, on any model (opt-in).
   Optional LoRA (trigger `FRANKBODY`) is a future Layer-2 enhancement.
-- **Presets** — the 5 brief presets (Clean Ecom, FB Lifestyle, FB Model Image,
-  Product Texture, Retail Mock) each paste a full **editable** prompt into the
+- **Presets** — a **shared, in-app-editable** brand library (Supabase-backed).
+  The 5 defaults (Clean Ecom, FB Lifestyle, FB Model Image, Product Texture,
+  Retail Mock) each hold a full prompt. Click a preset to **edit** it (or Use /
+  delete) and the **+** to **create** new ones; "Use" pastes the prompt into the
   composer. They work with or without Frank Body Mode.
 
 ## Setup (Lovable Cloud)
@@ -71,8 +73,9 @@ Notes: image models reject `candidateCount > 1`, so N images = N parallel calls
 1. **Connect Supabase** in Lovable Cloud — it injects `SUPABASE_URL`,
    `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
 2. **Run the migrations** in the Supabase SQL editor: `0001_init.sql`,
-   `0002_seed.sql`, `0003_presets_v2.sql` (tables + RLS + private `studio-images`
-   bucket + preset/capability seed). _Required_ — until then there are no tables.
+   `0002_seed.sql`, `0003_presets_v2.sql`, `0004_presets_writable.sql` (tables +
+   RLS + private `studio-images` bucket + preset/capability seed + editable
+   presets). _Required_ — until then there are no tables.
 3. **Set provider secrets**: `GEMINI_API_KEY`, `REPLICATE_API_TOKEN`,
    `OPENAI_API_KEY` (see `.env.example`).
 4. Auth/login is handled by Lovable; access is restricted to `@frankbody.com`

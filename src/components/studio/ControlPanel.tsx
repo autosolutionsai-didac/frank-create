@@ -1,6 +1,6 @@
-import { Eraser } from "lucide-react";
+import { useState } from "react";
+import { Plus } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -14,8 +14,10 @@ import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { MODEL_CAPABILITIES, MODEL_ORDER } from "@/lib/providers/capabilities";
 import type { AspectRatio, ImageSize } from "@/lib/providers/types";
-import { FRANK_BODY_PRESETS } from "@/lib/presets";
+import type { Preset } from "@/lib/presets";
+import { usePresets } from "@/lib/studio/use-presets";
 import { useStudio } from "@/lib/studio/store";
+import { PresetEditorModal } from "./PresetEditorModal";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -26,16 +28,13 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export function ControlPanel() {
-  const {
-    modelKey,
-    settings,
-    capability,
-    setModel,
-    setSettings,
-    frankBodyMode,
-    setFrankBodyMode,
-    setPrompt,
-  } = useStudio();
+  const { modelKey, settings, capability, setModel, setSettings, frankBodyMode, setFrankBodyMode } =
+    useStudio();
+  const { presets } = usePresets();
+  const [editor, setEditor] = useState<{ open: boolean; preset: Preset | null }>({
+    open: false,
+    preset: null,
+  });
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-4">
@@ -156,15 +155,25 @@ export function ControlPanel() {
         </div>
       </section>
 
-      {/* Presets — paste an editable prompt into the composer */}
+      {/* Presets — click to edit/use, + to create. Shared brand library. */}
       <section className="space-y-2">
-        <SectionLabel>Frank Body Presets</SectionLabel>
+        <div className="flex items-center justify-between gap-2">
+          <SectionLabel>Frank Body Presets</SectionLabel>
+          <button
+            type="button"
+            onClick={() => setEditor({ open: true, preset: null })}
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label="New preset"
+          >
+            <Plus className="size-4" />
+          </button>
+        </div>
         <div className="grid gap-1.5">
-          {FRANK_BODY_PRESETS.map((preset) => (
+          {presets.map((preset) => (
             <button
               key={preset.id}
               type="button"
-              onClick={() => setPrompt(preset.prompt)}
+              onClick={() => setEditor({ open: true, preset })}
               className="rounded-md border border-border px-3 py-2 text-left transition-colors hover:bg-accent"
             >
               <span className="block text-sm font-medium">
@@ -173,17 +182,14 @@ export function ControlPanel() {
               <span className="block text-xs text-muted-foreground">{preset.purpose}</span>
             </button>
           ))}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="justify-start text-muted-foreground"
-            onClick={() => setPrompt("")}
-          >
-            <Eraser /> Clear prompt
-          </Button>
         </div>
       </section>
+
+      <PresetEditorModal
+        open={editor.open}
+        preset={editor.preset}
+        onClose={() => setEditor({ open: false, preset: null })}
+      />
     </div>
   );
 }
