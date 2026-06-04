@@ -24,6 +24,12 @@ function emailAllowed(email: string | null | undefined): boolean {
 /** Verified current user (JWT-checked), or null. Used by the route guard. */
 export const fetchUser = createServerFn({ method: "GET" }).handler(
   async (): Promise<StudioUser | null> => {
+    const { getServerConfig } = await import("../config.server");
+    const cfg = getServerConfig();
+    // Not wired up yet (e.g. before Supabase is connected): boot gracefully to
+    // the login page instead of throwing on every route.
+    if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) return null;
+
     const { getSupabaseServerClient } = await import("../supabase/supabase.server");
     const supabase = getSupabaseServerClient();
     const { data } = await supabase.auth.getUser();
