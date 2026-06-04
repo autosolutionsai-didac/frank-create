@@ -49,7 +49,7 @@ export interface EditTarget {
 
 interface Controls {
   modelKey: ModelKey;
-  presetId: string | null;
+  frankBodyMode: boolean;
   settings: GenerationSettings;
 }
 
@@ -86,7 +86,7 @@ function coerceSettings(modelKey: ModelKey, raw: SessionSettings): GenerationSet
 
 function defaultControls(): Controls {
   const modelKey = MODEL_ORDER[0];
-  return { modelKey, presetId: null, settings: defaultSettings(modelKey) };
+  return { modelKey, frankBodyMode: false, settings: defaultSettings(modelKey) };
 }
 
 function firstLiveEditModel(): ModelKey {
@@ -107,11 +107,11 @@ interface StudioContextValue {
 
   modelKey: ModelKey;
   settings: GenerationSettings;
-  presetId: string | null;
+  frankBodyMode: boolean;
   capability: ModelCapability;
   setModel: (k: ModelKey) => void;
   setSettings: (p: Partial<GenerationSettings>) => void;
-  setPreset: (id: string | null) => void;
+  setFrankBodyMode: (on: boolean) => void;
 
   prompt: string;
   setPrompt: (s: string) => void;
@@ -186,7 +186,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       const modelKey = isModelKey(d.activeModelKey) ? d.activeModelKey : MODEL_ORDER[0];
       setControls({
         modelKey,
-        presetId: d.activePresetId,
+        frankBodyMode: d.settings.frankBodyMode ?? false,
         settings: coerceSettings(modelKey, d.settings),
       });
     }
@@ -257,8 +257,8 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       setControls((c) => ({ ...c, settings: clampSettings(c.modelKey, { ...c.settings, ...p }) })),
     [],
   );
-  const setPreset = useCallback(
-    (id: string | null) => setControls((c) => ({ ...c, presetId: id })),
+  const setFrankBodyMode = useCallback(
+    (on: boolean) => setControls((c) => ({ ...c, frankBodyMode: on })),
     [],
   );
 
@@ -302,7 +302,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     const parent = editParent;
     const editModel = editModelKey;
     const editRefs = editReferences;
-    const { modelKey, presetId, settings } = controls;
+    const { modelKey, frankBodyMode, settings } = controls;
 
     void (async () => {
       let sid = activeSessionId;
@@ -323,7 +323,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
             sessionId: sid,
             modelKey,
             prompt: text,
-            presetId,
+            frankBodyMode,
             settings: {
               aspectRatio: settings.aspectRatio,
               imageSize: settings.imageSize,
@@ -378,11 +378,11 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       isLoadingSession: sessionQuery.isLoading && !!activeSessionId,
       modelKey: controls.modelKey,
       settings: controls.settings,
-      presetId: controls.presetId,
+      frankBodyMode: controls.frankBodyMode,
       capability: getCapability(controls.modelKey),
       setModel,
       setSettings,
-      setPreset,
+      setFrankBodyMode,
       prompt,
       setPrompt,
       references,
@@ -413,7 +413,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       controls,
       setModel,
       setSettings,
-      setPreset,
+      setFrankBodyMode,
       prompt,
       references,
       addReferences,

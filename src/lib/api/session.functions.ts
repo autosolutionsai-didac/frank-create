@@ -40,6 +40,7 @@ export interface SessionSettings {
   imageSize?: string;
   numImages?: number;
   thinkingLevel?: string;
+  frankBodyMode?: boolean;
 }
 
 export interface SessionDetail {

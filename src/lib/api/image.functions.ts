@@ -9,7 +9,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getCapability } from "../providers/capabilities";
-import { composeSystemInstruction, getPreset } from "../presets";
+import { composeFrankBodySystem } from "../frank-body";
 import { assertAllowedEmail } from "../auth/guard";
 import type { GenerateInput } from "../providers/types";
 import type { AssetRow } from "../supabase/types";
@@ -27,7 +27,8 @@ const generateSchema = z.object({
   sessionId: z.string(),
   modelKey: z.string(),
   prompt: z.string().min(1, "A prompt is required"),
-  presetId: z.string().nullable().optional(),
+  /** Frank Body Mode (Layer-1 style system), opt-in. */
+  frankBodyMode: z.boolean().optional(),
   settings: settingsSchema,
   referenceImages: z.array(refImageSchema).optional(),
   /** Set for edits — the generated asset being revised. */
@@ -89,11 +90,10 @@ export const generateImage = createServerFn({ method: "POST" })
 
     // Generate FIRST — if the provider throws, nothing is persisted, so we never
     // leave an orphaned user turn or stray Storage objects behind.
-    const preset = getPreset(data.presetId);
     const input: GenerateInput = {
       modelKey: cap.modelKey,
       prompt: data.prompt,
-      systemInstruction: preset ? composeSystemInstruction(preset) : undefined,
+      systemInstruction: data.frankBodyMode ? composeFrankBodySystem() : undefined,
       settings: {
         aspectRatio: data.settings.aspectRatio as GenerateInput["settings"]["aspectRatio"],
         imageSize: data.settings.imageSize,
@@ -175,8 +175,8 @@ export const generateImage = createServerFn({ method: "POST" })
       .from("sessions")
       .update({
         active_model_key: data.modelKey,
-        active_preset_id: data.presetId ?? null,
-        settings_json: data.settings,
+        active_preset_id: null, // legacy column; presets are now client-side prompts
+        settings_json: { ...data.settings, frankBodyMode: data.frankBodyMode ?? false },
         title: session.title === "Untitled" ? data.prompt.slice(0, 48) : session.title,
       })
       .eq("id", data.sessionId);
