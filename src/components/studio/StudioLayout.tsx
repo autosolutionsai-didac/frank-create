@@ -3,8 +3,7 @@ import { LogOut } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { signOutFn } from "@/lib/auth/auth.functions";
-import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { supabase } from "@/integrations/supabase/client";
 import { StudioProvider } from "@/lib/studio/store";
 import { Conversation } from "./Conversation";
 import { ControlPanel } from "./ControlPanel";
@@ -16,14 +15,9 @@ function Header({ userEmail }: { userEmail?: string }) {
 
   async function signOut() {
     try {
-      await getSupabaseBrowserClient().auth.signOut();
+      await supabase.auth.signOut();
     } catch {
       /* ignore */
-    }
-    try {
-      await signOutFn();
-    } catch {
-      /* server fn throws a redirect */
     }
     await router.invalidate();
     void router.navigate({ to: "/login" });

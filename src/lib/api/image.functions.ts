@@ -1,12 +1,16 @@
 // Image generation/editing server function. Holds the secret API keys, proxies
 // the provider, persists results to Supabase Storage + DB, and tracks edit
-// lineage via parent_asset_id. RLS scopes every write to the signed-in user.
+// lineage via parent_asset_id. Auth + RLS come from Lovable's
+// `requireSupabaseAuth` middleware (Bearer token → context.supabase + userId).
 
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getCapability } from "../providers/capabilities";
 import { composeSystemInstruction, getPreset } from "../presets";
+import { assertAllowedEmail } from "../auth/guard";
 import type { GenerateInput } from "../providers/types";
 import type { AssetRow } from "../supabase/types";
 
@@ -31,15 +35,17 @@ const generateSchema = z.object({
 });
 
 export const generateImage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(generateSchema)
-  .handler(async ({ data }): Promise<{ ok: true; count: number }> => {
-    const { getSupabaseServerClient, requireUser } = await import("../supabase/supabase.server");
+  .handler(async ({ data, context }): Promise<{ ok: true; count: number }> => {
+    assertAllowedEmail(context.claims);
+    const supabase = context.supabase as unknown as SupabaseClient;
+    const userId = context.userId;
+
     const { getProvider } = await import("../providers/index.server");
     const { uploadImageBytes, downloadImageBase64, storagePath } =
       await import("../supabase/storage.server");
 
-    const supabase = getSupabaseServerClient();
-    const user = await requireUser(supabase);
     const cap = getCapability(data.modelKey);
 
     const refs = data.referenceImages ?? [];
@@ -96,7 +102,7 @@ export const generateImage = createServerFn({ method: "POST" })
       .from("messages")
       .insert({
         session_id: data.sessionId,
-        user_id: user.id,
+        user_id: userId,
         role: "user",
         message_type: isEdit ? "edit" : "generate",
         prompt_text: data.prompt,
@@ -110,13 +116,13 @@ export const generateImage = createServerFn({ method: "POST" })
     // Persist reference images as assets on the user message.
     for (const ref of refs) {
       const assetId = crypto.randomUUID();
-      const path = storagePath(user.id, data.sessionId, "reference", assetId);
+      const path = storagePath(userId, data.sessionId, "reference", assetId);
       await uploadImageBytes(supabase, path, ref);
       await supabase.from("assets").insert({
         id: assetId,
         session_id: data.sessionId,
         message_id: userMessageId,
-        user_id: user.id,
+        user_id: userId,
         asset_type: "reference",
         storage_path: path,
       });
@@ -127,7 +133,7 @@ export const generateImage = createServerFn({ method: "POST" })
       .from("messages")
       .insert({
         session_id: data.sessionId,
-        user_id: user.id,
+        user_id: userId,
         role: "assistant",
         message_type: isEdit ? "edit" : "generate",
         prompt_text: result.thoughts ?? null,
@@ -140,13 +146,13 @@ export const generateImage = createServerFn({ method: "POST" })
 
     for (const image of result.images) {
       const assetId = crypto.randomUUID();
-      const path = storagePath(user.id, data.sessionId, "generated", assetId);
+      const path = storagePath(userId, data.sessionId, "generated", assetId);
       await uploadImageBytes(supabase, path, image);
       await supabase.from("assets").insert({
         id: assetId,
         session_id: data.sessionId,
         message_id: aiMessageId,
-        user_id: user.id,
+        user_id: userId,
         asset_type: isEdit ? "edited" : "generated",
         storage_path: path,
         parent_asset_id: data.parentAssetId ?? null,
@@ -156,7 +162,7 @@ export const generateImage = createServerFn({ method: "POST" })
       });
     }
 
-    // 4) persist controls + title + bump updated_at
+    // 3) persist controls + title + bump updated_at
     await supabase
       .from("sessions")
       .update({

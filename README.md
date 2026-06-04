@@ -96,13 +96,13 @@ requires:
 When you connect **Supabase (Lovable Cloud)**, set these as project env vars /
 secrets — the names must match exactly:
 
-| Var | Notes |
-| --- | --- |
-| `VITE_SUPABASE_URL` | public; powers the browser client **and** the server |
-| `VITE_SUPABASE_ANON_KEY` | public; if your project shows a "publishable key", that's this |
-| `SUPABASE_SERVICE_ROLE_KEY` | server-only secret |
-| `GEMINI_API_KEY` | server-only secret |
-| `REPLICATE_API_TOKEN` | server-only, optional |
+| Var                         | Notes                                                          |
+| --------------------------- | -------------------------------------------------------------- |
+| `VITE_SUPABASE_URL`         | public; powers the browser client **and** the server           |
+| `VITE_SUPABASE_ANON_KEY`    | public; if your project shows a "publishable key", that's this |
+| `SUPABASE_SERVICE_ROLE_KEY` | server-only secret                                             |
+| `GEMINI_API_KEY`            | server-only secret                                             |
+| `REPLICATE_API_TOKEN`       | server-only, optional                                          |
 
 Then:
 

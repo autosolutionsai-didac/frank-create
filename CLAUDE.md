@@ -66,10 +66,11 @@ and the server reads it to dispatch. The UI never imports a model SDK.
   `replicate.server.ts` (multi-model router).
 - **Adding a model** = add a `MODEL_CAPABILITIES` entry (+ `MODEL_ORDER`); add a
   new adapter only for a new provider. Mirror it into `0002_seed.sql`.
-- Model IDs are *preview* IDs that churn — they live only in `capabilities.ts`,
+- Model IDs are _preview_ IDs that churn — they live only in `capabilities.ts`,
   so a rename is a one-line edit.
 
 Generation invariants (in `gemini.server.ts` / `image.functions.ts`):
+
 - Image models reject `candidateCount > 1`, so **N images = N parallel
   `generateContent` calls** (`Promise.allSettled`). Cost scales with count ×
   resolution.
@@ -108,6 +109,7 @@ exchanges the OAuth code (`exchangeOAuthCode`, which `throw`s a `redirect`). Use
 ## Client state
 
 `src/lib/studio/store.tsx` is a React context backing the whole UI:
+
 - **Server data** via React Query: `['sessions']` and `['session', id]`
   (messages + assets resolved to signed URLs).
 - **Transient/local**: composer `prompt`, pending `references`, `editParent`,

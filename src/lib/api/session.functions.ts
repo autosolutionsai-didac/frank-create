@@ -1,9 +1,14 @@
-// Session/conversation server functions. RLS scopes every query to the
-// signed-in user; we still pass user_id on insert to satisfy the WITH CHECK.
+// Session/conversation server functions. Auth + RLS come from Lovable's
+// `requireSupabaseAuth` middleware (context.supabase is the user-scoped client,
+// context.userId the verified user id). We still pass user_id on insert to
+// satisfy the WITH CHECK policy.
 
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertAllowedEmail } from "../auth/guard";
 import type { AssetRow, MessageRow, SessionRow } from "../supabase/types";
 
 export interface SessionSummary {
@@ -46,11 +51,11 @@ export interface SessionDetail {
   messages: MessageView[];
 }
 
-export const listSessions = createServerFn({ method: "GET" }).handler(
-  async (): Promise<SessionSummary[]> => {
-    const { getSupabaseServerClient, requireUser } = await import("../supabase/supabase.server");
-    const supabase = getSupabaseServerClient();
-    await requireUser(supabase);
+export const listSessions = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<SessionSummary[]> => {
+    assertAllowedEmail(context.claims);
+    const supabase = context.supabase as unknown as SupabaseClient;
 
     const { data, error } = await supabase
       .from("sessions")
@@ -63,16 +68,15 @@ export const listSessions = createServerFn({ method: "GET" }).handler(
       title: s.title,
       updatedAt: s.updated_at,
     }));
-  },
-);
+  });
 
 export const getSession = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ sessionId: z.string() }))
-  .handler(async ({ data }): Promise<SessionDetail | null> => {
-    const { getSupabaseServerClient, requireUser } = await import("../supabase/supabase.server");
+  .handler(async ({ data, context }): Promise<SessionDetail | null> => {
+    assertAllowedEmail(context.claims);
+    const supabase = context.supabase as unknown as SupabaseClient;
     const { signedUrlMap } = await import("../supabase/storage.server");
-    const supabase = getSupabaseServerClient();
-    await requireUser(supabase);
 
     const { data: sessionData } = await supabase
       .from("sessions")
@@ -130,16 +134,16 @@ export const getSession = createServerFn({ method: "GET" })
   });
 
 export const createSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ title: z.string().optional(), modelKey: z.string().optional() }))
-  .handler(async ({ data }): Promise<SessionSummary> => {
-    const { getSupabaseServerClient, requireUser } = await import("../supabase/supabase.server");
-    const supabase = getSupabaseServerClient();
-    const user = await requireUser(supabase);
+  .handler(async ({ data, context }): Promise<SessionSummary> => {
+    assertAllowedEmail(context.claims);
+    const supabase = context.supabase as unknown as SupabaseClient;
 
     const { data: row, error } = await supabase
       .from("sessions")
       .insert({
-        user_id: user.id,
+        user_id: context.userId,
         title: data.title ?? "Untitled",
         active_model_key: data.modelKey ?? "nano-banana-pro",
       })
@@ -151,6 +155,7 @@ export const createSession = createServerFn({ method: "POST" })
   });
 
 export const updateSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       sessionId: z.string(),
@@ -160,10 +165,9 @@ export const updateSession = createServerFn({ method: "POST" })
       settingsJson: z.record(z.string(), z.unknown()).optional(),
     }),
   )
-  .handler(async ({ data }): Promise<{ ok: true }> => {
-    const { getSupabaseServerClient, requireUser } = await import("../supabase/supabase.server");
-    const supabase = getSupabaseServerClient();
-    await requireUser(supabase);
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    assertAllowedEmail(context.claims);
+    const supabase = context.supabase as unknown as SupabaseClient;
 
     const patch: Record<string, unknown> = {};
     if (data.title !== undefined) patch.title = data.title;
@@ -179,14 +183,14 @@ export const updateSession = createServerFn({ method: "POST" })
   });
 
 export const deleteSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ sessionId: z.string() }))
-  .handler(async ({ data }): Promise<{ ok: true }> => {
-    const { getSupabaseServerClient, requireUser } = await import("../supabase/supabase.server");
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    assertAllowedEmail(context.claims);
+    const supabase = context.supabase as unknown as SupabaseClient;
     const { removeSessionObjects } = await import("../supabase/storage.server");
-    const supabase = getSupabaseServerClient();
-    const user = await requireUser(supabase);
 
-    await removeSessionObjects(supabase, user.id, data.sessionId);
+    await removeSessionObjects(supabase, context.userId, data.sessionId);
     const { error } = await supabase.from("sessions").delete().eq("id", data.sessionId);
     if (error) throw new Error(error.message);
     return { ok: true };
