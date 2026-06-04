@@ -98,10 +98,12 @@ export const getSession = createServerFn({ method: "GET" })
     const assetsByMessage = new Map<string, AssetView[]>();
     for (const a of assets) {
       if (!a.message_id) continue;
+      const url = urls.get(a.storage_path);
+      if (!url) continue; // skip if signing failed rather than render a broken image
       const view: AssetView = {
         id: a.id,
         assetType: a.asset_type,
-        url: urls.get(a.storage_path) ?? "",
+        url,
         parentAssetId: a.parent_asset_id,
       };
       const list = assetsByMessage.get(a.message_id) ?? [];
