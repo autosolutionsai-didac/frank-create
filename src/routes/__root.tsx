@@ -119,8 +119,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
     ],
   }),
-  ssr: false,
   beforeLoad: async () => {
+    if (typeof window === "undefined") return { user: null };
     const { data } = await supabase.auth.getUser();
     const user = data.user ? { id: data.user.id, email: data.user.email ?? "" } : null;
     return { user };
