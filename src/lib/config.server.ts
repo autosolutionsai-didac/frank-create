@@ -19,8 +19,13 @@ import process from "node:process";
 export function getServerConfig() {
   return {
     nodeEnv: process.env.NODE_ENV,
-    // Add server-only values here, e.g.:
-    //   databaseUrl: process.env.DATABASE_URL,
-    //   stripeSecretKey: process.env.STRIPE_SECRET_KEY,
+    // Image-model secrets — server-only, never exposed to the browser.
+    geminiApiKey: process.env.GEMINI_API_KEY,
+    replicateApiToken: process.env.REPLICATE_API_TOKEN,
+    // Supabase (Phase 1). URL + anon key are also exposed to the client via
+    // VITE_ vars; the service-role key is server-only.
+    supabaseUrl: process.env.VITE_SUPABASE_URL,
+    supabaseAnonKey: process.env.VITE_SUPABASE_ANON_KEY,
+    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
   };
 }
