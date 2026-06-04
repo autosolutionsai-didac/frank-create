@@ -1,11 +1,10 @@
 import { useState } from "react";
 
-import { toDataUrl } from "@/lib/image-utils";
-import type { StudioImage } from "@/lib/studio/store";
+import type { AssetView } from "@/lib/api/session.functions";
 import { ImagePreviewModal } from "./ImagePreviewModal";
 
-export function ImageGrid({ images }: { images: StudioImage[] }) {
-  const [selected, setSelected] = useState<StudioImage | null>(null);
+export function ImageGrid({ images }: { images: AssetView[] }) {
+  const [selected, setSelected] = useState<AssetView | null>(null);
 
   return (
     <>
@@ -18,7 +17,7 @@ export function ImageGrid({ images }: { images: StudioImage[] }) {
             className="overflow-hidden rounded-md border transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <img
-              src={toDataUrl(img)}
+              src={img.url}
               alt="Generated result"
               className="aspect-square w-full object-cover"
             />
