@@ -17,6 +17,7 @@ function LoginPage() {
   const navigate = useNavigate();
   const { error, redirect } = Route.useSearch();
   const [busy, setBusy] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -41,10 +42,12 @@ function LoginPage() {
 
   async function signIn() {
     setBusy(true);
+    setLocalError(null);
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
     if (result.error) {
+      setLocalError(result.error.message);
       setBusy(false);
       return;
     }
@@ -65,7 +68,7 @@ function LoginPage() {
       ? "Only @frankbody.com accounts can sign in."
       : error === "auth"
         ? "Sign-in failed. Please try again."
-        : null;
+        : localError;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -83,6 +86,17 @@ function LoginPage() {
         <Button className="mt-6 w-full" onClick={() => void signIn()} disabled={busy}>
           {busy ? "Redirecting…" : "Sign in with Google"}
         </Button>
+        {localError?.includes("Preview mode") && (
+          <Button
+            variant="outline"
+            className="mt-3 w-full"
+            onClick={() => {
+              window.top?.location.assign(window.location.href);
+            }}
+          >
+            Open app in new tab
+          </Button>
+        )}
       </div>
     </div>
   );
