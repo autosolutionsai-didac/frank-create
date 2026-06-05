@@ -24,7 +24,7 @@ export type ModelKey =
   // Coming soon (no adapter)
   | "mai-image-2.5";
 
-export type ProviderId = "gemini" | "replicate" | "openai" | "microsoft";
+export type ProviderId = "lovable" | "replicate" | "openai" | "microsoft";
 
 export type ModelStatus = "live" | "coming-soon";
 

@@ -20,7 +20,7 @@ export function getServerConfig() {
   return {
     nodeEnv: process.env.NODE_ENV,
     // Image-model secrets — server-only, never exposed to the browser.
-    geminiApiKey: process.env.GEMINI_API_KEY,
+    // (Gemini models run through Lovable AI's gateway via LOVABLE_API_KEY.)
     replicateApiToken: process.env.REPLICATE_API_TOKEN,
     // Supabase (Phase 1). URL + anon key are also exposed to the client via
     // VITE_ vars; the service-role key is server-only.

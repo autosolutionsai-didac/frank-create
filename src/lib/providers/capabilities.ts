@@ -59,10 +59,10 @@ const OPENAI_RATIOS: AspectRatio[] = ["1:1", "3:2", "2:3"];
 export const MODEL_CAPABILITIES: Record<ModelKey, ModelCapability> = {
   "nano-banana-pro": {
     modelKey: "nano-banana-pro",
-    provider: "gemini",
-    providerModelId: "gemini-3-pro-image-preview",
+    provider: "lovable",
+    providerModelId: "google/gemini-3-pro-image-preview",
     label: "Nano Banana Pro",
-    blurb: "Gemini · 4K · Thinking",
+    blurb: "Lovable AI · 4K",
     status: "live",
     supportsEditing: true,
     editCapable: true,
@@ -72,7 +72,8 @@ export const MODEL_CAPABILITIES: Record<ModelKey, ModelCapability> = {
     maxReferenceImages: 6,
     supportedAspectRatios: ALL_RATIOS,
     supportedResolutions: ["1K", "2K", "4K"],
-    supportsThinking: true,
+    // Lovable AI's OpenAI-compatible gateway doesn't expose Gemini thinkingConfig.
+    supportsThinking: false,
     supportsMultiTurn: true,
     defaultSettings: { aspectRatio: "1:1", imageSize: "2K", numImages: 4 },
   },
@@ -117,10 +118,10 @@ export const MODEL_CAPABILITIES: Record<ModelKey, ModelCapability> = {
   },
   "nano-banana-2": {
     modelKey: "nano-banana-2",
-    provider: "gemini",
-    providerModelId: "gemini-3.1-flash-image-preview",
+    provider: "lovable",
+    providerModelId: "google/gemini-3.1-flash-image-preview",
     label: "Nano Banana 2",
-    blurb: "Gemini · fast · max 2K",
+    blurb: "Lovable AI · fast · max 2K",
     status: "live",
     supportsEditing: false,
     editCapable: false,
@@ -271,10 +272,10 @@ export const MODEL_CAPABILITIES: Record<ModelKey, ModelCapability> = {
   // ---- Legacy keys (kept so old sessions resolve; not shown in pickers) ----
   "nano-banana": {
     modelKey: "nano-banana",
-    provider: "gemini",
-    providerModelId: "gemini-2.5-flash-image",
+    provider: "lovable",
+    providerModelId: "google/gemini-2.5-flash-image",
     label: "Nano Banana",
-    blurb: "Gemini · 1K",
+    blurb: "Lovable AI · 1K",
     status: "live",
     supportsEditing: true,
     editCapable: false,
