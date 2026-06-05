@@ -48,6 +48,9 @@ export function getOpenAIProvider(): ImageProvider {
           for (const r of input.referenceImages ?? []) {
             images.push(await refToFile(r, `ref-${images.length}.png`));
           }
+          // Masked inpainting: transparent areas of the mask are edited. The mask
+          // must match the source dimensions (the client sends a matched pair).
+          const mask = input.maskImage ? await refToFile(input.maskImage, "mask.png") : undefined;
           return client.images.edit({
             model,
             image: images,
@@ -55,6 +58,7 @@ export function getOpenAIProvider(): ImageProvider {
             size,
             n: 1,
             quality,
+            ...(mask ? { mask } : {}),
           } as Parameters<typeof client.images.edit>[0]);
         }
         return client.images.generate({

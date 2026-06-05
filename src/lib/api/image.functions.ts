@@ -37,6 +37,10 @@ const generateSchema = z.object({
   editModelKey: z.string().optional(),
   /** References attached to an edit (separate from generation references). */
   editReferenceImages: z.array(refImageSchema).optional(),
+  /** Inpainting mask (transparent = edit region); only used by mask-capable models. */
+  editMaskImage: refImageSchema.optional(),
+  /** Working-size parent matching the mask dims (used instead of the stored image). */
+  editParentImageData: refImageSchema.optional(),
 });
 
 export const generateImage = createServerFn({ method: "POST" })
@@ -75,18 +79,32 @@ export const generateImage = createServerFn({ method: "POST" })
     if (!sessionRow) throw new Error("Session not found");
     const session = sessionRow as { id: string; title: string };
 
-    // Resolve the parent image bytes for an edit (read-only).
+    // Resolve the parent image bytes for an edit. For masked edits the client
+    // sends a working-size parent that matches the mask dims; otherwise download
+    // the stored image.
     let editParentImage: GenerateInput["editParentImage"];
     if (data.parentAssetId) {
-      const { data: parent } = await supabase
-        .from("assets")
-        .select("storage_path")
-        .eq("id", data.parentAssetId)
-        .maybeSingle();
-      const parentRow = parent as Pick<AssetRow, "storage_path"> | null;
-      if (!parentRow) throw new Error("Parent image not found");
-      editParentImage = await downloadImageBase64(supabase, parentRow.storage_path);
+      if (data.editParentImageData) {
+        const { data: parent } = await supabase
+          .from("assets")
+          .select("id")
+          .eq("id", data.parentAssetId)
+          .maybeSingle();
+        if (!parent) throw new Error("Parent image not found");
+        editParentImage = data.editParentImageData;
+      } else {
+        const { data: parent } = await supabase
+          .from("assets")
+          .select("storage_path")
+          .eq("id", data.parentAssetId)
+          .maybeSingle();
+        const parentRow = parent as Pick<AssetRow, "storage_path"> | null;
+        if (!parentRow) throw new Error("Parent image not found");
+        editParentImage = await downloadImageBase64(supabase, parentRow.storage_path);
+      }
     }
+    // Mask only applies to mask-capable edit models.
+    const maskImage = isEdit && cap.supportsMask ? data.editMaskImage : undefined;
 
     // Generate FIRST — if the provider throws, nothing is persisted, so we never
     // leave an orphaned user turn or stray Storage objects behind.
@@ -102,6 +120,7 @@ export const generateImage = createServerFn({ method: "POST" })
       },
       referenceImages: refs,
       editParentImage,
+      maskImage,
     };
     const result = await getProvider(cap.provider).generate(input);
 

@@ -79,6 +79,10 @@ dispatch. The UI never imports a model SDK.
 - **Edit-model picker:** `EDIT_MODEL_ORDER` lists models offerable for editing.
   Edits dispatch to the chosen `editModelKey` (may be a different provider than
   the generation model); edit references are separate from generation references.
+  Mask-capable models (`supportsMask`: GPT-Image-2 / ChatGPT-image) do **masked
+  inpainting** — `MaskCanvas` brushes a mask and sends a matched working-size
+  parent + transparent-where-painted mask. A composer **Batch** toggle fans out
+  one turn per prompt line.
 - **Adding a model** = add a `MODEL_CAPABILITIES` entry (+ `MODEL_ORDER` and/or
   `EDIT_MODEL_ORDER`); only add a new adapter for a new provider. Model IDs are
   _preview_ IDs — they live only here, so a rename is a one-line edit.
