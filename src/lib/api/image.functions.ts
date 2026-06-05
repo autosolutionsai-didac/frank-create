@@ -115,7 +115,8 @@ export const generateImage = createServerFn({ method: "POST" })
       settings: {
         aspectRatio: data.settings.aspectRatio as GenerateInput["settings"]["aspectRatio"],
         imageSize: data.settings.imageSize,
-        numImages: data.settings.numImages,
+        // Edits produce a single result (don't fan out N near-identical edits).
+        numImages: isEdit ? 1 : data.settings.numImages,
         thinkingLevel: data.settings.thinkingLevel,
       },
       referenceImages: refs,

@@ -116,7 +116,7 @@ export function getReplicateProvider(): ImageProvider {
       const images = await Promise.all(urls.map(urlToBase64));
       if (images.length === 0) {
         throw new Error(
-          `Replicate returned no images${firstError ? `: ${String(firstError)}` : ""}`,
+          `Replicate returned no images${firstError ? `: ${firstError instanceof Error ? firstError.message : String(firstError)}` : ""}`,
         );
       }
       return { images };

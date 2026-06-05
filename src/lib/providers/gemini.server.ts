@@ -89,7 +89,9 @@ export function getGeminiProvider(): ImageProvider {
       }
 
       if (images.length === 0) {
-        throw new Error(`Gemini returned no images${firstError ? `: ${String(firstError)}` : ""}`);
+        throw new Error(
+          `Gemini returned no images${firstError ? `: ${firstError instanceof Error ? firstError.message : String(firstError)}` : ""}`,
+        );
       }
       return { images, thoughts };
     },

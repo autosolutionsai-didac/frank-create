@@ -15,7 +15,14 @@ const SIZE_MAP: Record<string, Record<ImageSize, string>> = {
   "2:3": { "1K": "1024x1536", "2K": "1360x2048", "4K": "2048x3072" },
 };
 
-function toOpenAISize(aspectRatio: AspectRatio, imageSize: ImageSize): string {
+function standardSize(aspectRatio: AspectRatio): string {
+  return aspectRatio === "3:2" ? "1536x1024" : aspectRatio === "2:3" ? "1024x1536" : "1024x1024";
+}
+
+// Only gpt-image-2 accepts arbitrary WxH (incl. 4K); the others (gpt-image-1.5,
+// chatgpt-image-latest) accept only the standard sizes.
+function toOpenAISize(aspectRatio: AspectRatio, imageSize: ImageSize, model: string): string {
+  if (model !== "gpt-image-2") return standardSize(aspectRatio);
   return SIZE_MAP[aspectRatio]?.[imageSize] ?? SIZE_MAP["1:1"][imageSize];
 }
 
@@ -36,7 +43,12 @@ export function getOpenAIProvider(): ImageProvider {
       const client = new OpenAI({ apiKey });
       const cap = getCapability(input.modelKey);
       const model = cap.providerModelId;
-      const size = toOpenAISize(input.settings.aspectRatio, input.settings.imageSize);
+      // For edits, let OpenAI match the input geometry (the working-size parent +
+      // mask define the dims, so the mask stays aligned); set explicit sizes only
+      // for fresh generations.
+      const size = input.editParentImage
+        ? "auto"
+        : toOpenAISize(input.settings.aspectRatio, input.settings.imageSize, model);
       // Brief specifies GPT-Image-2 at "medium"; HF variants at high fidelity.
       const quality = model === "gpt-image-2" ? "medium" : "high";
 
@@ -85,7 +97,9 @@ export function getOpenAIProvider(): ImageProvider {
         }
       }
       if (images.length === 0) {
-        throw new Error(`OpenAI returned no images${firstError ? `: ${String(firstError)}` : ""}`);
+        throw new Error(
+          `OpenAI returned no images${firstError ? `: ${firstError instanceof Error ? firstError.message : String(firstError)}` : ""}`,
+        );
       }
       return { images };
     },
