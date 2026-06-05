@@ -35,7 +35,18 @@ import {
   MODEL_ORDER,
   type ModelCapability,
 } from "../providers/capabilities";
-import type { AspectRatio, GenerationSettings, ImageSize, ModelKey } from "../providers/types";
+import type {
+  AspectRatio,
+  GenerationSettings,
+  ImageSize,
+  ModelKey,
+  RefImage,
+} from "../providers/types";
+
+export interface EditMask {
+  parent: RefImage;
+  mask: RefImage;
+}
 
 export interface PendingRef {
   id: string;
@@ -128,6 +139,11 @@ interface StudioContextValue {
   editReferences: PendingRef[];
   addEditReferences: (refs: PendingRef[]) => void;
   removeEditReference: (id: string) => void;
+  editMask: EditMask | null;
+  setEditMask: (m: EditMask | null) => void;
+
+  batchMode: boolean;
+  setBatchMode: (on: boolean) => void;
 
   submit: () => void;
   isGenerating: boolean;
@@ -147,6 +163,8 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const [editParent, setEditParent] = useState<EditTarget | null>(null);
   const [editModelKey, setEditModelKey] = useState<ModelKey | null>(null);
   const [editReferences, setEditReferences] = useState<PendingRef[]>([]);
+  const [editMask, setEditMask] = useState<EditMask | null>(null);
+  const [batchMode, setBatchMode] = useState(false);
   const [pendingTurn, setPendingTurn] = useState<StudioContextValue["pendingTurn"]>(null);
   const lastSync = useRef<string | null>(null);
   const didInit = useRef(false);
@@ -225,6 +243,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     setEditParent(null);
     setEditModelKey(null);
     setEditReferences([]);
+    setEditMask(null);
   }, []);
 
   const selectSession = useCallback(
@@ -307,6 +326,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     setEditParent(null);
     setEditModelKey(null);
     setEditReferences([]);
+    setEditMask(null);
   }, []);
   const setEditModel = useCallback((k: ModelKey) => setEditModelKey(k), []);
   const addEditReferences = useCallback(
@@ -329,7 +349,18 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     const parent = editParent;
     const editModel = editModelKey;
     const editRefs = editReferences;
+    const mask = editMask;
     const { modelKey, frankBodyMode, settings } = controls;
+
+    // Batch: one turn per non-empty line (generation only, not edits), capped.
+    const prompts =
+      batchMode && !parent
+        ? text
+            .split("\n")
+            .map((l) => l.trim())
+            .filter(Boolean)
+            .slice(0, 8)
+        : [text];
 
     void (async () => {
       let sid = activeSessionId;
@@ -343,34 +374,38 @@ export function StudioProvider({ children }: { children: ReactNode }) {
         }
 
         resetComposer();
-        setPendingTurn({ promptText: text, type: parent ? "edit" : "generate" });
 
-        await generateMut.mutateAsync({
-          data: {
-            sessionId: sid,
-            modelKey,
-            prompt: text,
-            frankBodyMode,
-            settings: {
-              aspectRatio: settings.aspectRatio,
-              imageSize: settings.imageSize,
-              numImages: settings.numImages,
-              thinkingLevel: settings.thinkingLevel,
+        for (const p of prompts) {
+          setPendingTurn({ promptText: p, type: parent ? "edit" : "generate" });
+          await generateMut.mutateAsync({
+            data: {
+              sessionId: sid,
+              modelKey,
+              prompt: p,
+              frankBodyMode,
+              settings: {
+                aspectRatio: settings.aspectRatio,
+                imageSize: settings.imageSize,
+                numImages: settings.numImages,
+                thinkingLevel: settings.thinkingLevel,
+              },
+              referenceImages: refs.map((r) => ({
+                mimeType: r.mimeType,
+                dataBase64: r.dataBase64,
+              })),
+              parentAssetId: parent?.assetId,
+              editModelKey: parent ? (editModel ?? undefined) : undefined,
+              editReferenceImages: parent
+                ? editRefs.map((r) => ({ mimeType: r.mimeType, dataBase64: r.dataBase64 }))
+                : undefined,
+              editMaskImage: parent && mask ? mask.mask : undefined,
+              editParentImageData: parent && mask ? mask.parent : undefined,
             },
-            referenceImages: refs.map((r) => ({ mimeType: r.mimeType, dataBase64: r.dataBase64 })),
-            parentAssetId: parent?.assetId,
-            editModelKey: parent ? (editModel ?? undefined) : undefined,
-            editReferenceImages: parent
-              ? editRefs.map((r) => ({ mimeType: r.mimeType, dataBase64: r.dataBase64 }))
-              : undefined,
-          },
-        });
-
-        // Refetch the persisted turn BEFORE clearing the optimistic one (no flash).
-        if (sid) {
-          await qc.invalidateQueries({ queryKey: ["session", sid] });
-          await qc.invalidateQueries({ queryKey: ["sessions"] });
+          });
+          // Refetch each persisted turn before clearing its optimistic placeholder.
+          if (sid) await qc.invalidateQueries({ queryKey: ["session", sid] });
         }
+        await qc.invalidateQueries({ queryKey: ["sessions"] });
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Generation failed");
       } finally {
@@ -390,6 +425,8 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     createMut,
     qc,
     resetComposer,
+    batchMode,
+    editMask,
   ]);
 
   const value = useMemo<StudioContextValue>(
@@ -423,6 +460,10 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       editReferences,
       addEditReferences,
       removeEditReference,
+      editMask,
+      setEditMask,
+      batchMode,
+      setBatchMode,
       submit,
       isGenerating: generateMut.isPending,
       pendingTurn,
@@ -454,6 +495,8 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       editReferences,
       addEditReferences,
       removeEditReference,
+      editMask,
+      batchMode,
       submit,
       generateMut.isPending,
       pendingTurn,

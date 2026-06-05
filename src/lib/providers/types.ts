@@ -71,6 +71,8 @@ export interface GenerateInput {
   referenceImages?: RefImage[];
   /** The image being edited (multi-turn). Triggers edit/compose mode. */
   editParentImage?: RefImage;
+  /** Inpainting mask (same dims as editParentImage; transparent = edit region). */
+  maskImage?: RefImage;
 }
 
 export interface GeneratedImage {

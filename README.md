@@ -91,13 +91,14 @@ bun lint
 bunx tsc --noEmit
 ```
 
-## Roadmap (remaining from the V2 brief)
+## Roadmap
 
-- **LoRA training** (`ostris/flux-dev-lora-trainer` → `lucataco/flux-dev-lora`,
-  trigger `FRANKBODY`) — needs a curated 100–300 image dataset; wires into the
-  Frank Body Mode Layer-2 hook.
-- **Masked inpainting** — canvas brush → OpenAI `images.edit` with a mask (T3).
-- **Batch generation** — multiple prompt variations per session.
+Shipped: **masked inpainting** (brush → OpenAI `images.edit` mask, on GPT-Image-2 /
+ChatGPT-image) and **batch generation** (one image set per prompt line).
+
+**Parked — LoRA training** (`ostris/flux-dev-lora-trainer` → `lucataco/flux-dev-lora`,
+trigger `FRANKBODY`): needs a curated 100–300 image Frank Body dataset, then wires
+into the Frank Body Mode Layer-2 hook (`getLoraFor`).
 
 ## Open items
 

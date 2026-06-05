@@ -1,4 +1,5 @@
-import { Sparkles, X } from "lucide-react";
+import { useState } from "react";
+import { Brush, Sparkles, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -8,10 +9,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { EDIT_MODEL_ORDER, MODEL_CAPABILITIES } from "@/lib/providers/capabilities";
+import { EDIT_MODEL_ORDER, getCapability, MODEL_CAPABILITIES } from "@/lib/providers/capabilities";
 import type { ModelKey } from "@/lib/providers/types";
 import { useStudio } from "@/lib/studio/store";
+import { MaskCanvas } from "./MaskCanvas";
 import { ReferenceUploader } from "./ReferenceUploader";
 
 export function PromptComposer() {
@@ -22,10 +25,16 @@ export function PromptComposer() {
     exitEdit,
     editModelKey,
     setEditModel,
+    editMask,
+    setEditMask,
+    batchMode,
+    setBatchMode,
     submit,
     isGenerating,
   } = useStudio();
   const editing = editParent !== null;
+  const [maskOpen, setMaskOpen] = useState(false);
+  const canMask = editing && !!(editModelKey && getCapability(editModelKey).supportsMask);
 
   return (
     <div className="border-t bg-card/50 p-3">
@@ -63,6 +72,32 @@ export function PromptComposer() {
               </SelectContent>
             </Select>
           </div>
+          {canMask && (
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setMaskOpen(true)}>
+                <Brush /> {editMask ? "Edit mask" : "Paint area"}
+              </Button>
+              {editMask && (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  Mask applied
+                  <button
+                    type="button"
+                    onClick={() => setEditMask(null)}
+                    aria-label="Clear mask"
+                    className="rounded p-0.5 hover:bg-accent"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
+          <MaskCanvas
+            open={maskOpen}
+            imageUrl={editParent.url}
+            onClose={() => setMaskOpen(false)}
+            onApply={setEditMask}
+          />
         </div>
       )}
 
@@ -72,12 +107,26 @@ export function PromptComposer() {
         onKeyDown={(e) => {
           if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit();
         }}
-        placeholder={editing ? "Describe what to change…" : "Describe your image…"}
+        placeholder={
+          editing
+            ? "Describe what to change…"
+            : batchMode
+              ? "One prompt per line — each line makes its own image set…"
+              : "Describe your image…"
+        }
         className="min-h-20 resize-none"
       />
 
       <div className="mt-2 flex items-center justify-between gap-2">
-        <ReferenceUploader mode={editing ? "edit" : "generate"} />
+        <div className="flex items-center gap-3">
+          <ReferenceUploader mode={editing ? "edit" : "generate"} />
+          {!editing && (
+            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+              <Switch checked={batchMode} onCheckedChange={setBatchMode} />
+              Batch
+            </label>
+          )}
+        </div>
         <Button onClick={submit} disabled={isGenerating || !prompt.trim()}>
           <Sparkles /> {isGenerating ? "Generating…" : editing ? "Update" : "Generate"}
         </Button>

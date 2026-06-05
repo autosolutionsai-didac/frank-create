@@ -22,6 +22,8 @@ export interface ModelCapability {
   editCapable: boolean;
   /** 1 = full regen · 2 = instruction edit · 3 = masked inpainting. */
   editTier?: 1 | 2 | 3;
+  /** Supports masked inpainting (a brush mask of the region to change). */
+  supportsMask?: boolean;
   /** True only for genuine 4K/4MP models (others get a "max NK" badge). */
   is4K: boolean;
   supportsMultiReference: boolean;
@@ -83,7 +85,8 @@ export const MODEL_CAPABILITIES: Record<ModelKey, ModelCapability> = {
     status: "live",
     supportsEditing: true,
     editCapable: true,
-    editTier: 2,
+    editTier: 3,
+    supportsMask: true,
     is4K: true,
     supportsMultiReference: false,
     maxReferenceImages: 0,
@@ -234,7 +237,8 @@ export const MODEL_CAPABILITIES: Record<ModelKey, ModelCapability> = {
     status: "live",
     supportsEditing: true,
     editCapable: true,
-    editTier: 2,
+    editTier: 3,
+    supportsMask: true,
     is4K: true,
     supportsMultiReference: false,
     maxReferenceImages: 0,
