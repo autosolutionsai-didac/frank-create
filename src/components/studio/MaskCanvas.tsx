@@ -35,11 +35,13 @@ export function MaskCanvas({ open, imageUrl, onClose, onApply }: Props) {
   const [brush, setBrush] = useState(48);
   const [dims, setDims] = useState({ w: 0, h: 0 });
   const [ready, setReady] = useState(false);
+  const [painted, setPainted] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
     setReady(false);
+    setPainted(false);
     void (async () => {
       try {
         const res = await fetch(imageUrl);
@@ -83,6 +85,7 @@ export function MaskCanvas({ open, imageUrl, onClose, onApply }: Props) {
     const ctx = overlay.current?.getContext("2d");
     if (!ctx) return;
     drawing.current = true;
+    setPainted(true);
     const p = point(e);
     ctx.strokeStyle = "rgba(244,114,90,0.55)";
     ctx.fillStyle = ctx.strokeStyle;
@@ -107,6 +110,7 @@ export function MaskCanvas({ open, imageUrl, onClose, onApply }: Props) {
 
   function clear() {
     overlay.current?.getContext("2d")?.clearRect(0, 0, dims.w, dims.h);
+    setPainted(false);
   }
 
   function apply() {
@@ -179,7 +183,7 @@ export function MaskCanvas({ open, imageUrl, onClose, onApply }: Props) {
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={apply} disabled={!ready}>
+          <Button onClick={apply} disabled={!ready || !painted}>
             Apply mask
           </Button>
         </DialogFooter>
