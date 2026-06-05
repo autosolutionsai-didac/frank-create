@@ -7,15 +7,15 @@ presets, per-user private sessions, and 4K output.
 
 Built on **TanStack Start** (React 19 + Vite, SSR) · **Tailwind v4** ·
 **shadcn/ui** · **Supabase via Lovable Cloud** (Postgres + Storage + Auth) ·
-provider adapters for **Google Gemini**, **Replicate**, and **OpenAI**. Deploys
-to Cloudflare Workers.
+provider adapters for **Lovable AI** (Gemini/Nano Banana), **Replicate**, and
+**OpenAI**. Deploys to Cloudflare Workers.
 
 ## Architecture
 
 ```
 src/lib/providers/        Provider engine (server-only adapters + capability registry)
   capabilities.ts         MODEL_CAPABILITIES + EDIT_MODEL_ORDER → drives the UI & dispatch
-  gemini.server.ts        Nano Banana Pro/2 (only file importing @google/genai)
+  lovable.server.ts       Nano Banana Pro/2 via Lovable AI's built-in gateway (no Gemini key)
   replicate.server.ts     FLUX Ultra/Kontext, Reve, Grok, Ideogram, SD3.5 (per-model input + edits)
   openai.server.ts        GPT-Image-2 / 1.5 / ChatGPT-image edit (only file importing openai)
   index.server.ts         getProvider() dispatch
@@ -27,7 +27,7 @@ src/lib/supabase/         Row types + Storage helpers (client passed in)
 src/integrations/         Lovable-generated auth + Supabase clients (do not edit)
 src/lib/studio/store.tsx  Client state: React Query (server data) + composer/controls
 src/components/studio/    3-pane UI (sessions · conversation · controls)
-supabase/migrations/      0001 schema+RLS+bucket · 0002 seed · 0003 presets v2
+supabase/migrations/      0001 schema+RLS+bucket · 0002 seed · 0003 presets v2 · 0004 presets writable
 ```
 
 Auth + Supabase are owned by **Lovable Cloud**: a Bearer-token middleware
@@ -39,21 +39,21 @@ a private bucket and are served via short-lived signed URLs.
 ## Models
 
 `src/lib/providers/capabilities.ts` is the single source of truth (preview model
-IDs may change — they're isolated to that file). Routing: Gemini official ·
-Replicate for everything it hosts · OpenAI where Replicate lacks it.
+IDs may change — they're isolated to that file). Routing: Gemini/Nano Banana via
+Lovable AI · Replicate for everything it hosts · OpenAI where Replicate lacks it.
 
 | Model                                 | Provider           | 4K      | Edit                        |
 | ------------------------------------- | ------------------ | ------- | --------------------------- |
-| Nano Banana Pro                       | Gemini             | ✓       | ✓ (T1 full regen)           |
+| Nano Banana Pro                       | Lovable AI         | ✓       | ✓ (T1 full regen)           |
 | GPT-Image-2                           | OpenAI             | ✓       | ✓ (T2)                      |
 | FLUX 1.1 Pro Ultra                    | Replicate          | ✓ (4MP) | —                           |
-| Nano Banana 2                         | Gemini             | max 2K  | —                           |
+| Nano Banana 2                         | Lovable AI         | max 2K  | —                           |
 | Reve 2.0 / Grok Imagine / Ideogram v3 | Replicate          | badge   | Grok ✓                      |
 | GPT-Image 1.5 HF                      | OpenAI             | max 1K  | —                           |
 | FLUX Kontext Max / ChatGPT Image HF   | Replicate / OpenAI | —       | edit-only                   |
 | MAI-Image-2.5                         | Microsoft          | ✓       | — (coming soon, no adapter) |
 
-Notes: image models reject `candidateCount > 1`, so N images = N parallel calls
+Notes: image models return one image per request, so N images = N parallel calls
 (cost scales with count × resolution). 4K-only is enforced per model via
 `supportedResolutions`; non-4K models (NB2, GPT-Image 1.5) are kept but capped.
 
@@ -76,8 +76,9 @@ Notes: image models reject `candidateCount > 1`, so N images = N parallel calls
    `0002_seed.sql`, `0003_presets_v2.sql`, `0004_presets_writable.sql` (tables +
    RLS + private `studio-images` bucket + preset/capability seed + editable
    presets). _Required_ — until then there are no tables.
-3. **Set provider secrets**: `GEMINI_API_KEY`, `REPLICATE_API_TOKEN`,
-   `OPENAI_API_KEY` (see `.env.example`).
+3. **Set provider secrets**: `REPLICATE_API_TOKEN`, `OPENAI_API_KEY` (see
+   `.env.example`). Gemini/Nano Banana run through Lovable AI's built-in
+   gateway, which injects `LOVABLE_API_KEY` automatically — no Gemini key.
 4. Auth/login is handled by Lovable; access is restricted to `@frankbody.com`
    (`src/lib/auth/guard.ts`).
 

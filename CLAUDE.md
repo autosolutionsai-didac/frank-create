@@ -56,10 +56,10 @@ app-side in `src/lib/auth/guard.ts` (`assertAllowedEmail(context.claims)`).
 Provider SDKs/secrets must never reach the client bundle:
 
 - **`createServerFn(...).handler()`** bodies are server-only/tree-shaken.
-- **`*.server.ts` suffix** (e.g. `gemini.server.ts`) = whole module server-only.
-  Read provider secrets (`GEMINI_API_KEY`, `REPLICATE_API_TOKEN`, `OPENAI_API_KEY`)
-  via `process.env` **inside** a handler — never at module scope (Cloudflare binds
-  env per-request; isolates are shared).
+- **`*.server.ts` suffix** (e.g. `lovable.server.ts`) = whole module server-only.
+  Read provider secrets (`REPLICATE_API_TOKEN`, `OPENAI_API_KEY`; `LOVABLE_API_KEY`
+  is auto-injected by Lovable AI) via `process.env` **inside** a handler — never at
+  module scope (Cloudflare binds env per-request; isolates are shared).
 
 ## Provider engine (the central abstraction)
 
@@ -69,13 +69,18 @@ aspect ratios/resolutions, ref cap, `status`, `is4K`); the server reads it to
 dispatch. The UI never imports a model SDK.
 
 - `getProvider(providerId)` (`index.server.ts`) → an `ImageProvider` adapter:
-  `gemini.server.ts` (only file importing `@google/genai`), `replicate.server.ts`
-  (multi-model router; per-model `buildInput` + image-to-image edits via FLUX
-  Kontext / Grok / FLUX Ultra), `openai.server.ts` (only file importing `openai`;
-  GPT-Image generate + edit). `microsoft` is a placeholder that throws.
-- **Routing rule:** Gemini official; Replicate for everything it hosts; OpenAI
-  only where Replicate lacks it. `status: "coming-soon"` models (MAI) have no
-  adapter and render disabled. `is4K` flags genuine 4K (others get a size cap).
+  `lovable.server.ts` (Gemini/Nano Banana via Lovable AI's built-in gateway — an
+  OpenAI-compatible chat/completions surface with `modalities: ["image","text"]`,
+  no direct Gemini key), `replicate.server.ts` (multi-model router; per-model
+  `buildInput` + image-to-image edits via FLUX Kontext / Grok / FLUX Ultra),
+  `openai.server.ts` (only file importing `openai`; GPT-Image generate + edit).
+  `microsoft` is a placeholder that throws.
+- **Routing rule:** Gemini/Nano Banana via Lovable AI's gateway; Replicate for
+  everything it hosts; OpenAI only where Replicate lacks it. `status: "coming-soon"`
+  models (MAI) have no adapter and render disabled. `is4K` flags genuine 4K (others
+  get a size cap). NOTE: the Lovable gateway's OpenAI-compatible surface doesn't
+  expose Gemini's `imageConfig` (explicit 4K) or `thinkingConfig`, so for those
+  models aspect ratio is sent as a prompt hint and the thinking toggle is off.
 - **Edit-model picker:** `EDIT_MODEL_ORDER` lists models offerable for editing.
   Edits dispatch to the chosen `editModelKey` (may be a different provider than
   the generation model); edit references are separate from generation references.
@@ -95,8 +100,8 @@ failure never leaves an orphaned turn; per-model reference caps enforced server-
 
 - **Frank Body Mode** (`src/lib/frank-body.ts`): a GLOBAL, off-by-default toggle.
   When ON, `composeFrankBodySystem()` (style descriptors + negative-prompt
-  library) is applied server-side to every model (as `systemInstruction` for
-  Gemini, prompt-prefix for Replicate/OpenAI). Layer-2 LoRA hook (`getLoraFor`,
+  library) is applied server-side to every model (prompt-prefixed for Lovable
+  AI / Replicate / OpenAI). Layer-2 LoRA hook (`getLoraFor`,
   trigger `FRANKBODY`) is stubbed. Persisted in `sessions.settings_json`.
 - **Presets** (`src/lib/presets.ts`): a SHARED, in-app-editable brand library
   backed by Supabase — `src/lib/api/preset.functions.ts` (CRUD) + `usePresets`
