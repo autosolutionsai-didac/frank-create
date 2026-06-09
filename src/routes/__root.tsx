@@ -79,37 +79,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
+      { title: "Frank Body Image Studio" },
       {
         name: "description",
         content:
-          'Frank\'s Hello World is a simple web application that displays a "Hello World" message.',
+          "Internal, brand-controlled AI image generation and editing for the Frank Body design team.",
       },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
+      // Internal tool — keep it out of search indexes.
+      { name: "robots", content: "noindex, nofollow" },
+      { property: "og:title", content: "Frank Body Image Studio" },
       {
         property: "og:description",
         content:
-          'Frank\'s Hello World is a simple web application that displays a "Hello World" message.',
+          "Internal, brand-controlled AI image generation and editing for the Frank Body design team.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Lovable App" },
+      { name: "twitter:title", content: "Frank Body Image Studio" },
       {
         name: "twitter:description",
         content:
-          'Frank\'s Hello World is a simple web application that displays a "Hello World" message.',
-      },
-      {
-        property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0e747c15-f3db-427a-83f4-fc7b699b7831/id-preview-f6e28cf6--29cb22e7-f41c-4600-af6b-ec5fa1250113.lovable.app-1780566509569.png",
-      },
-      {
-        name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0e747c15-f3db-427a-83f4-fc7b699b7831/id-preview-f6e28cf6--29cb22e7-f41c-4600-af6b-ec5fa1250113.lovable.app-1780566509569.png",
+          "Internal, brand-controlled AI image generation and editing for the Frank Body design team.",
       },
     ],
     links: [

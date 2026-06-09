@@ -32,6 +32,7 @@ create table if not exists public.sessions (
 create index if not exists sessions_user_updated_idx
   on public.sessions (user_id, updated_at desc);
 
+drop trigger if exists sessions_set_updated_at on public.sessions;
 create trigger sessions_set_updated_at
   before update on public.sessions
   for each row execute function public.set_updated_at();
@@ -119,22 +120,27 @@ alter table public.presets            enable row level security;
 alter table public.model_capabilities enable row level security;
 
 -- Per-user owned rows: full access only to the owner.
+drop policy if exists "own sessions" on public.sessions;
 create policy "own sessions" on public.sessions
   for all to authenticated
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "own messages" on public.messages;
 create policy "own messages" on public.messages
   for all to authenticated
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "own assets" on public.assets;
 create policy "own assets" on public.assets
   for all to authenticated
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- Brand-global, read-only for any signed-in user.
+drop policy if exists "read presets" on public.presets;
 create policy "read presets" on public.presets
   for select to authenticated using (true);
 
+drop policy if exists "read model_capabilities" on public.model_capabilities;
 create policy "read model_capabilities" on public.model_capabilities
   for select to authenticated using (true);
 
@@ -146,18 +152,22 @@ insert into storage.buckets (id, name, public)
 values ('studio-images', 'studio-images', false)
 on conflict (id) do nothing;
 
+drop policy if exists "studio own objects read" on storage.objects;
 create policy "studio own objects read" on storage.objects
   for select to authenticated
   using (bucket_id = 'studio-images' and (storage.foldername(name))[1] = auth.uid()::text);
 
+drop policy if exists "studio own objects insert" on storage.objects;
 create policy "studio own objects insert" on storage.objects
   for insert to authenticated
   with check (bucket_id = 'studio-images' and (storage.foldername(name))[1] = auth.uid()::text);
 
+drop policy if exists "studio own objects update" on storage.objects;
 create policy "studio own objects update" on storage.objects
   for update to authenticated
   using (bucket_id = 'studio-images' and (storage.foldername(name))[1] = auth.uid()::text);
 
+drop policy if exists "studio own objects delete" on storage.objects;
 create policy "studio own objects delete" on storage.objects
   for delete to authenticated
   using (bucket_id = 'studio-images' and (storage.foldername(name))[1] = auth.uid()::text);

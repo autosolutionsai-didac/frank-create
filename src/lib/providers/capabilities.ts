@@ -47,7 +47,17 @@ const ALL_RATIOS: AspectRatio[] = [
 // Seedream 4's API does not accept 4:5 / 5:4.
 const SEEDREAM_RATIOS: AspectRatio[] = ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"];
 // Recraft v3 maps each ratio to a fixed WxH size string (see replicate.server.ts).
-const RECRAFT_RATIOS: AspectRatio[] = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9"];
+const RECRAFT_RATIOS: AspectRatio[] = [
+  "1:1",
+  "2:3",
+  "3:2",
+  "3:4",
+  "4:3",
+  "4:5",
+  "5:4",
+  "9:16",
+  "16:9",
+];
 // Imagen 4 on Replicate exposes a restricted ratio set.
 const IMAGEN_RATIOS: AspectRatio[] = ["1:1", "3:4", "4:3", "9:16", "16:9"];
 

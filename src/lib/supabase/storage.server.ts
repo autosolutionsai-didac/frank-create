@@ -5,17 +5,24 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { GeneratedImage, RefImage } from "../providers/types";
 import { STUDIO_BUCKET } from "./types";
 
-const SIGNED_URL_TTL = 60 * 60; // 1 hour
+const SIGNED_URL_TTL = 6 * 60 * 60; // 6 hours — comfortably outlives a work session
 
 export type AssetKind = "reference" | "generated";
+
+function extFromMime(mimeType: string): string {
+  if (mimeType === "image/jpeg" || mimeType === "image/jpg") return "jpg";
+  if (mimeType === "image/webp") return "webp";
+  return "png";
+}
 
 export function storagePath(
   userId: string,
   sessionId: string,
   kind: AssetKind,
   assetId: string,
+  mimeType = "image/png",
 ): string {
-  return `${userId}/${sessionId}/${kind}/${assetId}.png`;
+  return `${userId}/${sessionId}/${kind}/${assetId}.${extFromMime(mimeType)}`;
 }
 
 /** Upload base64 image bytes to the bucket. Returns the storage path. */
@@ -58,6 +65,11 @@ export async function signedUrlMap(
     if (entry.signedUrl && entry.path) map.set(entry.path, entry.signedUrl);
   }
   return map;
+}
+
+/** Remove a specific set of objects (used to roll back a failed write). */
+export async function removeObjects(supabase: SupabaseClient, paths: string[]): Promise<void> {
+  if (paths.length) await supabase.storage.from(STUDIO_BUCKET).remove(paths);
 }
 
 /** Best-effort removal of every object under a session's folder. */

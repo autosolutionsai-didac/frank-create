@@ -1,4 +1,6 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Download, Pencil } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,22 +18,33 @@ interface Props {
   onClose: () => void;
 }
 
+function extFromType(type: string): string {
+  if (type === "image/jpeg" || type === "image/jpg") return "jpg";
+  if (type === "image/webp") return "webp";
+  return "png";
+}
+
 export function ImagePreviewModal({ image, onClose }: Props) {
-  const { enterEdit } = useStudio();
+  const { enterEdit, activeSessionId } = useStudio();
+  const qc = useQueryClient();
 
   async function download() {
     if (!image) return;
     try {
       const res = await fetch(image.url);
+      if (!res.ok) throw new Error(String(res.status));
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `frank-body-${image.id.slice(0, 8)}.png`;
+      a.download = `frank-body-${image.id.slice(0, 8)}.${extFromType(blob.type)}`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      window.open(image.url, "_blank");
+      // The signed URL likely expired — refresh it and ask the user to retry,
+      // rather than opening a dead link.
+      void qc.invalidateQueries({ queryKey: ["session", activeSessionId] });
+      toast.error("Couldn't download — the image link was refreshed. Please try again.");
     }
   }
 

@@ -53,8 +53,16 @@ interface Controls {
 }
 
 function defaultSettings(modelKey: ModelKey): GenerationSettings {
-  const d = getCapability(modelKey).defaultSettings;
-  return { aspectRatio: d.aspectRatio, imageSize: d.imageSize, numImages: d.numImages };
+  const cap = getCapability(modelKey);
+  const d = cap.defaultSettings;
+  return {
+    aspectRatio: d.aspectRatio,
+    imageSize: d.imageSize,
+    numImages: d.numImages,
+    // Match the UI, which highlights "Low" for thinking models, so the adapter
+    // actually sends a thinkingConfig instead of silently running with none.
+    thinkingLevel: cap.supportsThinking ? "Low" : undefined,
+  };
 }
 
 function clampSettings(modelKey: ModelKey, settings: GenerationSettings): GenerationSettings {
@@ -119,7 +127,7 @@ interface StudioContextValue {
 
   submit: () => void;
   isGenerating: boolean;
-  pendingTurn: { promptText: string; type: "generate" | "edit" } | null;
+  pendingTurn: { promptText: string; type: "generate" | "edit"; numImages: number } | null;
 }
 
 const StudioContext = createContext<StudioContextValue | null>(null);
@@ -199,7 +207,12 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     (id: string, title: string) => {
       updateMut.mutate(
         { sessionId: id, title },
-        { onSuccess: () => void qc.invalidateQueries({ queryKey: ["sessions"] }) },
+        {
+          onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: ["sessions"] });
+            void qc.invalidateQueries({ queryKey: ["session", id] });
+          },
+        },
       );
     },
     [qc, updateMut],
@@ -276,7 +289,11 @@ export function StudioProvider({ children }: { children: ReactNode }) {
         setPrompt("");
         setReferences([]);
         setEditParent(null);
-        setPendingTurn({ promptText: text, type: parent ? "edit" : "generate" });
+        setPendingTurn({
+          promptText: text,
+          type: parent ? "edit" : "generate",
+          numImages: settings.numImages,
+        });
 
         await generateMut.mutateAsync({
           data: {
@@ -336,7 +353,9 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       enterEdit: setEditParent,
       exitEdit: () => setEditParent(null),
       submit,
-      isGenerating: generateMut.isPending,
+      // Cover the create-session phase too, so the button reflects work in
+      // flight before generateMut starts.
+      isGenerating: generateMut.isPending || createMut.isPending,
       pendingTurn,
     }),
     [
@@ -360,6 +379,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       editParent,
       submit,
       generateMut.isPending,
+      createMut.isPending,
       pendingTurn,
     ],
   );

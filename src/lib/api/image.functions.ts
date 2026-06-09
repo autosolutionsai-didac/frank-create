@@ -35,7 +35,7 @@ export const generateImage = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ ok: true; count: number }> => {
     const { getSupabaseServerClient, requireUser } = await import("../supabase/supabase.server");
     const { getProvider } = await import("../providers/index.server");
-    const { uploadImageBytes, downloadImageBase64, storagePath } =
+    const { uploadImageBytes, downloadImageBase64, storagePath, removeObjects } =
       await import("../supabase/storage.server");
 
     const supabase = getSupabaseServerClient();
@@ -91,73 +91,97 @@ export const generateImage = createServerFn({ method: "POST" })
     };
     const result = await getProvider(cap.provider).generate(input);
 
-    // 1) user message (persist only after a successful generation)
-    const { data: userMsg, error: userErr } = await supabase
-      .from("messages")
-      .insert({
-        session_id: data.sessionId,
-        user_id: user.id,
-        role: "user",
-        message_type: isEdit ? "edit" : "generate",
-        prompt_text: data.prompt,
-        settings_snapshot_json: data.settings,
-      })
-      .select("id")
-      .single();
-    if (userErr || !userMsg) throw new Error(userErr?.message ?? "Failed to record prompt");
-    const userMessageId = (userMsg as { id: string }).id;
+    // Persist the turn. Storage uploads can't share a DB transaction, so we track
+    // what we created and roll it back on any failure — a partial turn (e.g. a
+    // user message with no result, or an orphaned Storage object) never lingers.
+    const uploadedPaths: string[] = [];
+    const createdMessageIds: string[] = [];
+    const rollback = async () => {
+      // Deleting a message cascade-deletes its asset rows (FK on delete cascade).
+      if (createdMessageIds.length)
+        await supabase.from("messages").delete().in("id", createdMessageIds);
+      await removeObjects(supabase, uploadedPaths);
+    };
 
-    // Persist reference images as assets on the user message.
-    for (const ref of refs) {
-      const assetId = crypto.randomUUID();
-      const path = storagePath(user.id, data.sessionId, "reference", assetId);
-      await uploadImageBytes(supabase, path, ref);
-      await supabase.from("assets").insert({
-        id: assetId,
-        session_id: data.sessionId,
-        message_id: userMessageId,
-        user_id: user.id,
-        asset_type: "reference",
-        storage_path: path,
-      });
+    try {
+      // 1) user message (persist only after a successful generation)
+      const { data: userMsg, error: userErr } = await supabase
+        .from("messages")
+        .insert({
+          session_id: data.sessionId,
+          user_id: user.id,
+          role: "user",
+          message_type: isEdit ? "edit" : "generate",
+          prompt_text: data.prompt,
+          settings_snapshot_json: data.settings,
+        })
+        .select("id")
+        .single();
+      if (userErr || !userMsg) throw new Error(userErr?.message ?? "Failed to record prompt");
+      const userMessageId = (userMsg as { id: string }).id;
+      createdMessageIds.push(userMessageId);
+
+      // Persist reference images as assets on the user message.
+      for (const ref of refs) {
+        const assetId = crypto.randomUUID();
+        const path = storagePath(user.id, data.sessionId, "reference", assetId, ref.mimeType);
+        await uploadImageBytes(supabase, path, ref);
+        uploadedPaths.push(path);
+        const { error: refErr } = await supabase.from("assets").insert({
+          id: assetId,
+          session_id: data.sessionId,
+          message_id: userMessageId,
+          user_id: user.id,
+          asset_type: "reference",
+          storage_path: path,
+        });
+        if (refErr) throw new Error(`Failed to persist reference image: ${refErr.message}`);
+      }
+
+      // 2) assistant message + generated assets
+      const { data: aiMsg, error: aiErr } = await supabase
+        .from("messages")
+        .insert({
+          session_id: data.sessionId,
+          user_id: user.id,
+          role: "assistant",
+          message_type: isEdit ? "edit" : "generate",
+          prompt_text: result.thoughts ?? null,
+          settings_snapshot_json: data.settings,
+        })
+        .select("id")
+        .single();
+      if (aiErr || !aiMsg) throw new Error(aiErr?.message ?? "Failed to record result");
+      const aiMessageId = (aiMsg as { id: string }).id;
+      createdMessageIds.push(aiMessageId);
+
+      for (const image of result.images) {
+        const assetId = crypto.randomUUID();
+        const path = storagePath(user.id, data.sessionId, "generated", assetId, image.mimeType);
+        await uploadImageBytes(supabase, path, image);
+        uploadedPaths.push(path);
+        const { error: genErr } = await supabase.from("assets").insert({
+          id: assetId,
+          session_id: data.sessionId,
+          message_id: aiMessageId,
+          user_id: user.id,
+          asset_type: isEdit ? "edited" : "generated",
+          storage_path: path,
+          parent_asset_id: data.parentAssetId ?? null,
+          model_key: cap.modelKey,
+          prompt_snapshot: data.prompt,
+          metadata_json: data.settings,
+        });
+        if (genErr) throw new Error(`Failed to persist generated image: ${genErr.message}`);
+      }
+    } catch (e) {
+      await rollback().catch(() => {});
+      throw e;
     }
 
-    // 2) assistant message + generated assets
-    const { data: aiMsg, error: aiErr } = await supabase
-      .from("messages")
-      .insert({
-        session_id: data.sessionId,
-        user_id: user.id,
-        role: "assistant",
-        message_type: isEdit ? "edit" : "generate",
-        prompt_text: result.thoughts ?? null,
-        settings_snapshot_json: data.settings,
-      })
-      .select("id")
-      .single();
-    if (aiErr || !aiMsg) throw new Error(aiErr?.message ?? "Failed to record result");
-    const aiMessageId = (aiMsg as { id: string }).id;
-
-    for (const image of result.images) {
-      const assetId = crypto.randomUUID();
-      const path = storagePath(user.id, data.sessionId, "generated", assetId);
-      await uploadImageBytes(supabase, path, image);
-      await supabase.from("assets").insert({
-        id: assetId,
-        session_id: data.sessionId,
-        message_id: aiMessageId,
-        user_id: user.id,
-        asset_type: isEdit ? "edited" : "generated",
-        storage_path: path,
-        parent_asset_id: data.parentAssetId ?? null,
-        model_key: cap.modelKey,
-        prompt_snapshot: data.prompt,
-        metadata_json: data.settings,
-      });
-    }
-
-    // 4) persist controls + title + bump updated_at
-    await supabase
+    // Persist controls + title (non-critical: the images are already saved, so a
+    // failure here must not fail the whole request — just log it).
+    const { error: sessErr } = await supabase
       .from("sessions")
       .update({
         active_model_key: data.modelKey,
@@ -166,6 +190,7 @@ export const generateImage = createServerFn({ method: "POST" })
         title: session.title === "Untitled" ? data.prompt.slice(0, 48) : session.title,
       })
       .eq("id", data.sessionId);
+    if (sessErr) console.error("Failed to persist session settings:", sessErr.message);
 
     return { ok: true, count: result.images.length };
   });
