@@ -44,6 +44,13 @@ const ALL_RATIOS: AspectRatio[] = [
   "21:9",
 ];
 
+// Seedream 4's API does not accept 4:5 / 5:4.
+const SEEDREAM_RATIOS: AspectRatio[] = ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"];
+// Recraft v3 maps each ratio to a fixed WxH size string (see replicate.server.ts).
+const RECRAFT_RATIOS: AspectRatio[] = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9"];
+// Imagen 4 on Replicate exposes a restricted ratio set.
+const IMAGEN_RATIOS: AspectRatio[] = ["1:1", "3:4", "4:3", "9:16", "16:9"];
+
 export const MODEL_CAPABILITIES: Record<ModelKey, ModelCapability> = {
   "nano-banana-pro": {
     modelKey: "nano-banana-pro",
@@ -92,20 +99,36 @@ export const MODEL_CAPABILITIES: Record<ModelKey, ModelCapability> = {
     defaultSettings: { aspectRatio: "1:1", imageSize: "1K", numImages: 4 },
   },
 
-  // ---- Replicate placeholders (confirm final list + input schemas w/ Cliff) ----
+  // ---- Replicate router models (input schemas live in replicate.server.ts) ----
   "flux-1.1-pro": {
     modelKey: "flux-1.1-pro",
     provider: "replicate",
     providerModelId: "black-forest-labs/flux-1.1-pro",
     label: "FLUX 1.1 Pro",
-    blurb: "Replicate · text-to-image",
+    blurb: "Replicate · photoreal T2I",
     supportsEditing: false,
     supportsMultiReference: false,
     maxReferenceImages: 0,
-    supportedAspectRatios: ["1:1", "2:3", "3:2", "3:4", "4:3", "16:9", "9:16"],
-    supportedResolutions: ["1K", "2K"],
+    supportedAspectRatios: ALL_RATIOS,
+    // flux-1.1-pro tops out near 1MP (≤1440px); higher res needs Ultra.
+    supportedResolutions: ["1K"],
     supportsThinking: false,
     supportsMultiTurn: false,
+    defaultSettings: { aspectRatio: "1:1", imageSize: "1K", numImages: 1 },
+  },
+  "flux-kontext-max": {
+    modelKey: "flux-kontext-max",
+    provider: "replicate",
+    providerModelId: "black-forest-labs/flux-kontext-max",
+    label: "FLUX Kontext Max",
+    blurb: "Replicate · prompt-based editing",
+    supportsEditing: true,
+    supportsMultiReference: false,
+    maxReferenceImages: 1,
+    supportedAspectRatios: ALL_RATIOS,
+    supportedResolutions: ["1K"],
+    supportsThinking: false,
+    supportsMultiTurn: true,
     defaultSettings: { aspectRatio: "1:1", imageSize: "1K", numImages: 1 },
   },
   "seedream-4": {
@@ -113,12 +136,42 @@ export const MODEL_CAPABILITIES: Record<ModelKey, ModelCapability> = {
     provider: "replicate",
     providerModelId: "bytedance/seedream-4",
     label: "Seedream 4",
-    blurb: "Replicate · text-to-image",
+    blurb: "Replicate · up to 4K · multi-ref",
+    supportsEditing: true,
+    supportsMultiReference: true,
+    maxReferenceImages: 10,
+    supportedAspectRatios: SEEDREAM_RATIOS,
+    supportedResolutions: ["1K", "2K", "4K"],
+    supportsThinking: false,
+    supportsMultiTurn: true,
+    defaultSettings: { aspectRatio: "1:1", imageSize: "2K", numImages: 1 },
+  },
+  "recraft-v3": {
+    modelKey: "recraft-v3",
+    provider: "replicate",
+    providerModelId: "recraft-ai/recraft-v3",
+    label: "Recraft V3",
+    blurb: "Replicate · brand & in-image text",
     supportsEditing: false,
     supportsMultiReference: false,
     maxReferenceImages: 0,
-    supportedAspectRatios: ["1:1", "3:4", "4:3", "16:9", "9:16"],
-    supportedResolutions: ["1K", "2K"],
+    supportedAspectRatios: RECRAFT_RATIOS,
+    supportedResolutions: ["1K"],
+    supportsThinking: false,
+    supportsMultiTurn: false,
+    defaultSettings: { aspectRatio: "1:1", imageSize: "1K", numImages: 1 },
+  },
+  "imagen-4": {
+    modelKey: "imagen-4",
+    provider: "replicate",
+    providerModelId: "google/imagen-4",
+    label: "Imagen 4",
+    blurb: "Replicate · photoreal T2I",
+    supportsEditing: false,
+    supportsMultiReference: false,
+    maxReferenceImages: 0,
+    supportedAspectRatios: IMAGEN_RATIOS,
+    supportedResolutions: ["1K"],
     supportsThinking: false,
     supportsMultiTurn: false,
     defaultSettings: { aspectRatio: "1:1", imageSize: "1K", numImages: 1 },
@@ -131,7 +184,10 @@ export const MODEL_ORDER: ModelKey[] = [
   "nano-banana-2",
   "nano-banana",
   "flux-1.1-pro",
+  "flux-kontext-max",
   "seedream-4",
+  "recraft-v3",
+  "imagen-4",
 ];
 
 export function getCapability(modelKey: string): ModelCapability {

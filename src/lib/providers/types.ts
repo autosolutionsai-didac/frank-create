@@ -8,9 +8,12 @@ export type ModelKey =
   | "nano-banana-pro"
   | "nano-banana-2"
   | "nano-banana"
-  // Replicate placeholders — final list pending from Cliff.
+  // Replicate router models.
   | "flux-1.1-pro"
-  | "seedream-4";
+  | "flux-kontext-max"
+  | "seedream-4"
+  | "recraft-v3"
+  | "imagen-4";
 
 export type ProviderId = "gemini" | "replicate" | "openai";
 
