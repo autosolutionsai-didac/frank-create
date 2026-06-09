@@ -96,20 +96,31 @@ requires:
 `src/lib/providers/capabilities.ts` is the single source of truth. Verified
 facts (preview model IDs may change — they're isolated to that one file):
 
-| Model                     | ID                               | Refs | Sizes    | Thinking |
-| ------------------------- | -------------------------------- | ---- | -------- | -------- |
-| Nano Banana Pro           | `gemini-3-pro-image-preview`     | 6    | 1K/2K/4K | yes      |
-| Nano Banana 2             | `gemini-3.1-flash-image-preview` | 10   | 1K/2K    | no       |
-| Nano Banana               | `gemini-2.5-flash-image`         | 10   | 1K       | no       |
-| FLUX 1.1 Pro / Seedream 4 | Replicate slugs (placeholders)   | —    | —        | no       |
+| Model            | Provider  | ID / slug                            | Edit | Refs | Sizes    | Thinking |
+| ---------------- | --------- | ------------------------------------ | ---- | ---- | -------- | -------- |
+| Nano Banana Pro  | Gemini    | `gemini-3-pro-image-preview`         | yes  | 6    | 1K/2K/4K | yes      |
+| Nano Banana 2    | Gemini    | `gemini-3.1-flash-image-preview`     | yes  | 10   | 1K/2K    | no       |
+| Nano Banana      | Gemini    | `gemini-2.5-flash-image`             | yes  | 10   | 1K       | no       |
+| FLUX 1.1 Pro     | Replicate | `black-forest-labs/flux-1.1-pro`     | no   | 0    | 1K       | no       |
+| FLUX Kontext Max | Replicate | `black-forest-labs/flux-kontext-max` | yes  | 1    | 1K       | no       |
+| Seedream 4       | Replicate | `bytedance/seedream-4`               | yes  | 10   | 1K/2K/4K | no       |
+| Recraft V3       | Replicate | `recraft-ai/recraft-v3`              | no   | 0    | 1K       | no       |
+| Imagen 4         | Replicate | `google/imagen-4`                    | no   | 0    | 1K       | no       |
 
 Notes: image models reject `candidateCount > 1`, so N images = N parallel calls
-(cost scales with count × resolution). Reference caps are **6/10**, not 14.
+on every provider (cost scales with count × resolution). Reference caps are
+**6/10** for Gemini, not 14. Each Replicate model has a distinct input schema —
+they're mapped per model in `replicate.server.ts` (`buildInput`); Recraft takes a
+fixed WxH `size`, Seedream takes `1K/2K/4K`, FLUX/Imagen take `aspect_ratio`.
 
 ## Open items before go-live
 
-- Confirm the final **Replicate model list** + per-model input mappings
-  (`replicate.server.ts` `buildInput`).
-- Replace the **placeholder brand rules** in `src/lib/presets.ts` /
-  `0002_seed.sql` with real guidance.
-- Verify preview model IDs against the live API with a real key.
+- **Brand rules** in `src/lib/presets.ts` / `0002_seed.sql` are written from
+  published Frank Body brand research (palette, photography style, tone) — have
+  Cliff / the design team review and fine-tune the wording.
+- **Replicate model list**: a curated set is wired and correctly mapped; confirm
+  it's the desired line-up (and per-image credit budget) with Cliff. Adding or
+  removing a model is one registry entry in `capabilities.ts` plus, if its schema
+  differs, one branch in `replicate.server.ts`.
+- Verify the **preview Gemini model IDs** and the **4:5 / 5:4** aspect ratios
+  against the live API with a real key (IDs are isolated to `capabilities.ts`).
