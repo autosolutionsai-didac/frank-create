@@ -2,7 +2,13 @@
 // @google/genai — all SDK-shape risk (config field names, enum values, model
 // IDs) is isolated here. Server-only (.server.ts → tree-shaken from client).
 
-import { GoogleGenAI, ThinkingLevel, type GenerateContentConfig, type Part } from "@google/genai";
+import {
+  GoogleGenAI,
+  Modality,
+  ThinkingLevel,
+  type GenerateContentConfig,
+  type Part,
+} from "@google/genai";
 import process from "node:process";
 
 import { getCapability } from "./capabilities";
@@ -44,14 +50,21 @@ export function getGeminiProvider(): ImageProvider {
       const parts = buildParts(input);
 
       const config: GenerateContentConfig = {
-        responseModalities: ["TEXT", "IMAGE"],
+        responseModalities: [Modality.TEXT, Modality.IMAGE],
         imageConfig: {
           aspectRatio: input.settings.aspectRatio,
           imageSize: input.settings.imageSize,
         },
         ...(input.systemInstruction ? { systemInstruction: input.systemInstruction } : {}),
         ...(cap.supportsThinking && input.settings.thinkingLevel
-          ? { thinkingConfig: { thinkingLevel: THINKING_MAP[input.settings.thinkingLevel] } }
+          ? {
+              // includeThoughts is required for the model to emit thought parts;
+              // without it the thinkingLevel is honored but no summary is returned.
+              thinkingConfig: {
+                thinkingLevel: THINKING_MAP[input.settings.thinkingLevel],
+                includeThoughts: true,
+              },
+            }
           : {}),
       };
 
