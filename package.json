@@ -5,8 +5,5 @@
     "dev": "npm --prefix frank-create install --silent && npm --prefix frank-create run dev -- --host 0.0.0.0 --port 8080",
     "build": "npm --prefix frank-create install --silent && npm --prefix frank-create run build",
     "build:dev": "npm run build"
-  },
-  "dependencies": {
-    "@lovable.dev/cloud-auth-js": "^1.1.2"
   }
 }

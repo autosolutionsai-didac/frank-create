@@ -1,60 +1,47 @@
-## Goal
+## Problem
 
-Replace the legacy ComfyUI-backed `frank-create/` app with a fresh TanStack Start app served from the repo root (`src/`). It uses Lovable Cloud (Supabase) for auth/data and Lovable AI Gateway for image generation. Default model: **Nano Banana Pro**, with **Nano Banana 2** and **GPT-Image-2** selectable.
+Lovable's runner expects a Node app at the repo root, but this repo is a ComfyUI fork — the actual web app lives in `frank-create/`. Two failures stem from that:
 
-## What ships
+1. `no package.json found` — preflight checks for `/dev-server/package.json` before any `lovable.toml` script runs.
+2. `dist-check failed` — after build, the runner looks for `dist/` at the repo root, but Vite currently emits `frank-create/dist/`.
 
-A single Studio app with:
-- **Auth** — email/password + Google sign-in (Lovable broker), gated by `_authenticated/` layout.
-- **Sessions sidebar** — list/create/rename/delete chat-style sessions (one row per session in `public.sessions`).
-- **Studio canvas** — prompt input, model picker (3 models), preset picker (from `public.presets`), reference image upload (for edits), aspect ratio. Streams partial previews from Lovable AI with blur-to-sharp.
-- **Asset gallery** — generated images per session, stored in `studio-images` bucket, metadata in `public.assets` and `public.messages`.
-- **Prompt history** — each turn writes a user `message` + assistant `message` and one asset row.
+`lovable.toml` alone can't satisfy either check; we need real files at the root.
 
-## Backend boundaries (TanStack)
+## Plan
 
-- `src/routes/api/generate-image.ts` — server route, streams `/v1/images/generations` SSE through to client. Body shape branches per model (OpenAI vs Gemini `messages`+`modalities`). Uses `LOVABLE_API_KEY`.
-- `src/lib/sessions.functions.ts`, `messages.functions.ts`, `assets.functions.ts` — `createServerFn` + `requireSupabaseAuth` for CRUD scoped by `auth.uid()`.
-- Image upload to Supabase Storage happens server-side after the stream completes (decoded base64 → `studio-images/{user_id}/{asset_id}.png`).
+1. **Create `/package.json` at repo root** that delegates to the subdir app:
+   ```json
+   {
+     "name": "frank-create-root",
+     "private": true,
+     "scripts": {
+       "dev": "npm --prefix frank-create install --silent && npm --prefix frank-create run dev -- --host 0.0.0.0 --port 8080",
+       "build": "npm --prefix frank-create install --silent && npm --prefix frank-create run build",
+       "build:dev": "npm run build"
+     }
+   }
+   ```
+   `npm --prefix` avoids needing `cd` (the runner doesn't spawn a shell), which also resolves the earlier "command not found: cd" issue without `sh -c` wrapping.
 
-## Frontend
+2. **Point Vite output to repo-root `dist/`** so `dist-check` finds it. Edit `frank-create/vite.config.ts`:
+   ```ts
+   build: { outDir: "../dist", emptyOutDir: true }
+   ```
 
-- `src/routes/__root.tsx` — providers (QueryClient, Toaster), `<Outlet/>`, auth state listener.
-- `src/routes/index.tsx` — public landing, redirects signed-in users to `/studio`.
-- `src/routes/auth.tsx` — login/signup with Google + email.
-- `src/routes/_authenticated/route.tsx` — managed gate (`ssr:false`).
-- `src/routes/_authenticated/studio.tsx` — main studio (active session from `?session=` query or auto-create).
-- `src/components/studio/*` — `SessionList`, `PromptComposer`, `ModelPicker`, `PresetPicker`, `ImageStream` (blur-on-partial), `AssetGallery`.
-- `src/lib/streamImage.ts` — `eventsource-parser` + `flushSync` per the image-gen contract.
+3. **Simplify `lovable.toml`** to just run the root scripts (no `cd`, no `sh -c`):
+   ```toml
+   [run]
+   dev = "npm run dev"
+   "build:dev" = "npm run build:dev"
+   build = "npm run build"
+   ```
 
-## Design
+4. **Add `dist/` to `.gitignore`** at repo root if not already ignored.
 
-Dark editorial studio look — near-black canvas, single warm accent (amber/peach), serif display font for headings (`Fraunces`) paired with `Inter` body. Generous negative space around the live image; sidebar and composer feel like physical panels. No purple gradients.
+5. **Verify** by running `npm run build` from `/dev-server` and confirming `/dev-server/dist/index.html` exists, then checking the dev server starts on port 8080.
 
-## Build steps (this turn + next)
+## Notes
 
-1. **This turn**:
-   - Scaffold TanStack Start at repo root (move legacy `frank-create/` to `legacy/frank-create/`, point `lovable.toml` to root `vite`/`tsc`).
-   - Add deps: `@tanstack/react-router`, `@tanstack/react-start`, `@tanstack/react-query`, `eventsource-parser`, `zod`, `tailwindcss v4`, `framer-motion`, `lucide-react`, shadcn primitives, `@radix-ui/*`.
-   - Create `src/router.tsx`, `__root.tsx`, `index.tsx`, `auth.tsx`, `_authenticated/route.tsx`, `_authenticated/studio.tsx` (minimal stub).
-   - Create `src/lib/streamImage.ts` + `src/routes/api/generate-image.ts` wired to all 3 models.
-   - Create `src/lib/sessions.functions.ts`, `messages.functions.ts`, `assets.functions.ts` (+ storage upload server fn).
-   - Create the Studio UI (composer, model picker, image stream, gallery).
-   - Configure Google OAuth via `configure_social_auth`.
-2. **Follow-up turn (if needed)**: presets UI polish, edit-with-reference flow for Gemini models, session rename/delete, export.
-
-## Schema changes
-
-None required up front — existing tables cover sessions/messages/assets/presets/model_capabilities. `studio-images` bucket already exists.
-
-## Out of scope
-
-Video generation, brand-kit editor, multi-project hierarchy, exports/handoffs, ComfyUI workflow blueprints. All can be added later on top of this foundation.
-
-## What I'm NOT doing
-
-- Not keeping `/api/frank/*` ComfyUI endpoints — they're dead without a Python backend.
-- Not migrating the legacy `frank-create/` UI; archiving it under `legacy/` so nothing is lost.
-- Not adding Replicate/FLUX models — only Lovable AI Gateway models per your request.
-
-Reply "go" to start, or tweak any of the above first.
+- No changes to the actual app code in `frank-create/src/`.
+- Vite's `--host 0.0.0.0 --port 8080` override in the root `dev` script supersedes the `127.0.0.1:5174` defaults in `vite.config.ts` for Lovable's preview.
+- This keeps the ComfyUI Python codebase untouched.
