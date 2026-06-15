@@ -1,4 +1,4 @@
 [run]
-dev = "sh -c 'cd frank-create && npm install --silent && npm run dev -- --host 0.0.0.0 --port 8080'"
-"build:dev" = "sh -c 'cd frank-create && npm install --silent && npm run build'"
-build = "sh -c 'cd frank-create && npm install --silent && npm run build'"
+dev = "npm run dev"
+"build:dev" = "npm run build:dev"
+build = "npm run build"
