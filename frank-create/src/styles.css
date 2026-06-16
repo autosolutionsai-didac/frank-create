@@ -5098,15 +5098,17 @@ body {
 }
 
 .sidebar-brand-mark {
-  width: fit-content;
-  margin: 0 0 6px;
+  width: 100%;
+  margin: 0 0 10px;
+  display: flex;
+  justify-content: center;
+  font-size: clamp(1.6rem, 3.2vw, 2.6rem);
 }
 
-.sidebar-app-title {
-  margin: 6px 0 2px;
-  color: #2a2a2a;
-  font-size: 1.7rem;
-  line-height: 0.95;
+.sidebar-brand-mark span {
+  flex: 1;
+  text-align: center;
+  padding: 12px 8px;
 }
 
 .sidebar-app-copy {
@@ -5116,9 +5118,6 @@ body {
   line-height: 1.25;
 }
 
-.sidebar-brand-mark span {
-  padding: 4px 10px;
-}
 
 .sidebar-nav {
   flex: 1;

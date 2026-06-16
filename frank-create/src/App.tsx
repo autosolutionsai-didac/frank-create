@@ -2304,10 +2304,10 @@ export default function App() {
             <span>frank</span>
             <span>create</span>
           </div>
-          <h1 className="sidebar-app-title">Frank Create</h1>
           <p className="sidebar-app-copy">Add references, brief the image, generate picks, edit or approve one, export it.</p>
           <p className="eyebrow">{config.voice.appTitle}</p>
         </div>
+
 
         <nav className="sidebar-nav" aria-label="Frank Create navigation">
           <p className="sidebar-section-label">Create</p>
