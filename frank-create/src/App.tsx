@@ -3327,9 +3327,9 @@ export default function App() {
               >
                 <span>
                   <strong>{model.short_label ?? model.label}</strong>
-                  <small title={missingKeyTitle(model)}>
+                  <small title={connection === "online" ? missingKeyTitle(model) : undefined}>
                     {model.provider} / {model.cost_label}
-                    {missingKeyCopy(model)}
+                    {connection === "online" ? missingKeyCopy(model) : " / preview staged"}
                   </small>
                 </span>
                 <em>{model.badge}</em>
@@ -3359,7 +3359,7 @@ export default function App() {
         <section className="control-section provider-setup">
           <div className="section-title">
             <p className="eyebrow">Provider Setup</p>
-            <h3>Server keys</h3>
+            <h3>{connection === "online" ? "Server keys" : "Preview mode"}</h3>
           </div>
           {providerReadiness ? (
             <strong>
@@ -3369,7 +3369,7 @@ export default function App() {
           <strong>
             {providerSetupState.waitingModels.length
               ? `${providerSetupState.waitingModels.length} models waiting on server keys`
-              : "All provider keys ready"}
+              : connection === "online" ? "All provider keys ready" : "Preview does not need Google keys"}
           </strong>
           {activationChecklist ? <small>{activationChecklistInlineStatus(activationChecklist)}</small> : null}
           {providerSetupState.envVars.length ? (
@@ -3379,12 +3379,18 @@ export default function App() {
               ))}
             </div>
           ) : (
-            <p>Provider proxy is ready for API rounds.</p>
+            <p>{connection === "online" ? "Provider proxy is ready for API rounds." : "Live provider checks only run from the local backend."}</p>
           )}
           <div className="provider-env-box">
-            <span>Server key file</span>
+            <span>{connection === "online" ? "Server key file" : "Backend"}</span>
             <code>{providerEnvStatus?.filePath ?? "user\\frank_create\\provider_keys.env"}</code>
-            <small>{providerEnvStatus?.fileExists ? "File ready. Edit it locally, then reload." : "Create the ignored template first."}</small>
+            <small>
+              {connection === "online"
+                ? providerEnvStatus?.fileExists
+                  ? "File ready. Edit it locally, then reload."
+                  : "Create the ignored template first."
+                : "Unavailable in Lovable preview; use your local app for live provider runs."}
+            </small>
           </div>
           <div className="provider-unlock-plan" aria-label="Provider unlock plan">
             <div className="provider-unlock-heading">
