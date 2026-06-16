@@ -2573,40 +2573,6 @@ export default function App() {
             </div>
           ) : null}
 
-          <div className="workflow-chip-row" aria-label="Workflow tasks">
-            <button
-              className={`task-chip ${studioMode === "image-studio" && reviewFilter === "all" ? "active" : ""}`}
-              type="button"
-              onClick={showImageStudio}
-            >
-              <MessageSquareText size={15} />
-              Image Studio
-            </button>
-            <button
-              className={`task-chip ${studioMode === "product-shot-lab" ? "active" : ""}`}
-              type="button"
-              onClick={showProductShotLab}
-            >
-              <Layers3 size={15} />
-              Product Shot Lab
-            </button>
-            <button
-              className={`task-chip ${studioMode === "video-lab" ? "active" : ""}`}
-              type="button"
-              onClick={showVideoLab}
-            >
-              <Film size={15} />
-              Video Lab
-            </button>
-            <button
-              className={`task-chip ${reviewFilter === "approved" ? "active" : ""}`}
-              type="button"
-              onClick={() => (reviewFilter === "approved" ? showImageStudio() : showApprovedHot())}
-            >
-              <CheckCircle2 size={15} />
-              Approved only
-            </button>
-          </div>
 
           {studioMode === "product-shot-lab" ? (
             <div className="task-shortcut-list composer-task-shortcuts" aria-label="Product Image Lab task shortcuts">
