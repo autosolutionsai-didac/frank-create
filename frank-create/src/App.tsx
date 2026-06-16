@@ -5462,6 +5462,15 @@ function providerDisplayName(provider?: string) {
 
 function turnEmptyLabel(turn: StudioTurn) {
   if (turn.status === "blocked") {
+    let code: string | undefined;
+    try {
+      code = turn.error_json ? (JSON.parse(turn.error_json)?.code as string | undefined) : undefined;
+    } catch {
+      code = undefined;
+    }
+    if (code === "offline") {
+      return "Staged locally — preview backend offline";
+    }
     return "Provider setup needed";
   }
   if (turn.status === "failed") {
