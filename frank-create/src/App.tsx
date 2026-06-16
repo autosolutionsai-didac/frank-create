@@ -2607,8 +2607,10 @@ export default function App() {
           <textarea
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
-            placeholder="Brief the image: product, context, channel, mood, and what must stay accurate."
+            onPaste={handlePromptPaste}
+            placeholder="Brief the image: product, context, channel, mood, and what must stay accurate. Paste an image to attach as reference."
           />
+
 
           {promptRemixes.length ? (
             <div className="prompt-remix-panel" aria-label="Brief remix directions">
