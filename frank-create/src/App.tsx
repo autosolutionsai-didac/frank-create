@@ -655,12 +655,18 @@ export default function App() {
   function showBrandPanel() {
     setInspectorTab("brand");
     setStatusText("Brand Kit is open.");
+    requestAnimationFrame(() => {
+      document.querySelector(".brand-kit-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   function showModelSettings() {
     setInspectorTab("review");
     setSettingsOpen(true);
     setStatusText("Model settings are open.");
+    requestAnimationFrame(() => {
+      document.getElementById("model-settings-drawer")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   async function handleNewSession() {
