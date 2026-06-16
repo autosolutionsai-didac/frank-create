@@ -5145,11 +5145,20 @@ function OutputStrip({
   );
 }
 
+function mergeModels(remote: StudioModel[] | undefined, fallback: StudioModel[]): StudioModel[] {
+  const out: StudioModel[] = remote?.length ? [...remote] : [];
+  const seen = new Set(out.map((m) => m.id));
+  for (const m of fallback) {
+    if (!seen.has(m.id)) out.push(m);
+  }
+  return out.length ? out : fallback;
+}
+
 function mergeConfig(config: FrankConfig): FrankConfig {
   return {
     ...fallbackConfig,
     ...config,
-    models: config.models?.length ? config.models : fallbackConfig.models,
+    models: mergeModels(config.models, fallbackConfig.models),
     backlogModels: config.backlogModels ?? fallbackConfig.backlogModels,
     promptPresets: config.promptPresets?.length ? config.promptPresets : fallbackConfig.promptPresets,
     exportPresets: config.exportPresets?.length ? config.exportPresets : fallbackConfig.exportPresets,
