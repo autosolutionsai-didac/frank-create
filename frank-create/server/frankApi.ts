@@ -15,29 +15,41 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY!;
 const LOVABLE_BASE = "https://ai.gateway.lovable.dev/v1";
 
-// Lazily-created demo auth user. The sessions/assets/messages tables FK to
-// auth.users, so we need a real user id even though there is no UI auth.
-let DEMO_USER_ID: string | null = null;
-async function getDemoUserId(): Promise<string> {
-  if (DEMO_USER_ID) return DEMO_USER_ID;
-  const sb = supabase();
-  const email = "frank-demo@lovable.local";
-  // Look for the user first
-  const list = await sb.auth.admin.listUsers({ page: 1, perPage: 200 });
-  const found = list.data?.users?.find((u) => u.email === email);
-  if (found) {
-    DEMO_USER_ID = found.id;
-    return DEMO_USER_ID;
+// Auth: require a signed-in Lovable Cloud user whose email is on the allow-list.
+const ALLOWED_EMAIL_DOMAINS = ["frankbody.com", "autosolutions.ai"];
+
+class AuthError extends Error {
+  constructor(public status: number, msg: string) {
+    super(msg);
   }
-  const created = await sb.auth.admin.createUser({
-    email,
-    email_confirm: true,
-    user_metadata: { role: "frank_demo" },
-  });
-  if (created.error || !created.data.user) throw created.error || new Error("Could not create demo user");
-  DEMO_USER_ID = created.data.user.id;
-  return DEMO_USER_ID;
 }
+
+function bearerFrom(req: any): string | null {
+  const h = req.headers?.authorization || req.headers?.Authorization;
+  if (!h || typeof h !== "string") return null;
+  const m = h.match(/^Bearer\s+(.+)$/i);
+  return m ? m[1] : null;
+}
+
+const USER_CACHE = new Map<string, { id: string; email: string; exp: number }>();
+
+async function requireUser(req: any): Promise<string> {
+  const token = bearerFrom(req);
+  if (!token) throw new AuthError(401, "Missing bearer token");
+  const cached = USER_CACHE.get(token);
+  const now = Date.now();
+  if (cached && cached.exp > now) return cached.id;
+
+  const sb = supabase();
+  const { data, error } = await sb.auth.getUser(token);
+  if (error || !data?.user) throw new AuthError(401, "Invalid session");
+  const email = (data.user.email || "").toLowerCase();
+  const ok = ALLOWED_EMAIL_DOMAINS.some((d) => email.endsWith(`@${d}`));
+  if (!ok) throw new AuthError(403, `Email ${email} is not in the allow-list`);
+  USER_CACHE.set(token, { id: data.user.id, email, exp: now + 60_000 });
+  return data.user.id;
+}
+
 const BUCKET = "studio-images";
 
 // ----- Default model exposed to the UI ----------------------------------
@@ -229,12 +241,12 @@ async function lovableImage(prompt: string): Promise<{ b64: string; mime: string
 
 // ----- Route handlers ----------------------------------------------------
 
-async function getOrCreateDefaultSession(): Promise<any> {
+async function getOrCreateDefaultSession(userId: string): Promise<any> {
   const sb = supabase();
   const existing = await sb
     .from("sessions")
     .select("*")
-    .eq("user_id", await getDemoUserId())
+    .eq("user_id", userId)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -242,7 +254,7 @@ async function getOrCreateDefaultSession(): Promise<any> {
   const ins = await sb
     .from("sessions")
     .insert({
-      user_id: await getDemoUserId(),
+      user_id: userId,
       title: "Studio session",
       active_model_key: "nano-banana-pro",
       settings_json: {},
@@ -253,10 +265,12 @@ async function getOrCreateDefaultSession(): Promise<any> {
   return ins.data;
 }
 
-async function handleInference(body: any) {
+async function handleInference(body: any, userId: string) {
   const sb = supabase();
   let sessionId: string = body.session_id;
-  if (!sessionId) sessionId = (await getOrCreateDefaultSession()).id;
+  if (!sessionId) sessionId = (await getOrCreateDefaultSession(userId)).id;
+
+
 
   const prompt: string = body.prompt || "";
   if (!prompt.trim()) throw new Error("Prompt is required");
@@ -282,7 +296,7 @@ async function handleInference(body: any) {
   const nextSeq = ((maxSeq?.seq as number) || 0) + 1;
   const msgIns = await sb.from("messages").insert({
     id: turnId,
-    user_id: await getDemoUserId(),
+    user_id: userId,
     session_id: sessionId,
     role: "user",
     message_type: settingsSnapshot.kind,
@@ -334,7 +348,7 @@ async function handleInference(body: any) {
     .from("assets")
     .insert({
       id: assetId,
-      user_id: await getDemoUserId(),
+      user_id: userId,
       session_id: sessionId,
       message_id: turnId,
       storage_path: storagePath,
@@ -522,21 +536,24 @@ export function frankApiPlugin(): Plugin {
             return send(res, 200, { exports: [] });
           }
 
+          // ---- Authenticated routes below ----
+          const userId = await requireUser(req);
+
           // Sessions
           if (url === "/api/frank/sessions" && req.method === "GET") {
             const { data } = await supabase()
               .from("sessions")
               .select("*")
-              .eq("user_id", await getDemoUserId())
+              .eq("user_id", userId)
               .order("created_at", { ascending: true });
-            const rows = data && data.length ? data : [await getOrCreateDefaultSession()];
+            const rows = data && data.length ? data : [await getOrCreateDefaultSession(userId)];
             return send(res, 200, { sessions: rows.map(rowToSession) });
           }
           if (url === "/api/frank/sessions" && req.method === "POST") {
             const body = await readJson(req);
             const ins = await supabase()
               .from("sessions")
-              .insert({ user_id: await getDemoUserId(), title: body.name || "New session", active_model_key: "nano-banana-pro", settings_json: {} })
+              .insert({ user_id: userId, title: body.name || "New session", active_model_key: "nano-banana-pro", settings_json: {} })
               .select()
               .single();
             if (ins.error) throw ins.error;
@@ -548,7 +565,7 @@ export function frankApiPlugin(): Plugin {
             const u = new URL(url, "http://x");
             const sid = u.searchParams.get("session_id");
             const q = supabase().from("messages").select("*").order("seq", { ascending: true });
-            const { data } = sid ? await q.eq("session_id", sid) : await q.eq("user_id", await getDemoUserId());
+            const { data } = sid ? await q.eq("session_id", sid) : await q.eq("user_id", userId);
             return send(res, 200, { turns: (data || []).map(rowToTurn) });
           }
 
@@ -557,7 +574,7 @@ export function frankApiPlugin(): Plugin {
             const u = new URL(url, "http://x");
             const sid = u.searchParams.get("session_id");
             const q = supabase().from("assets").select("*").order("created_at", { ascending: true });
-            const { data } = sid ? await q.eq("session_id", sid) : await q.eq("user_id", await getDemoUserId());
+            const { data } = sid ? await q.eq("session_id", sid) : await q.eq("user_id", userId);
             const items = await Promise.all((data || []).map(async (r: any) => rowToAsset(r, await signed(r.storage_path))));
             return send(res, 200, { assets: items });
           }
@@ -565,7 +582,7 @@ export function frankApiPlugin(): Plugin {
           // Inference
           if (url === "/api/frank/inference/turn" && req.method === "POST") {
             const body = await readJson(req);
-            const result = await handleInference(body);
+            const result = await handleInference(body, userId);
             return send(res, 200, result);
           }
 
@@ -575,6 +592,7 @@ export function frankApiPlugin(): Plugin {
             const result = await handleRemix(body);
             return send(res, 200, result);
           }
+
 
           // Video — not supported
           if (url === "/api/frank/videos" && req.method === "POST") {
@@ -597,9 +615,13 @@ export function frankApiPlugin(): Plugin {
 
           return next();
         } catch (err: any) {
+          if (err instanceof AuthError) {
+            return send(res, err.status, { error: { code: err.status === 403 ? "forbidden" : "unauthorized", message: err.message } });
+          }
           console.error("[frank-api] error", req.url, err);
           return send(res, 500, { error: { code: "server_error", message: err?.message || String(err) } });
         }
+
       });
     },
   };

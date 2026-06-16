@@ -381,6 +381,17 @@ export function comfyCanvasAssetUrl(assetId: string) {
   return `/comfy/?frankAssetId=${encodeURIComponent(assetId)}`;
 }
 
+async function authHeader(): Promise<Record<string, string>> {
+  try {
+    const { supabase } = await import("./supabaseClient");
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 export async function uploadImage(file: File) {
   const body = new FormData();
   body.append("image", file);
@@ -390,6 +401,7 @@ export async function uploadImage(file: File) {
 
   const response = await fetch("/api/upload/image", {
     method: "POST",
+    headers: { ...(await authHeader()) },
     body
   });
 
@@ -403,7 +415,7 @@ export async function uploadImage(file: File) {
 export async function queuePrompt(prompt: Record<string, unknown>, clientId = makeClientId()) {
   const response = await fetch("/api/prompt", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(await authHeader()) },
     body: JSON.stringify({ client_id: clientId, prompt })
   });
 
@@ -416,7 +428,9 @@ export async function queuePrompt(prompt: Record<string, unknown>, clientId = ma
 }
 
 export async function fetchPromptHistory(promptId: string) {
-  const response = await fetch(`/api/history/${encodeURIComponent(promptId)}`);
+  const response = await fetch(`/api/history/${encodeURIComponent(promptId)}`, {
+    headers: { ...(await authHeader()) },
+  });
 
   if (!response.ok) {
     throw new Error(`Prompt history unavailable (${response.status})`);
@@ -430,6 +444,7 @@ async function fetchJson<T>(path: string, init: RequestInit = {}) {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...(await authHeader()),
       ...init.headers
     }
   });
@@ -441,6 +456,7 @@ async function fetchJson<T>(path: string, init: RequestInit = {}) {
 
   return (await response.json()) as T;
 }
+
 
 function apiErrorMessage(text: string, status: number) {
   if (!text) {
