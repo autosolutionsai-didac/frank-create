@@ -89,12 +89,14 @@ import { assetStatusCopy, createBriefPayload, makeStoredImagePath, makeViewUrl }
 import {
   buildTurnRequest,
   defaultStudioSettings,
+  filterSizesForAspect,
   inferenceStatusCopy,
   makeLocalId,
   normalizeStudioSettingsForModel,
   parseJsonList,
   selectModelOptions
 } from "./lib/studio";
+
 import type {
   ActivationChecklist,
   Asset,
@@ -483,6 +485,20 @@ export default function App() {
   );
   const providerAuditMode = shouldAutoOpenProviderAudit();
   const modelOptions = useMemo(() => selectModelOptions(config.models, selectedModelId), [config.models, selectedModelId]);
+  const allowedSizesForAspect = useMemo(
+    () => filterSizesForAspect(modelOptions.allowedImageSizes, settings.aspect_ratio),
+    [modelOptions.allowedImageSizes, settings.aspect_ratio]
+  );
+  const handleAspectChange = (nextAspect: string) => {
+    setSettings((current) => {
+      const sizes = filterSizesForAspect(modelOptions.allowedImageSizes, nextAspect);
+      const nextSize = sizes.includes(current.image_size)
+        ? current.image_size
+        : sizes[sizes.length - 1] ?? current.image_size;
+      return { ...current, aspect_ratio: nextAspect, image_size: nextSize };
+    });
+  };
+
   const providerSetupState = useMemo(
     () => (connection === "online" ? providerSetup(config.models) : { waitingModels: [], envVars: [] }),
     [config.models, connection]
@@ -2816,7 +2832,7 @@ export default function App() {
                   Aspect
                   <select
                     value={settings.aspect_ratio}
-                    onChange={(event) => setSettings((current) => ({ ...current, aspect_ratio: event.target.value }))}
+                    onChange={(event) => handleAspectChange(event.target.value)}
                   >
                     {modelOptions.allowedAspectRatios.map((ratio) => (
                       <option key={ratio}>{ratio}</option>
@@ -2829,10 +2845,11 @@ export default function App() {
                     value={settings.image_size}
                     onChange={(event) => setSettings((current) => ({ ...current, image_size: event.target.value }))}
                   >
-                    {modelOptions.allowedImageSizes.map((size) => (
+                    {allowedSizesForAspect.map((size) => (
                       <option key={size}>{size}</option>
                     ))}
                   </select>
+
                 </label>
                 <label>
                   Count
@@ -3945,7 +3962,7 @@ export default function App() {
               Aspect
               <select
                 value={settings.aspect_ratio}
-                onChange={(event) => setSettings((current) => ({ ...current, aspect_ratio: event.target.value }))}
+                onChange={(event) => handleAspectChange(event.target.value)}
               >
                 {modelOptions.allowedAspectRatios.map((ratio) => (
                   <option key={ratio}>{ratio}</option>
@@ -3958,10 +3975,11 @@ export default function App() {
                 value={settings.image_size}
                 onChange={(event) => setSettings((current) => ({ ...current, image_size: event.target.value }))}
               >
-                {modelOptions.allowedImageSizes.map((size) => (
+                {allowedSizesForAspect.map((size) => (
                   <option key={size}>{size}</option>
                 ))}
               </select>
+
             </label>
             <label>
               Count
