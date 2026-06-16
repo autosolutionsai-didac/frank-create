@@ -280,7 +280,7 @@ async function handleInference(body: any) {
     .limit(1)
     .maybeSingle();
   const nextSeq = ((maxSeq?.seq as number) || 0) + 1;
-  await sb.from("messages").insert({
+  const msgIns = await sb.from("messages").insert({
     id: turnId,
     user_id: await getDemoUserId(),
     session_id: sessionId,
@@ -290,6 +290,7 @@ async function handleInference(body: any) {
     settings_snapshot_json: settingsSnapshot,
     seq: nextSeq,
   });
+  if (msgIns.error) throw msgIns.error;
 
   // 2. Call Lovable AI image gen
   let img;
