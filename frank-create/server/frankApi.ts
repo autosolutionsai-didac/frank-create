@@ -338,7 +338,7 @@ async function handleInference(body: any) {
       session_id: sessionId,
       message_id: turnId,
       storage_path: storagePath,
-      asset_type: "output",
+      asset_type: "generated",
       prompt_snapshot: prompt,
       model_key: "nano-banana-pro",
       metadata_json: { media_type: "image", mime: img.mime, title: prompt.slice(0, 80) || "Generated image" },
