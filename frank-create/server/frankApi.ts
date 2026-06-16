@@ -536,6 +536,9 @@ export function frankApiPlugin(): Plugin {
             return send(res, 200, { exports: [] });
           }
 
+          // ---- Authenticated routes below ----
+          const userId = await requireUser(req);
+
           // Sessions
           if (url === "/api/frank/sessions" && req.method === "GET") {
             const { data } = await supabase()
@@ -543,7 +546,7 @@ export function frankApiPlugin(): Plugin {
               .select("*")
               .eq("user_id", userId)
               .order("created_at", { ascending: true });
-            const rows = data && data.length ? data : [await getOrCreateDefaultSession()];
+            const rows = data && data.length ? data : [await getOrCreateDefaultSession(userId)];
             return send(res, 200, { sessions: rows.map(rowToSession) });
           }
           if (url === "/api/frank/sessions" && req.method === "POST") {
@@ -579,7 +582,7 @@ export function frankApiPlugin(): Plugin {
           // Inference
           if (url === "/api/frank/inference/turn" && req.method === "POST") {
             const body = await readJson(req);
-            const result = await handleInference(body);
+            const result = await handleInference(body, userId);
             return send(res, 200, result);
           }
 
@@ -589,6 +592,7 @@ export function frankApiPlugin(): Plugin {
             const result = await handleRemix(body);
             return send(res, 200, result);
           }
+
 
           // Video — not supported
           if (url === "/api/frank/videos" && req.method === "POST") {
