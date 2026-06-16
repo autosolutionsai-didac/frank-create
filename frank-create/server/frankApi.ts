@@ -615,9 +615,13 @@ export function frankApiPlugin(): Plugin {
 
           return next();
         } catch (err: any) {
+          if (err instanceof AuthError) {
+            return send(res, err.status, { error: { code: err.status === 403 ? "forbidden" : "unauthorized", message: err.message } });
+          }
           console.error("[frank-api] error", req.url, err);
           return send(res, 500, { error: { code: "server_error", message: err?.message || String(err) } });
         }
+
       });
     },
   };
