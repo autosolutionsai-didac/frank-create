@@ -89,12 +89,14 @@ import { assetStatusCopy, createBriefPayload, makeStoredImagePath, makeViewUrl }
 import {
   buildTurnRequest,
   defaultStudioSettings,
+  filterSizesForAspect,
   inferenceStatusCopy,
   makeLocalId,
   normalizeStudioSettingsForModel,
   parseJsonList,
   selectModelOptions
 } from "./lib/studio";
+
 import type {
   ActivationChecklist,
   Asset,
