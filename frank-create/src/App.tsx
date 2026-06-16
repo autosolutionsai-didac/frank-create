@@ -3034,7 +3034,7 @@ export default function App() {
 
         {showHandoffPanel ? (
           <section
-            className={`context-section handoff-section inspector-panel ${inspectorTab === "export" ? "active" : ""}`}
+            className="context-section handoff-section inspector-panel active"
             data-tour-id="handoff-pack"
             data-tour-active={tourActive("handoff-pack")}
           >
