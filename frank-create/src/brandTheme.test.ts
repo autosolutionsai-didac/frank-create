@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 // Vitest runs this static contract in Node; the app build does not execute it.
-// @ts-expect-error The app tsconfig intentionally does not include Node types.
 const { readFileSync } = await import("node:fs");
 const styles = readFileSync("./src/styles.css", "utf-8") as string;
 
