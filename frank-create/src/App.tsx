@@ -651,7 +651,7 @@ export default function App() {
   }
 
   function showModelSettings() {
-    setInspectorTab("settings");
+    setInspectorTab("review");
     setSettingsOpen(true);
     setStatusText("Model settings are open.");
   }
