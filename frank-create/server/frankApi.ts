@@ -241,12 +241,12 @@ async function lovableImage(prompt: string): Promise<{ b64: string; mime: string
 
 // ----- Route handlers ----------------------------------------------------
 
-async function getOrCreateDefaultSession(): Promise<any> {
+async function getOrCreateDefaultSession(userId: string): Promise<any> {
   const sb = supabase();
   const existing = await sb
     .from("sessions")
     .select("*")
-    .eq("user_id", await getDemoUserId())
+    .eq("user_id", userId)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -254,7 +254,7 @@ async function getOrCreateDefaultSession(): Promise<any> {
   const ins = await sb
     .from("sessions")
     .insert({
-      user_id: await getDemoUserId(),
+      user_id: userId,
       title: "Studio session",
       active_model_key: "nano-banana-pro",
       settings_json: {},
@@ -265,10 +265,12 @@ async function getOrCreateDefaultSession(): Promise<any> {
   return ins.data;
 }
 
-async function handleInference(body: any) {
+async function handleInference(body: any, userId: string) {
   const sb = supabase();
   let sessionId: string = body.session_id;
-  if (!sessionId) sessionId = (await getOrCreateDefaultSession()).id;
+  if (!sessionId) sessionId = (await getOrCreateDefaultSession(userId)).id;
+
+
 
   const prompt: string = body.prompt || "";
   if (!prompt.trim()) throw new Error("Prompt is required");
