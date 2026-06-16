@@ -1549,16 +1549,16 @@ export default function App() {
   }
 
   function handlePromptDragOver(event: React.DragEvent<HTMLTextAreaElement>) {
-    if (Array.from(event.dataTransfer?.types ?? []).includes("Files")) {
-      event.preventDefault();
-      event.dataTransfer.dropEffect = "copy";
-    }
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
   }
 
   async function handlePromptDrop(event: React.DragEvent<HTMLTextAreaElement>) {
+    event.preventDefault();
+    event.stopPropagation();
     const files = Array.from(event.dataTransfer?.files ?? []).filter((f) => f.type.startsWith("image/"));
     if (files.length) {
-      event.preventDefault();
       await addReferenceFiles(files);
     }
   }
