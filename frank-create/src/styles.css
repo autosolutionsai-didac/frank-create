@@ -5100,19 +5100,20 @@ body {
 .sidebar-brand-mark {
   width: 100%;
   margin: 0 0 10px;
-  display: flex;
-  justify-content: stretch;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   box-sizing: border-box;
-  font-size: clamp(1rem, 2.2vw, 1.8rem);
+  font-size: 1.15rem;
 }
 
 .sidebar-brand-mark span {
-  flex: 1 1 0;
   min-width: 0;
   text-align: center;
   padding: 10px 4px;
   box-sizing: border-box;
+  overflow: hidden;
 }
+
 
 
 .sidebar-app-copy {
