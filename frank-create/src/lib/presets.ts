@@ -123,8 +123,8 @@ export const fallbackConfig: FrankConfig = {
       allowed_image_sizes: ["1K", "2K", "4K"],
       reference_image_limit: 14,
       cost_label: "fast",
-      configured: false,
-      missing_env_vars: ["GOOGLE_API_KEY"]
+      configured: true,
+      missing_env_vars: []
     },
     {
       id: "openai-gpt-image-2",
