@@ -450,7 +450,7 @@ export default function App() {
       setConnection("offline");
       setExports([]);
       setSelectedReferenceIds([]);
-      setStatusText("Start ComfyUI to save sessions and run providers.");
+        setStatusText("Preview backend offline. You can stage rounds here; live provider runs happen locally.");
       }
     }
 
@@ -486,7 +486,7 @@ export default function App() {
     () => (connection === "online" ? providerSetup(config.models) : { waitingModels: [], envVars: [] }),
     [config.models, connection]
   );
-  const providerUnlockRows = useMemo(() => providerUnlockPlan(config.models), [config.models]);
+  const providerUnlockRows = useMemo(() => (connection === "online" ? providerUnlockPlan(config.models) : []), [config.models, connection]);
   const providerKeyEnvVars = useMemo(() => {
     if (connection !== "online") {
       return [];
