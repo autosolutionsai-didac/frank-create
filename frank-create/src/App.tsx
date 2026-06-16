@@ -2720,15 +2720,6 @@ export default function App() {
             Review
           </button>
           <button
-            className={inspectorTab === "settings" ? "active" : ""}
-            type="button"
-            role="tab"
-            aria-selected={inspectorTab === "settings"}
-            onClick={showModelSettings}
-          >
-            Settings
-          </button>
-          <button
             className={inspectorTab === "brand" ? "active" : ""}
             type="button"
             role="tab"
