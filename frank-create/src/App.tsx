@@ -651,7 +651,7 @@ export default function App() {
   }
 
   function showModelSettings() {
-    setInspectorTab("settings");
+    setInspectorTab("review");
     setSettingsOpen(true);
     setStatusText("Model settings are open.");
   }
@@ -2718,15 +2718,6 @@ export default function App() {
             onClick={() => setInspectorTab("review")}
           >
             Review
-          </button>
-          <button
-            className={inspectorTab === "settings" ? "active" : ""}
-            type="button"
-            role="tab"
-            aria-selected={inspectorTab === "settings"}
-            onClick={showModelSettings}
-          >
-            Settings
           </button>
           <button
             className={inspectorTab === "brand" ? "active" : ""}
