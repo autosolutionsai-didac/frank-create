@@ -1467,6 +1467,11 @@ export default function App() {
 
   async function handleReferenceUpload(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
+    await addReferenceFiles(files);
+    event.target.value = "";
+  }
+
+  async function addReferenceFiles(files: File[]) {
     if (!files.length || !activeSession) {
       return;
     }
@@ -1517,10 +1522,30 @@ export default function App() {
       setStatusText(`${createdAssets.length} reference${createdAssets.length === 1 ? "" : "s"} locked. ${failedUploads.length} upload${failedUploads.length === 1 ? "" : "s"} failed.`);
     } else if (failedUploads.length) {
       setStatusText("Reference upload failed. Try again after restarting Comfy.");
-    } else {
+    } else if (createdAssets.length) {
       setStatusText("Reference locked. Nice.");
     }
-    event.target.value = "";
+  }
+
+  async function handlePromptPaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const items = Array.from(event.clipboardData?.items ?? []);
+    const imageFiles: File[] = [];
+    for (const item of items) {
+      if (item.kind === "file" && item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) {
+          const ext = (file.type.split("/")[1] || "png").split("+")[0];
+          const named = file.name && file.name !== "image.png"
+            ? file
+            : new File([file], `pasted-${Date.now()}.${ext}`, { type: file.type });
+          imageFiles.push(named);
+        }
+      }
+    }
+    if (imageFiles.length) {
+      event.preventDefault();
+      await addReferenceFiles(imageFiles);
+    }
   }
 
   async function saveMaskFile(file: File, sourceAsset: Asset) {
@@ -2582,8 +2607,10 @@ export default function App() {
           <textarea
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
-            placeholder="Brief the image: product, context, channel, mood, and what must stay accurate."
+            onPaste={handlePromptPaste}
+            placeholder="Brief the image: product, context, channel, mood, and what must stay accurate. Paste an image to attach as reference."
           />
+
 
           {promptRemixes.length ? (
             <div className="prompt-remix-panel" aria-label="Brief remix directions">
