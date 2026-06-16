@@ -141,8 +141,8 @@ export const fallbackConfig: FrankConfig = {
       allowed_image_sizes: ["1024", "2048", "4096"],
       reference_image_limit: 10,
       cost_label: "premium",
-      configured: false,
-      missing_env_vars: ["OPENAI_API_KEY"]
+      configured: true,
+      missing_env_vars: []
     },
     {
       id: "flux-1-1-pro-ultra",
