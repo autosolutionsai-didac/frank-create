@@ -1739,7 +1739,7 @@ export default function App() {
           settings_json: JSON.stringify(settings),
           preview_url: dataUrl,
           favorite: false,
-          approval_status: "pending",
+          approval_status: "review",
           sync_status: "local",
           created_at: nowIso,
           updated_at: nowIso,
