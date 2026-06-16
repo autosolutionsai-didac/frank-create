@@ -2484,15 +2484,6 @@ export default function App() {
             Brand Kit
           </button>
           <button
-            className={`sidebar-nav-button ${inspectorTab === "settings" ? "active" : ""}`}
-            type="button"
-            aria-label="Open Models and Keys"
-            onClick={showModelSettings}
-          >
-            <Cpu size={16} />
-            Models & Keys
-          </button>
-          <button
             className="sidebar-nav-button"
             type="button"
             aria-label="Open Raw Comfy"
