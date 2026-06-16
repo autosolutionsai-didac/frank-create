@@ -2839,7 +2839,7 @@ export default function App() {
         </section>
 
         <section
-          className={`context-section selected-output inspector-panel ${inspectorTab === "review" ? "active" : ""}`}
+          className="context-section selected-output inspector-panel active"
           data-tour-id="review-panel"
           data-tour-active={tourActive("review-panel")}
         >
