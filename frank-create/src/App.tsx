@@ -3951,17 +3951,6 @@ export default function App() {
               </select>
             </label>
             <label>
-              Size
-              <select
-                value={settings.image_size}
-                onChange={(event) => setSettings((current) => ({ ...current, image_size: event.target.value }))}
-              >
-                {modelOptions.allowedImageSizes.map((size) => (
-                  <option key={size}>{size}</option>
-                ))}
-              </select>
-            </label>
-            <label>
               Count
               <input
                 min={1}
