@@ -5101,15 +5101,19 @@ body {
   width: 100%;
   margin: 0 0 10px;
   display: flex;
-  justify-content: center;
-  font-size: clamp(1.6rem, 3.2vw, 2.6rem);
+  justify-content: stretch;
+  box-sizing: border-box;
+  font-size: clamp(1rem, 2.2vw, 1.8rem);
 }
 
 .sidebar-brand-mark span {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   text-align: center;
-  padding: 12px 8px;
+  padding: 10px 4px;
+  box-sizing: border-box;
 }
+
 
 .sidebar-app-copy {
   margin: 0 0 8px;
