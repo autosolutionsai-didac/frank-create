@@ -196,7 +196,7 @@ async function lovableChat(messages: any[]) {
     body: JSON.stringify({ model: "google/gemini-3-flash-preview", messages }),
   });
   if (!r.ok) throw new Error(`Lovable chat ${r.status}: ${await r.text()}`);
-  const j = await r.json();
+  const j: any = await r.json();
   return j.choices?.[0]?.message?.content || "";
 }
 
@@ -215,7 +215,7 @@ async function lovableImage(prompt: string): Promise<{ b64: string; mime: string
     }),
   });
   if (!r.ok) throw new Error(`Lovable image ${r.status}: ${await r.text()}`);
-  const j = await r.json();
+  const j: any = await r.json();
   const msg = j.choices?.[0]?.message;
   const images = msg?.images;
   if (Array.isArray(images) && images.length) {
