@@ -15,29 +15,41 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY!;
 const LOVABLE_BASE = "https://ai.gateway.lovable.dev/v1";
 
-// Lazily-created demo auth user. The sessions/assets/messages tables FK to
-// auth.users, so we need a real user id even though there is no UI auth.
-let DEMO_USER_ID: string | null = null;
-async function getDemoUserId(): Promise<string> {
-  if (DEMO_USER_ID) return DEMO_USER_ID;
-  const sb = supabase();
-  const email = "frank-demo@lovable.local";
-  // Look for the user first
-  const list = await sb.auth.admin.listUsers({ page: 1, perPage: 200 });
-  const found = list.data?.users?.find((u) => u.email === email);
-  if (found) {
-    DEMO_USER_ID = found.id;
-    return DEMO_USER_ID;
+// Auth: require a signed-in Lovable Cloud user whose email is on the allow-list.
+const ALLOWED_EMAIL_DOMAINS = ["frankbody.com", "autosolutions.ai"];
+
+class AuthError extends Error {
+  constructor(public status: number, msg: string) {
+    super(msg);
   }
-  const created = await sb.auth.admin.createUser({
-    email,
-    email_confirm: true,
-    user_metadata: { role: "frank_demo" },
-  });
-  if (created.error || !created.data.user) throw created.error || new Error("Could not create demo user");
-  DEMO_USER_ID = created.data.user.id;
-  return DEMO_USER_ID;
 }
+
+function bearerFrom(req: any): string | null {
+  const h = req.headers?.authorization || req.headers?.Authorization;
+  if (!h || typeof h !== "string") return null;
+  const m = h.match(/^Bearer\s+(.+)$/i);
+  return m ? m[1] : null;
+}
+
+const USER_CACHE = new Map<string, { id: string; email: string; exp: number }>();
+
+async function requireUser(req: any): Promise<string> {
+  const token = bearerFrom(req);
+  if (!token) throw new AuthError(401, "Missing bearer token");
+  const cached = USER_CACHE.get(token);
+  const now = Date.now();
+  if (cached && cached.exp > now) return cached.id;
+
+  const sb = supabase();
+  const { data, error } = await sb.auth.getUser(token);
+  if (error || !data?.user) throw new AuthError(401, "Invalid session");
+  const email = (data.user.email || "").toLowerCase();
+  const ok = ALLOWED_EMAIL_DOMAINS.some((d) => email.endsWith(`@${d}`));
+  if (!ok) throw new AuthError(403, `Email ${email} is not in the allow-list`);
+  USER_CACHE.set(token, { id: data.user.id, email, exp: now + 60_000 });
+  return data.user.id;
+}
+
 const BUCKET = "studio-images";
 
 // ----- Default model exposed to the UI ----------------------------------
