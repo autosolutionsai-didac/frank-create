@@ -1548,6 +1548,21 @@ export default function App() {
     }
   }
 
+  function handlePromptDragOver(event: React.DragEvent<HTMLTextAreaElement>) {
+    if (Array.from(event.dataTransfer?.types ?? []).includes("Files")) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+    }
+  }
+
+  async function handlePromptDrop(event: React.DragEvent<HTMLTextAreaElement>) {
+    const files = Array.from(event.dataTransfer?.files ?? []).filter((f) => f.type.startsWith("image/"));
+    if (files.length) {
+      event.preventDefault();
+      await addReferenceFiles(files);
+    }
+  }
+
   async function saveMaskFile(file: File, sourceAsset: Asset) {
     if (!activeSession) {
       throw new Error("Start a session before adding a mask.");
