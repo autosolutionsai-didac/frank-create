@@ -84,6 +84,7 @@ import {
   uploadImage
 } from "./lib/api";
 import { fallbackBrandKit, fallbackConfig } from "./lib/presets";
+import { supabase } from "./lib/supabaseClient";
 import { assetStatusCopy, createBriefPayload, makeStoredImagePath, makeViewUrl } from "./lib/frankWorkflow";
 import {
   buildTurnRequest,
@@ -1717,11 +1718,63 @@ export default function App() {
     });
 
     if (connection !== "online") {
-      setBusy(true);
-      const localTurn = makeLocalTurn(activeSession.id, request);
-      setTurns((current) => [...current, localTurn]);
-      setStatusText("Preview backend offline. The turn is staged locally; no Google key is needed here.");
-      setBusy(false);
+      try {
+        const { data, error } = await supabase.functions.invoke("frank-generate", {
+          body: { prompt: request.prompt, count: settings.count },
+        });
+        if (error) throw error;
+        const images: string[] = (data as { images?: string[] })?.images ?? [];
+        if (!images.length) throw new Error("No image returned");
+
+        const nowIso = new Date().toISOString();
+        const newAssets: Asset[] = images.map((dataUrl, idx) => ({
+          id: makeLocalId("asset"),
+          session_id: activeSession.id,
+          kind: "generated",
+          title: `Lovable AI pick ${idx + 1}`,
+          media_type: "image",
+          provider: "lovable-ai",
+          model: "google/gemini-2.5-flash-image",
+          prompt: request.prompt,
+          settings_json: JSON.stringify(settings),
+          preview_url: dataUrl,
+          favorite: false,
+          approval_status: "pending",
+          sync_status: "local",
+          created_at: nowIso,
+          updated_at: nowIso,
+        }));
+
+        const turn: StudioTurn = {
+          id: makeLocalId("turn"),
+          session_id: activeSession.id,
+          kind: request.kind,
+          provider: "lovable-ai",
+          model: request.model,
+          prompt: request.prompt,
+          settings_json: JSON.stringify(request.settings),
+          reference_asset_ids_json: JSON.stringify(request.reference_asset_ids),
+          output_asset_ids_json: JSON.stringify(newAssets.map((a) => a.id)),
+          frank_body_mode: request.frank_body_mode,
+          preset_key: request.preset_key,
+          status: "complete",
+          sync_status: "local",
+          created_at: nowIso,
+          updated_at: nowIso,
+        };
+
+        setTurns((current) => [...current, turn]);
+        setAssets((current) => [...newAssets, ...current]);
+        setSelectedAsset(newAssets[0]);
+        setStatusText(`Generated ${newAssets.length} pick${newAssets.length === 1 ? "" : "s"} via Lovable AI.`);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Lovable AI generation failed.";
+        setStatusText(`Lovable AI: ${message}`);
+        const localTurn = makeLocalTurn(activeSession.id, request);
+        setTurns((current) => [...current, localTurn]);
+      } finally {
+        setBusy(false);
+      }
       return;
     }
 
