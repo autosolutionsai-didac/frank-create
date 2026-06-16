@@ -234,7 +234,7 @@ async function getOrCreateDefaultSession(): Promise<any> {
   const existing = await sb
     .from("sessions")
     .select("*")
-    .eq("user_id", DEMO_USER_ID)
+    .eq("user_id", await getDemoUserId())
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -242,7 +242,7 @@ async function getOrCreateDefaultSession(): Promise<any> {
   const ins = await sb
     .from("sessions")
     .insert({
-      user_id: DEMO_USER_ID,
+      user_id: await getDemoUserId(),
       title: "Studio session",
       active_model_key: "nano-banana-pro",
       settings_json: {},
@@ -282,7 +282,7 @@ async function handleInference(body: any) {
   const nextSeq = ((maxSeq?.seq as number) || 0) + 1;
   await sb.from("messages").insert({
     id: turnId,
-    user_id: DEMO_USER_ID,
+    user_id: await getDemoUserId(),
     session_id: sessionId,
     role: "user",
     message_type: settingsSnapshot.kind,
@@ -334,7 +334,7 @@ async function handleInference(body: any) {
     .from("assets")
     .insert({
       id: assetId,
-      user_id: DEMO_USER_ID,
+      user_id: await getDemoUserId(),
       session_id: sessionId,
       message_id: turnId,
       storage_path: storagePath,
@@ -527,7 +527,7 @@ export function frankApiPlugin(): Plugin {
             const { data } = await supabase()
               .from("sessions")
               .select("*")
-              .eq("user_id", DEMO_USER_ID)
+              .eq("user_id", await getDemoUserId())
               .order("created_at", { ascending: true });
             const rows = data && data.length ? data : [await getOrCreateDefaultSession()];
             return send(res, 200, { sessions: rows.map(rowToSession) });
@@ -536,7 +536,7 @@ export function frankApiPlugin(): Plugin {
             const body = await readJson(req);
             const ins = await supabase()
               .from("sessions")
-              .insert({ user_id: DEMO_USER_ID, title: body.name || "New session", active_model_key: "nano-banana-pro", settings_json: {} })
+              .insert({ user_id: await getDemoUserId(), title: body.name || "New session", active_model_key: "nano-banana-pro", settings_json: {} })
               .select()
               .single();
             if (ins.error) throw ins.error;
