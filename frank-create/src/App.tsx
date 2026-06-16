@@ -2623,7 +2623,9 @@ export default function App() {
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
             onPaste={handlePromptPaste}
-            placeholder="Brief the image: product, context, channel, mood, and what must stay accurate. Paste an image to attach as reference."
+            onDragOver={handlePromptDragOver}
+            onDrop={handlePromptDrop}
+            placeholder="Brief the image: product, context, channel, mood, and what must stay accurate. Paste or drop an image to attach as reference."
           />
 
 
