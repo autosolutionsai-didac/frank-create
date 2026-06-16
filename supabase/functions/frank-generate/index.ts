@@ -82,9 +82,13 @@ Deno.serve(async (req) => {
           }),
         });
       } else {
-        // Gemini image models: aspect ratio is hinted via prompt
+        // Gemini image models: aspect ratio + size hinted in prompt
         const ar = body.aspect_ratio;
-        const fullPrompt = ar ? `${prompt}\n\nAspect ratio: ${ar}.` : prompt;
+        const sz = body.size;
+        const hints: string[] = [];
+        if (ar) hints.push(`Aspect ratio: ${ar}.`);
+        if (sz && ["1K", "2K", "4K"].includes(sz)) hints.push(`Output resolution: ${sz}.`);
+        const fullPrompt = hints.length ? `${prompt}\n\n${hints.join(" ")}` : prompt;
         res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
