@@ -2709,35 +2709,6 @@ export default function App() {
       </main>
 
       <aside className="context-panel" aria-label="Review and settings">
-        <div className="inspector-tabs" role="tablist" aria-label="Inspector sections">
-          <button
-            className={inspectorTab === "review" ? "active" : ""}
-            type="button"
-            role="tab"
-            aria-selected={inspectorTab === "review"}
-            onClick={() => setInspectorTab("review")}
-          >
-            Review
-          </button>
-          <button
-            className={inspectorTab === "brand" ? "active" : ""}
-            type="button"
-            role="tab"
-            aria-selected={inspectorTab === "brand"}
-            onClick={showBrandPanel}
-          >
-            Brand
-          </button>
-          <button
-            className={inspectorTab === "export" ? "active" : ""}
-            type="button"
-            role="tab"
-            aria-selected={inspectorTab === "export"}
-            onClick={showExportsPanel}
-          >
-            Export
-          </button>
-        </div>
         <section
           className="context-section model-summary inspector-model-strip"
           data-tour-id="model-settings"
@@ -2868,7 +2839,7 @@ export default function App() {
         </section>
 
         <section
-          className={`context-section selected-output inspector-panel ${inspectorTab === "review" ? "active" : ""}`}
+          className="context-section selected-output inspector-panel active"
           data-tour-id="review-panel"
           data-tour-active={tourActive("review-panel")}
         >
@@ -3063,7 +3034,7 @@ export default function App() {
 
         {showHandoffPanel ? (
           <section
-            className={`context-section handoff-section inspector-panel ${inspectorTab === "export" ? "active" : ""}`}
+            className="context-section handoff-section inspector-panel active"
             data-tour-id="handoff-pack"
             data-tour-active={tourActive("handoff-pack")}
           >
@@ -3123,7 +3094,7 @@ export default function App() {
         ) : null}
 
         {recentExports.length ? (
-          <section className={`context-section recent-exports-section inspector-panel ${inspectorTab === "export" ? "active" : ""}`}>
+          <section className="context-section recent-exports-section inspector-panel active">
             <div className="section-title">
               <p className="eyebrow">Handoff trail</p>
               <h3>Recent exports</h3>
@@ -3142,7 +3113,7 @@ export default function App() {
           </section>
         ) : null}
 
-        <section className={`context-section brand-kit-section inspector-panel ${inspectorTab === "brand" ? "active" : ""}`}>
+        <section className="context-section brand-kit-section inspector-panel active">
           <div className="section-title">
             <p className="eyebrow">Brand guidance</p>
             <h3>Brand Kit</h3>
