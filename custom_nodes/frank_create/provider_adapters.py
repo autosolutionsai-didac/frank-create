@@ -183,6 +183,14 @@ def build_provider_request_preview(model, kind="generate", settings=None):
 
 
 def _run_google_turn(store, turn, payload, model, provider_payload):
+    # Prefer the Lovable AI Gateway when LOVABLE_API_KEY is configured so users
+    # don't need their own GOOGLE_API_KEY.
+    lovable_key = os.environ.get("LOVABLE_API_KEY")
+    if _provider_key_value_is_real(lovable_key):
+        return _run_google_turn_via_lovable_gateway(
+            store, turn, payload, model, provider_payload, lovable_key
+        )
+
     api_key = require_provider_key(model["id"])
     settings = payload.get("settings") or {}
     count = max(1, min(int(settings.get("count") or 1), 4))
@@ -213,6 +221,108 @@ def _run_google_turn(store, turn, payload, model, provider_payload):
             continue
 
         outputs.append(_bytes_output(base64.b64decode(image_part["data"]), image_part["mimeType"], f"google_{index + 1:02d}"))
+
+    return _finish_provider_outputs(store, turn, payload, model, provider_payload, outputs, errors)
+
+
+LOVABLE_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions"
+
+LOVABLE_GATEWAY_MODEL_MAP = {
+    "gemini-3-pro-image": "google/gemini-3-pro-image-preview",
+    "gemini-3.1-flash-image": "google/gemini-3.1-flash-image-preview",
+    "gemini-2.5-flash-image": "google/gemini-2.5-flash-image",
+}
+
+
+def _provider_key_value_is_real(value):
+    # Local copy to avoid circular import with inference module.
+    if value is None:
+        return False
+    text = str(value).strip().strip('"').strip("'")
+    if not text:
+        return False
+    return True
+
+
+def _run_google_turn_via_lovable_gateway(store, turn, payload, model, provider_payload, lovable_key):
+    settings = payload.get("settings") or {}
+    count = max(1, min(int(settings.get("count") or 1), 4))
+    if payload.get("kind") == "edit" and not _source_path_for_payload(store, payload):
+        raise ProviderAdapterError("Edit requires a readable source asset.")
+    image_paths = _image_paths_for_payload(store, payload)
+    gateway_model = LOVABLE_GATEWAY_MODEL_MAP.get(
+        model.get("provider_model"), f"google/{model.get('provider_model')}"
+    )
+
+    user_content = []
+    for path in image_paths:
+        inline = _inline_data(path)
+        user_content.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:{inline['mimeType']};base64,{inline['data']}"},
+        })
+    user_content.append({"type": "text", "text": provider_payload["prompt"]})
+
+    body = {
+        "model": gateway_model,
+        "messages": [{"role": "user", "content": user_content}],
+        "modalities": ["image", "text"],
+    }
+
+    outputs = []
+    errors = []
+    headers = {
+        "Authorization": f"Bearer {lovable_key}",
+        "Content-Type": "application/json",
+    }
+
+    for index in range(count):
+        try:
+            response = requests.post(LOVABLE_GATEWAY_URL, headers=headers, json=body, timeout=180)
+            try:
+                data = response.json()
+            except Exception:
+                data = {}
+        except Exception as exc:
+            errors.append(_safe_error_message(exc))
+            continue
+
+        if response.status_code == 429:
+            errors.append("Lovable AI rate limit hit. Please retry shortly.")
+            continue
+        if response.status_code == 402:
+            errors.append("Lovable AI credits exhausted. Add credits in Settings > Workspace > Usage.")
+            continue
+        if response.status_code >= 400 or (isinstance(data, dict) and data.get("error")):
+            errors.append(_error_message(data, response.status_code, "Lovable AI"))
+            continue
+
+        try:
+            message = data["choices"][0]["message"]
+        except (KeyError, IndexError, TypeError):
+            errors.append("Lovable AI returned an unexpected response shape.")
+            continue
+
+        images = message.get("images") or []
+        if not images:
+            errors.append("Lovable AI returned no image.")
+            continue
+
+        image_url = images[0].get("image_url", {}).get("url", "")
+        mime_type = "image/png"
+        if image_url.startswith("data:") and ";base64," in image_url:
+            header, b64 = image_url.split(";base64,", 1)
+            mime_type = header[5:] or mime_type
+            try:
+                image_bytes = base64.b64decode(b64)
+            except Exception:
+                errors.append("Lovable AI returned an undecodable image.")
+                continue
+        else:
+            errors.append("Lovable AI returned an unsupported image format.")
+            continue
+
+        outputs.append(_bytes_output(image_bytes, mime_type, f"google_{index + 1:02d}"))
 
     return _finish_provider_outputs(store, turn, payload, model, provider_payload, outputs, errors)
 
