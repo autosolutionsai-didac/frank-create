@@ -1548,6 +1548,21 @@ export default function App() {
     }
   }
 
+  function handlePromptDragOver(event: React.DragEvent<HTMLTextAreaElement>) {
+    if (Array.from(event.dataTransfer?.types ?? []).includes("Files")) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+    }
+  }
+
+  async function handlePromptDrop(event: React.DragEvent<HTMLTextAreaElement>) {
+    const files = Array.from(event.dataTransfer?.files ?? []).filter((f) => f.type.startsWith("image/"));
+    if (files.length) {
+      event.preventDefault();
+      await addReferenceFiles(files);
+    }
+  }
+
   async function saveMaskFile(file: File, sourceAsset: Asset) {
     if (!activeSession) {
       throw new Error("Start a session before adding a mask.");
@@ -2608,7 +2623,9 @@ export default function App() {
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
             onPaste={handlePromptPaste}
-            placeholder="Brief the image: product, context, channel, mood, and what must stay accurate. Paste an image to attach as reference."
+            onDragOver={handlePromptDragOver}
+            onDrop={handlePromptDrop}
+            placeholder="Brief the image: product, context, channel, mood, and what must stay accurate. Paste or drop an image to attach as reference."
           />
 
 
