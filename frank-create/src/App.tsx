@@ -3157,8 +3157,45 @@ export default function App() {
           ) : null}
         </section>
 
+        <section className="context-section preset-library-section inspector-panel active" aria-label="Prompt preset library">
+          <div className="section-title">
+            <p className="eyebrow">Library</p>
+            <h3>Prompt presets</h3>
+          </div>
+          <p className="section-help">Click a preset to load its prompt. Selected presets are appended to your brief.</p>
+          <div className="preset-library-list">
+            {config.promptPresets.map((preset) => {
+              const isActive = selectedPresetKey === preset.key;
+              return (
+                <button
+                  key={preset.key}
+                  type="button"
+                  className={`preset-library-card ${isActive ? "selected" : ""}`}
+                  aria-pressed={isActive}
+                  onClick={() => {
+                    setSelectedPresetKey(preset.key);
+                    setPrompt((current) =>
+                      current.trim()
+                        ? (current.includes(preset.prompt) ? current : `${current.trim()}\n\n${preset.prompt}`)
+                        : preset.prompt,
+                    );
+                    setStatusText(`Loaded preset: ${preset.label}`);
+                  }}
+                >
+                  <span className="preset-library-card-head">
+                    <strong>{preset.label}</strong>
+                    {isActive ? <em>Active</em> : null}
+                  </span>
+                  <small>{preset.prompt}</small>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
         <div className="status-strip">
           <span>{statusText}</span>
+
           {statusReadyLink ? (
             <button type="button" onClick={() => openStudioLink(statusReadyLink.url, statusReadyLink.label)}>
               <ExternalLink size={13} />
