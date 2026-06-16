@@ -450,7 +450,7 @@ export default function App() {
       setConnection("offline");
       setExports([]);
       setSelectedReferenceIds([]);
-      setStatusText("Start ComfyUI to save sessions and run providers.");
+        setStatusText("Preview backend offline. You can stage rounds here; live provider runs happen locally.");
       }
     }
 
@@ -482,9 +482,15 @@ export default function App() {
   );
   const providerAuditMode = shouldAutoOpenProviderAudit();
   const modelOptions = useMemo(() => selectModelOptions(config.models, selectedModelId), [config.models, selectedModelId]);
-  const providerSetupState = useMemo(() => providerSetup(config.models), [config.models]);
-  const providerUnlockRows = useMemo(() => providerUnlockPlan(config.models), [config.models]);
+  const providerSetupState = useMemo(
+    () => (connection === "online" ? providerSetup(config.models) : { waitingModels: [], envVars: [] }),
+    [config.models, connection]
+  );
+  const providerUnlockRows = useMemo(() => (connection === "online" ? providerUnlockPlan(config.models) : []), [config.models, connection]);
   const providerKeyEnvVars = useMemo(() => {
+    if (connection !== "online") {
+      return [];
+    }
     const missingFromStatus = providerEnvStatus?.missingEnvVars ?? [];
     if (missingFromStatus.length) {
       return orderProviderEnvVars(missingFromStatus, providerUnlockRows);
@@ -493,7 +499,7 @@ export default function App() {
       return providerSetupState.envVars;
     }
     return orderProviderEnvVars(providerEnvStatus?.envVars ?? [], providerUnlockRows);
-  }, [providerEnvStatus?.envVars, providerEnvStatus?.missingEnvVars, providerSetupState.envVars, providerUnlockRows]);
+  }, [connection, providerEnvStatus?.envVars, providerEnvStatus?.missingEnvVars, providerSetupState.envVars, providerUnlockRows]);
   const providerKeyDraftHasValues = useMemo(
     () => Object.values(providerKeyDraft).some((value) => value.trim().length > 0),
     [providerKeyDraft]
@@ -1688,12 +1694,6 @@ export default function App() {
       return;
     }
 
-    const missingKeyMessage = modelMissingKeyAction(selectedModel);
-    if (missingKeyMessage) {
-      setStatusText(missingKeyMessage);
-      return;
-    }
-
     const referenceLimitMessage = modelReferenceLimitAction(selectedModel, selectedReferenceAssets.length);
     if (referenceLimitMessage) {
       setStatusText(referenceLimitMessage);
@@ -1716,14 +1716,22 @@ export default function App() {
       maskAssetId: promptMode === "masked_edit" ? maskAsset?.id : undefined
     });
 
-    try {
-      if (connection !== "online") {
-        const localTurn = makeLocalTurn(activeSession.id, request);
-        setTurns((current) => [...current, localTurn]);
-        setStatusText("Comfy offline. The turn is staged locally for the UI.");
-        return;
-      }
+    if (connection !== "online") {
+      setBusy(true);
+      const localTurn = makeLocalTurn(activeSession.id, request);
+      setTurns((current) => [...current, localTurn]);
+      setStatusText("Preview backend offline. The turn is staged locally; no Google key is needed here.");
+      setBusy(false);
+      return;
+    }
 
+    const missingKeyMessage = modelMissingKeyAction(selectedModel);
+    if (missingKeyMessage) {
+      setStatusText(missingKeyMessage);
+      return;
+    }
+
+    try {
       const result = await createInferenceTurn(request);
       setTurns((current) => [...current, result.turn]);
 
@@ -3319,9 +3327,9 @@ export default function App() {
               >
                 <span>
                   <strong>{model.short_label ?? model.label}</strong>
-                  <small title={missingKeyTitle(model)}>
+                  <small title={connection === "online" ? missingKeyTitle(model) : undefined}>
                     {model.provider} / {model.cost_label}
-                    {missingKeyCopy(model)}
+                    {connection === "online" ? missingKeyCopy(model) : " / preview staged"}
                   </small>
                 </span>
                 <em>{model.badge}</em>
@@ -3351,7 +3359,7 @@ export default function App() {
         <section className="control-section provider-setup">
           <div className="section-title">
             <p className="eyebrow">Provider Setup</p>
-            <h3>Server keys</h3>
+            <h3>{connection === "online" ? "Server keys" : "Preview mode"}</h3>
           </div>
           {providerReadiness ? (
             <strong>
@@ -3361,7 +3369,7 @@ export default function App() {
           <strong>
             {providerSetupState.waitingModels.length
               ? `${providerSetupState.waitingModels.length} models waiting on server keys`
-              : "All provider keys ready"}
+              : connection === "online" ? "All provider keys ready" : "Preview does not need Google keys"}
           </strong>
           {activationChecklist ? <small>{activationChecklistInlineStatus(activationChecklist)}</small> : null}
           {providerSetupState.envVars.length ? (
@@ -3371,12 +3379,18 @@ export default function App() {
               ))}
             </div>
           ) : (
-            <p>Provider proxy is ready for API rounds.</p>
+            <p>{connection === "online" ? "Provider proxy is ready for API rounds." : "Live provider checks only run from the local backend."}</p>
           )}
           <div className="provider-env-box">
-            <span>Server key file</span>
+            <span>{connection === "online" ? "Server key file" : "Backend"}</span>
             <code>{providerEnvStatus?.filePath ?? "user\\frank_create\\provider_keys.env"}</code>
-            <small>{providerEnvStatus?.fileExists ? "File ready. Edit it locally, then reload." : "Create the ignored template first."}</small>
+            <small>
+              {connection === "online"
+                ? providerEnvStatus?.fileExists
+                  ? "File ready. Edit it locally, then reload."
+                  : "Create the ignored template first."
+                : "Unavailable in Lovable preview; use your local app for live provider runs."}
+            </small>
           </div>
           <div className="provider-unlock-plan" aria-label="Provider unlock plan">
             <div className="provider-unlock-heading">
