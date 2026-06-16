@@ -15,9 +15,29 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY!;
 const LOVABLE_BASE = "https://ai.gateway.lovable.dev/v1";
 
-// Fixed "demo user" — service role bypasses RLS; this just satisfies
-// NOT NULL on user_id columns so future RLS works if we add auth later.
-const DEMO_USER_ID = "00000000-0000-0000-0000-000000000001";
+// Lazily-created demo auth user. The sessions/assets/messages tables FK to
+// auth.users, so we need a real user id even though there is no UI auth.
+let DEMO_USER_ID: string | null = null;
+async function getDemoUserId(): Promise<string> {
+  if (DEMO_USER_ID) return DEMO_USER_ID;
+  const sb = supabase();
+  const email = "frank-demo@lovable.local";
+  // Look for the user first
+  const list = await sb.auth.admin.listUsers({ page: 1, perPage: 200 });
+  const found = list.data?.users?.find((u) => u.email === email);
+  if (found) {
+    DEMO_USER_ID = found.id;
+    return DEMO_USER_ID;
+  }
+  const created = await sb.auth.admin.createUser({
+    email,
+    email_confirm: true,
+    user_metadata: { role: "frank_demo" },
+  });
+  if (created.error || !created.data.user) throw created.error || new Error("Could not create demo user");
+  DEMO_USER_ID = created.data.user.id;
+  return DEMO_USER_ID;
+}
 const BUCKET = "studio-images";
 
 // ----- Default model exposed to the UI ----------------------------------
