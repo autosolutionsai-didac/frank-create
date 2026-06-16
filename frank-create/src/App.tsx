@@ -3094,7 +3094,7 @@ export default function App() {
         ) : null}
 
         {recentExports.length ? (
-          <section className={`context-section recent-exports-section inspector-panel ${inspectorTab === "export" ? "active" : ""}`}>
+          <section className="context-section recent-exports-section inspector-panel active">
             <div className="section-title">
               <p className="eyebrow">Handoff trail</p>
               <h3>Recent exports</h3>
