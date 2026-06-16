@@ -482,9 +482,15 @@ export default function App() {
   );
   const providerAuditMode = shouldAutoOpenProviderAudit();
   const modelOptions = useMemo(() => selectModelOptions(config.models, selectedModelId), [config.models, selectedModelId]);
-  const providerSetupState = useMemo(() => providerSetup(config.models), [config.models]);
+  const providerSetupState = useMemo(
+    () => (connection === "online" ? providerSetup(config.models) : { waitingModels: [], envVars: [] }),
+    [config.models, connection]
+  );
   const providerUnlockRows = useMemo(() => providerUnlockPlan(config.models), [config.models]);
   const providerKeyEnvVars = useMemo(() => {
+    if (connection !== "online") {
+      return [];
+    }
     const missingFromStatus = providerEnvStatus?.missingEnvVars ?? [];
     if (missingFromStatus.length) {
       return orderProviderEnvVars(missingFromStatus, providerUnlockRows);
@@ -493,7 +499,7 @@ export default function App() {
       return providerSetupState.envVars;
     }
     return orderProviderEnvVars(providerEnvStatus?.envVars ?? [], providerUnlockRows);
-  }, [providerEnvStatus?.envVars, providerEnvStatus?.missingEnvVars, providerSetupState.envVars, providerUnlockRows]);
+  }, [connection, providerEnvStatus?.envVars, providerEnvStatus?.missingEnvVars, providerSetupState.envVars, providerUnlockRows]);
   const providerKeyDraftHasValues = useMemo(
     () => Object.values(providerKeyDraft).some((value) => value.trim().length > 0),
     [providerKeyDraft]
@@ -1688,12 +1694,6 @@ export default function App() {
       return;
     }
 
-    const missingKeyMessage = modelMissingKeyAction(selectedModel);
-    if (missingKeyMessage) {
-      setStatusText(missingKeyMessage);
-      return;
-    }
-
     const referenceLimitMessage = modelReferenceLimitAction(selectedModel, selectedReferenceAssets.length);
     if (referenceLimitMessage) {
       setStatusText(referenceLimitMessage);
@@ -1716,14 +1716,22 @@ export default function App() {
       maskAssetId: promptMode === "masked_edit" ? maskAsset?.id : undefined
     });
 
-    try {
-      if (connection !== "online") {
-        const localTurn = makeLocalTurn(activeSession.id, request);
-        setTurns((current) => [...current, localTurn]);
-        setStatusText("Comfy offline. The turn is staged locally for the UI.");
-        return;
-      }
+    if (connection !== "online") {
+      setBusy(true);
+      const localTurn = makeLocalTurn(activeSession.id, request);
+      setTurns((current) => [...current, localTurn]);
+      setStatusText("Preview backend offline. The turn is staged locally; no Google key is needed here.");
+      setBusy(false);
+      return;
+    }
 
+    const missingKeyMessage = modelMissingKeyAction(selectedModel);
+    if (missingKeyMessage) {
+      setStatusText(missingKeyMessage);
+      return;
+    }
+
+    try {
       const result = await createInferenceTurn(request);
       setTurns((current) => [...current, result.turn]);
 
