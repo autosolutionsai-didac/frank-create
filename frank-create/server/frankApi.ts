@@ -288,7 +288,6 @@ async function handleInference(body: any) {
     message_type: settingsSnapshot.kind,
     prompt_text: prompt,
     settings_snapshot_json: settingsSnapshot,
-    seq: nextSeq,
   });
   if (msgIns.error) throw msgIns.error;
 
