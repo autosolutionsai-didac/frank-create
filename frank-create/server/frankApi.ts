@@ -296,7 +296,7 @@ async function handleInference(body: any, userId: string) {
   const nextSeq = ((maxSeq?.seq as number) || 0) + 1;
   const msgIns = await sb.from("messages").insert({
     id: turnId,
-    user_id: await getDemoUserId(),
+    user_id: userId,
     session_id: sessionId,
     role: "user",
     message_type: settingsSnapshot.kind,
@@ -348,7 +348,7 @@ async function handleInference(body: any, userId: string) {
     .from("assets")
     .insert({
       id: assetId,
-      user_id: await getDemoUserId(),
+      user_id: userId,
       session_id: sessionId,
       message_id: turnId,
       storage_path: storagePath,
@@ -541,7 +541,7 @@ export function frankApiPlugin(): Plugin {
             const { data } = await supabase()
               .from("sessions")
               .select("*")
-              .eq("user_id", await getDemoUserId())
+              .eq("user_id", userId)
               .order("created_at", { ascending: true });
             const rows = data && data.length ? data : [await getOrCreateDefaultSession()];
             return send(res, 200, { sessions: rows.map(rowToSession) });
@@ -550,7 +550,7 @@ export function frankApiPlugin(): Plugin {
             const body = await readJson(req);
             const ins = await supabase()
               .from("sessions")
-              .insert({ user_id: await getDemoUserId(), title: body.name || "New session", active_model_key: "nano-banana-pro", settings_json: {} })
+              .insert({ user_id: userId, title: body.name || "New session", active_model_key: "nano-banana-pro", settings_json: {} })
               .select()
               .single();
             if (ins.error) throw ins.error;
@@ -562,7 +562,7 @@ export function frankApiPlugin(): Plugin {
             const u = new URL(url, "http://x");
             const sid = u.searchParams.get("session_id");
             const q = supabase().from("messages").select("*").order("seq", { ascending: true });
-            const { data } = sid ? await q.eq("session_id", sid) : await q.eq("user_id", await getDemoUserId());
+            const { data } = sid ? await q.eq("session_id", sid) : await q.eq("user_id", userId);
             return send(res, 200, { turns: (data || []).map(rowToTurn) });
           }
 
@@ -571,7 +571,7 @@ export function frankApiPlugin(): Plugin {
             const u = new URL(url, "http://x");
             const sid = u.searchParams.get("session_id");
             const q = supabase().from("assets").select("*").order("created_at", { ascending: true });
-            const { data } = sid ? await q.eq("session_id", sid) : await q.eq("user_id", await getDemoUserId());
+            const { data } = sid ? await q.eq("session_id", sid) : await q.eq("user_id", userId);
             const items = await Promise.all((data || []).map(async (r: any) => rowToAsset(r, await signed(r.storage_path))));
             return send(res, 200, { assets: items });
           }
