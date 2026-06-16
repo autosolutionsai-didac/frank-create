@@ -2832,7 +2832,7 @@ export default function App() {
                   Aspect
                   <select
                     value={settings.aspect_ratio}
-                    onChange={(event) => setSettings((current) => ({ ...current, aspect_ratio: event.target.value }))}
+                    onChange={(event) => handleAspectChange(event.target.value)}
                   >
                     {modelOptions.allowedAspectRatios.map((ratio) => (
                       <option key={ratio}>{ratio}</option>
@@ -2845,10 +2845,11 @@ export default function App() {
                     value={settings.image_size}
                     onChange={(event) => setSettings((current) => ({ ...current, image_size: event.target.value }))}
                   >
-                    {modelOptions.allowedImageSizes.map((size) => (
+                    {allowedSizesForAspect.map((size) => (
                       <option key={size}>{size}</option>
                     ))}
                   </select>
+
                 </label>
                 <label>
                   Count
