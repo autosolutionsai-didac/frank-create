@@ -1734,7 +1734,7 @@ export default function App() {
           title: `Lovable AI pick ${idx + 1}`,
           media_type: "image",
           provider: "lovable-ai",
-          model: "google/gemini-2.5-flash-image",
+          model: selectedModel.id,
           prompt: request.prompt,
           settings_json: JSON.stringify(settings),
           preview_url: dataUrl,
