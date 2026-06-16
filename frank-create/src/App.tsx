@@ -5149,7 +5149,7 @@ function mergeConfig(config: FrankConfig): FrankConfig {
   return {
     ...fallbackConfig,
     ...config,
-    models: config.models?.length ? config.models : fallbackConfig.models,
+    models: mergeModels(config.models, fallbackConfig.models),
     backlogModels: config.backlogModels ?? fallbackConfig.backlogModels,
     promptPresets: config.promptPresets?.length ? config.promptPresets : fallbackConfig.promptPresets,
     exportPresets: config.exportPresets?.length ? config.exportPresets : fallbackConfig.exportPresets,
