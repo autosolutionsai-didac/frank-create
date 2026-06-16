@@ -1720,7 +1720,13 @@ export default function App() {
     if (connection !== "online") {
       try {
         const { data, error } = await supabase.functions.invoke("frank-generate", {
-          body: { prompt: request.prompt, count: settings.count, modelId: selectedModel.id },
+          body: {
+            prompt: request.prompt,
+            count: settings.count,
+            modelId: selectedModel.id,
+            aspect_ratio: settings.aspect_ratio,
+            size: settings.image_size,
+          },
         });
         if (error) throw error;
         const images: string[] = (data as { images?: string[] })?.images ?? [];

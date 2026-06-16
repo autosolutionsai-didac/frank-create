@@ -25,7 +25,15 @@ Deno.serve(async (req) => {
     return json({ error: "LOVABLE_API_KEY not configured" }, 500);
   }
 
-  let body: { prompt?: string; count?: number; modelId?: string; model?: string } = {};
+  let body: {
+    prompt?: string;
+    count?: number;
+    modelId?: string;
+    model?: string;
+    size?: string;
+    aspect_ratio?: string;
+    quality?: string;
+  } = {};
   try {
     body = await req.json();
   } catch {
@@ -40,6 +48,17 @@ Deno.serve(async (req) => {
   const gatewayModel = body.model || MODEL_MAP[modelId] || "google/gemini-2.5-flash-image";
   const useImagesEndpoint = gatewayModel.startsWith("openai/gpt-image");
 
+  // Per-model valid sizes (OpenAI gpt-image-2 only accepts these)
+  const OPENAI_SIZES = new Set(["1024x1024", "1536x1024", "1024x1536", "auto"]);
+  const sizeFromAspect = (ar?: string): string => {
+    switch (ar) {
+      case "3:2": return "1536x1024";
+      case "2:3": return "1024x1536";
+      case "1:1":
+      default: return "1024x1024";
+    }
+  };
+
   const images: string[] = [];
   const errors: string[] = [];
 
@@ -47,6 +66,7 @@ Deno.serve(async (req) => {
     try {
       let res: Response;
       if (useImagesEndpoint) {
+        let size = body.size && OPENAI_SIZES.has(body.size) ? body.size : sizeFromAspect(body.aspect_ratio);
         res = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
           method: "POST",
           headers: {
@@ -56,10 +76,15 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             model: gatewayModel,
             prompt,
-            quality: "low",
+            quality: body.quality ?? "low",
+            size,
+            n: 1,
           }),
         });
       } else {
+        // Gemini image models: aspect ratio is hinted via prompt
+        const ar = body.aspect_ratio;
+        const fullPrompt = ar ? `${prompt}\n\nAspect ratio: ${ar}.` : prompt;
         res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -68,7 +93,7 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify({
             model: gatewayModel,
-            messages: [{ role: "user", content: prompt }],
+            messages: [{ role: "user", content: fullPrompt }],
             modalities: ["image", "text"],
           }),
         });
