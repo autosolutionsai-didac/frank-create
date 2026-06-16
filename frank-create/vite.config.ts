@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import { frankApiPlugin } from "./server/frankApi";
 
 export default defineConfig({
+  envDir: "..",
   plugins: [react(), frankApiPlugin()],
   build: {
     outDir: "../dist",
