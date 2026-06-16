@@ -485,6 +485,20 @@ export default function App() {
   );
   const providerAuditMode = shouldAutoOpenProviderAudit();
   const modelOptions = useMemo(() => selectModelOptions(config.models, selectedModelId), [config.models, selectedModelId]);
+  const allowedSizesForAspect = useMemo(
+    () => filterSizesForAspect(modelOptions.allowedImageSizes, settings.aspect_ratio),
+    [modelOptions.allowedImageSizes, settings.aspect_ratio]
+  );
+  const handleAspectChange = (nextAspect: string) => {
+    setSettings((current) => {
+      const sizes = filterSizesForAspect(modelOptions.allowedImageSizes, nextAspect);
+      const nextSize = sizes.includes(current.image_size)
+        ? current.image_size
+        : sizes[sizes.length - 1] ?? current.image_size;
+      return { ...current, aspect_ratio: nextAspect, image_size: nextSize };
+    });
+  };
+
   const providerSetupState = useMemo(
     () => (connection === "online" ? providerSetup(config.models) : { waitingModels: [], envVars: [] }),
     [config.models, connection]
