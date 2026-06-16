@@ -2709,35 +2709,6 @@ export default function App() {
       </main>
 
       <aside className="context-panel" aria-label="Review and settings">
-        <div className="inspector-tabs" role="tablist" aria-label="Inspector sections">
-          <button
-            className={inspectorTab === "review" ? "active" : ""}
-            type="button"
-            role="tab"
-            aria-selected={inspectorTab === "review"}
-            onClick={() => setInspectorTab("review")}
-          >
-            Review
-          </button>
-          <button
-            className={inspectorTab === "brand" ? "active" : ""}
-            type="button"
-            role="tab"
-            aria-selected={inspectorTab === "brand"}
-            onClick={showBrandPanel}
-          >
-            Brand
-          </button>
-          <button
-            className={inspectorTab === "export" ? "active" : ""}
-            type="button"
-            role="tab"
-            aria-selected={inspectorTab === "export"}
-            onClick={showExportsPanel}
-          >
-            Export
-          </button>
-        </div>
         <section
           className="context-section model-summary inspector-model-strip"
           data-tour-id="model-settings"
