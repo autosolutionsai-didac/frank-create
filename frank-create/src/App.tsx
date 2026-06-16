@@ -3113,7 +3113,7 @@ export default function App() {
           </section>
         ) : null}
 
-        <section className={`context-section brand-kit-section inspector-panel ${inspectorTab === "brand" ? "active" : ""}`}>
+        <section className="context-section brand-kit-section inspector-panel active">
           <div className="section-title">
             <p className="eyebrow">Brand guidance</p>
             <h3>Brand Kit</h3>
