@@ -84,6 +84,7 @@ import {
   uploadImage
 } from "./lib/api";
 import { fallbackBrandKit, fallbackConfig } from "./lib/presets";
+import { supabase } from "./lib/supabaseClient";
 import { assetStatusCopy, createBriefPayload, makeStoredImagePath, makeViewUrl } from "./lib/frankWorkflow";
 import {
   buildTurnRequest,
