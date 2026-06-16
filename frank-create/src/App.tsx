@@ -2305,7 +2305,7 @@ export default function App() {
             <span>create</span>
           </div>
           <p className="sidebar-app-copy">Add references, brief the image, generate picks, edit or approve one, export it.</p>
-          <p className="eyebrow">{config.voice.appTitle}</p>
+
         </div>
 
 
