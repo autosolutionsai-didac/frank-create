@@ -70,19 +70,45 @@ export function inferenceStatusCopy(result: {
   return "Round queued. Adapter handoff is ready.";
 }
 
+export function aspectRatioValue(aspect: string): number | null {
+  const match = /^(\d+(?:\.\d+)?)[:x](\d+(?:\.\d+)?)$/i.exec(aspect.trim());
+  if (!match) return null;
+  const w = Number(match[1]);
+  const h = Number(match[2]);
+  if (!w || !h) return null;
+  return w / h;
+}
+
+export function sizeMatchesAspect(size: string, aspect: string): boolean {
+  // Only filter when size encodes explicit pixel dimensions like "1024x1536".
+  const sizeRatio = aspectRatioValue(size);
+  if (sizeRatio === null) return true; // tier-style sizes (1K, 2K, 4MP) apply to any aspect
+  const aspectRatio = aspectRatioValue(aspect);
+  if (aspectRatio === null) return true;
+  return Math.abs(sizeRatio - aspectRatio) / aspectRatio < 0.05;
+}
+
+export function filterSizesForAspect(sizes: string[], aspect: string): string[] {
+  const filtered = sizes.filter((s) => sizeMatchesAspect(s, aspect));
+  return filtered.length ? filtered : sizes;
+}
+
 export function normalizeStudioSettingsForModel(settings: StudioSettings, model: StudioModel): StudioSettings {
   const count = Number.isFinite(settings.count) ? Math.trunc(settings.count) : 1;
+  const aspect = model.allowed_aspect_ratios.includes(settings.aspect_ratio)
+    ? settings.aspect_ratio
+    : model.allowed_aspect_ratios[0] ?? "1:1";
+  const sizesForAspect = filterSizesForAspect(model.allowed_image_sizes, aspect);
 
   return {
-    aspect_ratio: model.allowed_aspect_ratios.includes(settings.aspect_ratio)
-      ? settings.aspect_ratio
-      : model.allowed_aspect_ratios[0] ?? "1:1",
-    image_size: model.allowed_image_sizes.includes(settings.image_size)
+    aspect_ratio: aspect,
+    image_size: sizesForAspect.includes(settings.image_size)
       ? settings.image_size
-      : model.allowed_image_sizes[model.allowed_image_sizes.length - 1] ?? "1K",
+      : sizesForAspect[sizesForAspect.length - 1] ?? "1K",
     count: Math.min(Math.max(count, 1), 4)
   };
 }
+
 
 export function parseJsonList(value?: string) {
   if (!value) {
