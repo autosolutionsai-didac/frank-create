@@ -548,7 +548,7 @@ export function frankApiPlugin(): Plugin {
             const u = new URL(url, "http://x");
             const sid = u.searchParams.get("session_id");
             const q = supabase().from("messages").select("*").order("seq", { ascending: true });
-            const { data } = sid ? await q.eq("session_id", sid) : await q.eq("user_id", DEMO_USER_ID);
+            const { data } = sid ? await q.eq("session_id", sid) : await q.eq("user_id", await getDemoUserId());
             return send(res, 200, { turns: (data || []).map(rowToTurn) });
           }
 
@@ -557,7 +557,7 @@ export function frankApiPlugin(): Plugin {
             const u = new URL(url, "http://x");
             const sid = u.searchParams.get("session_id");
             const q = supabase().from("assets").select("*").order("created_at", { ascending: true });
-            const { data } = sid ? await q.eq("session_id", sid) : await q.eq("user_id", DEMO_USER_ID);
+            const { data } = sid ? await q.eq("session_id", sid) : await q.eq("user_id", await getDemoUserId());
             const items = await Promise.all((data || []).map(async (r: any) => rowToAsset(r, await signed(r.storage_path))));
             return send(res, 200, { assets: items });
           }
