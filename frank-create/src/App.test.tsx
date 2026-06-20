@@ -5979,8 +5979,8 @@ describe("App", () => {
 });
 
 function navButton(container: HTMLElement, label: string) {
-  const currentLabel = label === "Approved Hot" ? "Approved only" : label;
-  const button = Array.from(container.querySelectorAll<HTMLButtonElement>(".nav-item, .task-chip")).find((item) =>
+  const currentLabel = label === "Approved Hot" ? "Approved" : label;
+  const button = Array.from(container.querySelectorAll<HTMLButtonElement>(".sidebar-nav-button, .nav-item, .task-chip")).find((item) =>
     item.textContent?.includes(currentLabel)
   );
   expect(button).toBeDefined();

@@ -16,7 +16,9 @@ jobs:
       - name: Build (installs frank-create deps + type-checks + builds)
         run: npm run build
       - name: Test
-        run: npm --prefix frank-create test
+        run: npm --prefix frank-create test -- --reporter=dot
+        env:
+          DEBUG_PRINT_LIMIT: "0"
       - name: Lint (non-blocking)
         run: npm --prefix frank-create run lint
         continue-on-error: true
