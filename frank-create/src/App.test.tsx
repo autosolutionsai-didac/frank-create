@@ -20,13 +20,13 @@ describe("App", () => {
   it("renders a guided studio first screen and hides technical setup by default", async () => {
     render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Frank Create")).toBeInTheDocument();
     expect(screen.getByText(/Add references, brief the image, generate picks/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^New session$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Demo Walkthrough/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Advanced$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Product Shot Lab$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Video Lab$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Open Product Shot Lab/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Open Video Lab/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Generate$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Change model/i })).toBeInTheDocument();
     expect(screen.getByText("Model & output")).toBeInTheDocument();
@@ -230,7 +230,7 @@ describe("App", () => {
   it("opens a modal walkthrough that dims the app and points at each real workspace area", async () => {
     const { container } = render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Frank Create")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Demo Walkthrough/i }));
 
     const dialog = screen.getByRole("dialog", { name: /Demo Walkthrough guide/i });
@@ -529,7 +529,7 @@ describe("App", () => {
   it("keeps technical setup inside Advanced until requested", async () => {
     render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Frank Create")).toBeInTheDocument();
     expect(screen.queryByText("Provider Setup")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /^Advanced$/i }));
@@ -550,7 +550,7 @@ describe("App", () => {
   it("lets users close the model drawer from inside the opened panel", async () => {
     render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Frank Create")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Change model/i }));
 
     const settingsDrawer = screen.getByLabelText("Model and output settings");
@@ -571,7 +571,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Frank Create")).toBeInTheDocument();
     openAdvanced();
     expect(screen.getByText("Cliff key order")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Copy key plan/i }));
@@ -594,7 +594,7 @@ describe("App", () => {
   it("limits provider key inputs to Gemini, Replicate, and OpenAI", async () => {
     render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Frank Create")).toBeInTheDocument();
     openAdvanced();
     expect(screen.getByText("Cliff key order")).toBeInTheDocument();
     const editor = screen.getByLabelText("Save server provider keys");
@@ -610,7 +610,7 @@ describe("App", () => {
 
     const { container } = render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Frank Create")).toBeInTheDocument();
     expect(container.querySelector(".studio-shell")).toHaveClass("provider-audit-mode");
     expect(container.querySelector(".studio-shell")).toHaveAttribute("data-provider-audit", "open");
   });
@@ -782,7 +782,7 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByText("Comfy is in the room.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /^Video Lab$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Open Video Lab/i }));
     fireEvent.click(screen.getByRole("button", { name: /^New session$/i }));
 
     await waitFor(() =>
@@ -804,7 +804,7 @@ describe("App", () => {
 
     const { container } = render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Frank Create")).toBeInTheDocument();
     expect(navButton(container, "Video Lab")).toHaveClass("active");
     expect(screen.getByRole("button", { name: /^Generate$/i })).toBeInTheDocument();
   });
@@ -981,7 +981,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Frank Create")).toBeInTheDocument();
     openAdvanced();
     expect(screen.getByText("Comfy workflow blueprints")).toBeInTheDocument();
     expect(screen.getByText("Checkpoint txt2img")).toBeInTheDocument();
@@ -1130,7 +1130,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText("Frank Create");
+    await screen.findByLabelText("Frank Create");
     openAdvanced();
     const styleGuidance = screen.getByLabelText("Frank Brand Kit style guidance");
     expect(styleGuidance).toHaveValue("Initial FrankHub pink tiles and coffee scrub macro language.");
@@ -1612,7 +1612,7 @@ describe("App", () => {
 
     const { container } = render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Frank Create")).toBeInTheDocument();
     openAdvanced();
     fireEvent.click(screen.getByRole("button", { name: /Advanced Graph/i }));
 
@@ -1874,7 +1874,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Frank Create")).toBeInTheDocument();
     openAdvanced();
     expect(screen.getByText("Production unlock checklist")).toBeInTheDocument();
     expect(screen.getByText("Activation checklist tracked: 3 unlock steps")).toBeInTheDocument();
@@ -1988,7 +1988,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Frank Create")).toBeInTheDocument();
     openAdvanced();
     expect(screen.getByText("Production unlock checklist")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Copy unlock plan/i }));
@@ -2198,7 +2198,7 @@ describe("App", () => {
 
     const { container } = render(<App />);
 
-    await screen.findByText("Frank Create");
+    await screen.findByLabelText("Frank Create");
     openAdvanced();
     expect(screen.getByText(providerEnvPath)).toBeInTheDocument();
     expect(screen.getByText("Create the ignored template first.")).toBeInTheDocument();
@@ -2294,7 +2294,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText("Frank Create");
+    await screen.findByLabelText("Frank Create");
     openAdvanced();
     expect(screen.getByText(providerEnvPath)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("OPENAI_API_KEY"), { target: { value: "YOUR_KEY_HERE" } });
@@ -2984,7 +2984,7 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByText("Comfy is in the room.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /^Product Shot Lab$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Open Product Shot Lab/i }));
     const taskShortcuts = screen.getByLabelText("Product Image Lab task shortcuts");
     fireEvent.click(within(taskShortcuts).getByRole("button", { name: /Background sweep/i }));
 
