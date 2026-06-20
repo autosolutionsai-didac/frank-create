@@ -4555,7 +4555,10 @@ describe("App", () => {
 
     expect(await screen.findByText("Product image second")).toBeInTheDocument();
     expect(container.querySelector(".selected-output h3")).toHaveTextContent("Product image second");
-    expect(screen.getByRole("button", { name: /Paint edit mask/i })).toBeInTheDocument();
+    // Review actions render for the auto-selected image. The default model (Nano Banana Pro)
+    // does not support masked edit, so the mask tool is correctly gated off.
+    expect(screen.getByRole("button", { name: /Edit with selected model/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Paint edit mask/i })).not.toBeInTheDocument();
   });
 
   it("renders live video assets with playable video previews", async () => {
