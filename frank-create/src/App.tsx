@@ -44,11 +44,9 @@ import {
   createDemoCallBrief,
   createDemoEvidence,
   createDemoReadinessPack,
-  createProviderEnvTemplate,
   createExport,
   createInferenceTurn,
   createProject,
-  createProviderReadinessReceipt,
   createReference,
   createSession,
   createSessionHandoff,
@@ -59,22 +57,14 @@ import {
   fetchConfig,
   fetchDemoDoctor,
   fetchHealth,
-  fetchProviderAudit,
-  fetchProviderEnvStatus,
-  fetchProviderStatus,
-  fetchWorkflowBlueprints,
   listBriefs,
   listExports,
   listAssets,
   listProjects,
   listSessions,
   listTurns,
-  prepareLocalEngineFolders,
-  preflightProvider,
-  reloadProviderEnv,
   remixPrompt,
   resetDemo,
-  saveProviderEnvKeys,
   sessionReviewBoardUrl,
   sessionSyncManifestUrl,
   updateAsset,
@@ -110,10 +100,6 @@ import type {
   ExportPreset,
   FrankConfig,
   FrankTask,
-  ProviderAdapterAudit,
-  ProviderEnvStatus,
-  ProviderPreflight,
-  ProviderReadiness,
   PromptPreset,
   PromptRemixVariant,
   Project,
@@ -121,152 +107,10 @@ import type {
   StudioSession,
   StudioSettings,
   StudioTurn,
-  WorkflowBlueprint,
-  WorkflowBlueprintsResponse
 } from "./lib/types";
-
-type WalkthroughTarget =
-  | "app-header"
-  | "composer"
-  | "output-thread"
-  | "model-settings"
-  | "model-settings-drawer"
-  | "model-output-controls"
-  | "frank-mode-toggle"
-  | "review-panel"
-  | "review-actions"
-  | "review-metadata"
-  | "variant-controls"
-  | "edit-controls"
-  | "export-controls"
-  | "handoff-pack"
-  | "advanced-tools";
-
-interface WalkthroughStep {
-  title: string;
-  detail: string;
-  points?: string[];
-  target: WalkthroughTarget;
-  openSettings?: boolean;
-  openAdvanced?: boolean;
-  selectOutput?: boolean;
-}
-
-interface WalkthroughAnchor {
-  highlightStyle: CSSProperties;
-  popoverStyle: CSSProperties;
-  placement: "above" | "below";
-}
-
-const WALKTHROUGH_STEPS: WalkthroughStep[] = [
-  {
-    title: "Sessions and demo controls",
-    detail: "This header is the control strip for the call: switch sessions, start fresh, launch this walkthrough, or open Advanced when someone technical asks.",
-    points: ["Session keeps each creative thread separate.", "New session starts another brief without touching the current one.", "Advanced stays hidden during the normal creative flow."],
-    target: "app-header"
-  },
-  {
-    title: "Brief and references",
-    detail: "This is the working brief. Add product references, write the ask in plain English, choose the job type, and press Generate when the direction is clear.",
-    points: ["References are selectable, so a round can use all refs, some refs, or prompt-only.", "Brief remix gives alternate prompt directions without leaving the Studio.", "Cancel session archives the current scratch brief without deleting generated files."],
-    target: "composer"
-  },
-  {
-    title: "Workflow chips and prompt",
-    detail: "The chips are workflow shortcuts, not separate apps. Product Shot Lab, Video Lab, and Approved only change the current task/filter while keeping one thread.",
-    points: ["Product Shot Lab loads product-focused presets.", "Video Lab briefs a storyboard-style round.", "Approved only filters the thread to keepers."],
-    target: "composer"
-  },
-  {
-    title: "Generated rounds",
-    detail: "Every generate or edit run lands here as a round. The card keeps the prompt, model, status, Frank Body Mode, and reference count attached to the output.",
-    points: ["Click an image to open the review desk on the right.", "Rounds stay in order, so the creative conversation remains explainable.", "Approved only can filter this thread when the team wants the shortlist."],
-    target: "output-thread"
-  },
-  {
-    title: "Model summary",
-    detail: "The right panel starts with the active model, aspect ratio, image size, and number of picks. This is the quick confidence check before spending an API call.",
-    points: ["Nano Banana Pro is the recommended live proof.", "Local Comfy stays as the clearly labelled fallback.", "Change model opens the full drawer."],
-    target: "model-settings"
-  },
-  {
-    title: "Model drawer",
-    detail: "This drawer is where you choose between Gemini, Replicate, OpenAI, or local fallback. It also shows cost labels and readiness badges.",
-    points: ["Missing keys stay out of the first screen but are still visible here.", "Model choice changes what sizes, refs, and edit modes are available.", "Use this before a live client-proof generation."],
-    target: "model-settings-drawer",
-    openSettings: true
-  },
-  {
-    title: "Output controls",
-    detail: "Aspect, size, and count control the next round. The app limits choices to what the selected model actually supports.",
-    points: ["Aspect is the canvas shape.", "Size is the provider output target.", "Count is how many variants come back in the round."],
-    target: "model-output-controls",
-    openSettings: true
-  },
-  {
-    title: "Frank Body Mode",
-    detail: "This toggle is the brand brain. Off means the app sends only the user prompt. On adds Frank Body style guidance, guardrails, and preset structure.",
-    points: ["Leave it off for neutral model tests.", "Turn it on for Frank Body campaign/product work.", "The mode is stored with the run metadata."],
-    target: "frank-mode-toggle",
-    openSettings: true
-  },
-  {
-    title: "Review desk",
-    detail: "After a result is selected, this panel becomes the review desk. It shows the chosen image and all actions for deciding what happens next.",
-    points: ["Open selected asset for a larger view.", "Review controls stay beside the image.", "Nothing needs the raw Comfy graph for normal review."],
-    target: "review-panel",
-    selectOutput: true
-  },
-  {
-    title: "Approve or reject",
-    detail: "These are the fast creative-director decisions: favorite, approve, or reject. Approved picks feed the handoff/export flow.",
-    points: ["Approve marks the keeper.", "Favorite is a softer shortlist.", "Reject keeps the record without presenting it as a candidate."],
-    target: "review-actions",
-    selectOutput: true
-  },
-  {
-    title: "Run metadata",
-    detail: "This section explains where the image came from. It keeps model, settings, dimensions, source image, workflow, references, and prompt together.",
-    points: ["Useful for client notes and repeats.", "Workflow JSON can be downloaded later.", "This is the audit trail for FrankHub or a DAM sync."],
-    target: "review-metadata",
-    selectOutput: true
-  },
-  {
-    title: "Make another round",
-    detail: "These buttons turn a selected result into the next brief. More like this, clean it up, and campaign remix are shortcuts for fast iteration.",
-    points: ["They set up edit mode from the selected asset.", "The prompt updates automatically.", "You can still change the model before generating."],
-    target: "variant-controls",
-    selectOutput: true
-  },
-  {
-    title: "Edit, mask, and reuse",
-    detail: "These controls are the production tools: copy the brief, download workflow JSON, open Comfy, edit with the selected model, paint a mask, or reuse a pick as a reference.",
-    points: ["Edit with selected model starts image-to-image.", "Paint edit mask appears when the model supports masked edit.", "Use as reference turns a good pick into guidance for the next round."],
-    target: "edit-controls",
-    selectOutput: true
-  },
-  {
-    title: "Exports",
-    detail: "Export controls appear once a pick is selected. Use the channel set for a complete package, or export one format at a time.",
-    points: ["Channel set creates the ready-to-share pack.", "Individual presets cover PDP, social, email, transparent PNG, and master files.", "Download original keeps the untouched provider result."],
-    target: "export-controls",
-    selectOutput: true
-  },
-  {
-    title: "Cliff Pack handoff",
-    detail: "This package area collects approved picks, references, prompts, notes, metadata, and channel exports into one handoff route.",
-    points: ["Export Cliff Pack is the call-day deliverable.", "Review board gives a visual summary.", "Sync manifest is the future FrankHub/DAM bridge."],
-    target: "handoff-pack",
-    selectOutput: true
-  },
-  {
-    title: "Advanced tools",
-    detail: "Advanced is for setup, diagnostics, raw Comfy access, provider keys, Demo Doctor, readiness packs, and proof receipts. It is intentionally outside the normal creative path.",
-    points: ["Provider keys are only Gemini, Replicate, and OpenAI.", "Demo Doctor checks call readiness.", "Workflow Map and raw Comfy are escape hatches for power users."],
-    target: "advanced-tools",
-    openAdvanced: true
-  }
-];
+import { formatCount, joinWithOr, parseJsonRecord, providerDisplayName, referenceCountLabel, titleize } from "./lib/format";
+import { WALKTHROUGH_STEPS } from "./lib/walkthrough";
+import type { WalkthroughAnchor, WalkthroughStep, WalkthroughTarget } from "./lib/walkthrough";
 
 export default function App() {
   const [config, setConfig] = useState<FrankConfig>(fallbackConfig);
@@ -309,20 +153,10 @@ export default function App() {
   const [sessionCancelTarget, setSessionCancelTarget] = useState<StudioSession | null>(null);
   const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>([]);
   const [assetNotesDraft, setAssetNotesDraft] = useState("");
-  const [providerReadiness, setProviderReadiness] = useState<ProviderReadiness | null>(null);
   const [activationChecklist, setActivationChecklist] = useState<ActivationChecklist | null>(null);
-  const [providerEnvStatus, setProviderEnvStatus] = useState<ProviderEnvStatus | null>(null);
-  const [providerKeyDraft, setProviderKeyDraft] = useState<Record<string, string>>({});
-  const [providerPreflight, setProviderPreflight] = useState<ProviderPreflight | null>(null);
-  const [providerAudit, setProviderAudit] = useState<ProviderAdapterAudit | null>(null);
   const [brandKit, setBrandKit] = useState<BrandKit>(fallbackBrandKit);
   const [brandKitDraft, setBrandKitDraft] = useState<BrandKit>(fallbackBrandKit);
   const [demoDoctor, setDemoDoctor] = useState<DemoDoctorStatus | null>(null);
-  const [workflowBlueprints, setWorkflowBlueprints] = useState<WorkflowBlueprintsResponse | null>(null);
-  const [checkingProviders, setCheckingProviders] = useState(false);
-  const [checkingProviderPreflight, setCheckingProviderPreflight] = useState(false);
-  const [checkingProviderAudit, setCheckingProviderAudit] = useState(false);
-  const [savingProviderReceipt, setSavingProviderReceipt] = useState(false);
   const [checkingDemoDoctor, setCheckingDemoDoctor] = useState(false);
   const [resettingDemo, setResettingDemo] = useState(false);
   const [savingDemoEvidence, setSavingDemoEvidence] = useState(false);
@@ -345,8 +179,6 @@ export default function App() {
   const [implementationManifestPath, setImplementationManifestPath] = useState("");
   const [implementationManifestUrl, setImplementationManifestUrl] = useState("");
   const [readinessPackManifest, setReadinessPackManifest] = useState<DemoReadinessPackResult["manifest"] | null>(null);
-  const [providerEnvBusy, setProviderEnvBusy] = useState(false);
-  const [localEngineBusy, setLocalEngineBusy] = useState(false);
   const [maskPainterBusy, setMaskPainterBusy] = useState(false);
   const [brandKitBusy, setBrandKitBusy] = useState(false);
   const [brandContextBusy, setBrandContextBusy] = useState(false);
@@ -392,20 +224,16 @@ export default function App() {
           turnResult,
           assetResult,
           exportResult,
-          providerEnvResult,
           activationChecklistResult,
           brandKitResult,
           projectResult,
-          workflowBlueprintResult
         ] = await Promise.all([
           listTurns(nextSession.id),
           listAssets({ sessionId: nextSession.id }),
           listExports().catch(() => ({ exports: [] })),
-          fetchProviderEnvStatus().catch(() => null),
           fetchActivationChecklist().catch(() => null),
           fetchBrandKit().catch(() => null),
           listProjects().catch(() => ({ projects: [] })),
-          fetchWorkflowBlueprints().catch(() => null)
         ]);
         const projectForSession =
           projectResult.projects.find((project) => project.id === nextSession.project_id) ?? projectResult.projects[0] ?? null;
@@ -433,13 +261,11 @@ export default function App() {
         setAssets(assetResult.assets);
         setSelectedReferenceIds(referenceIdsFromAssets(assetResult.assets));
         setExports(filterExportsForAssets(exportResult.exports, assetResult.assets));
-        setProviderEnvStatus(providerEnvResult);
         setActivationChecklist(activationChecklistResult);
         if (brandKitResult?.brandKit) {
           setBrandKit(brandKitResult.brandKit);
           setBrandKitDraft(brandKitResult.brandKit);
         }
-        setWorkflowBlueprints(workflowBlueprintResult);
         setSelectedAsset(firstReviewableAsset(assetResult.assets));
         setConnection("online");
         setStatusText("Comfy is in the room.");
@@ -463,12 +289,6 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    if (connection !== "online" || providerAudit || checkingProviderAudit || !shouldAutoOpenProviderAudit()) {
-      return;
-    }
-    void checkProviderAdapterAudit();
-  }, [connection, providerAudit, checkingProviderAudit]);
 
   useEffect(() => {
     function handlePopState() {
@@ -502,24 +322,6 @@ export default function App() {
   const providerSetupState = useMemo(
     () => (connection === "online" ? providerSetup(config.models) : { waitingModels: [], envVars: [] }),
     [config.models, connection]
-  );
-  const providerUnlockRows = useMemo(() => (connection === "online" ? providerUnlockPlan(config.models) : []), [config.models, connection]);
-  const providerKeyEnvVars = useMemo(() => {
-    if (connection !== "online") {
-      return [];
-    }
-    const missingFromStatus = providerEnvStatus?.missingEnvVars ?? [];
-    if (missingFromStatus.length) {
-      return orderProviderEnvVars(missingFromStatus, providerUnlockRows);
-    }
-    if (providerSetupState.envVars.length) {
-      return providerSetupState.envVars;
-    }
-    return orderProviderEnvVars(providerEnvStatus?.envVars ?? [], providerUnlockRows);
-  }, [connection, providerEnvStatus?.envVars, providerEnvStatus?.missingEnvVars, providerSetupState.envVars, providerUnlockRows]);
-  const providerKeyDraftHasValues = useMemo(
-    () => Object.values(providerKeyDraft).some((value) => value.trim().length > 0),
-    [providerKeyDraft]
   );
   const activePreset = useMemo(
     () => config.promptPresets.find((preset) => preset.key === selectedPresetKey) ?? config.promptPresets[0],
@@ -559,7 +361,6 @@ export default function App() {
     if (!selectedModel.capabilities.masked_edit) {
       setMaskAsset(null);
     }
-    setProviderPreflight(null);
   }, [selectedModel]);
 
   useEffect(() => {
@@ -831,82 +632,8 @@ export default function App() {
     await archiveSession(target);
   }
 
-  async function checkProviderReadiness() {
-    setCheckingProviders(true);
-    try {
-      const readiness = await fetchProviderStatus();
-      setProviderReadiness(readiness);
-      if (readiness.models.length) {
-        setConfig((current) => ({ ...current, models: readiness.models }));
-      }
-      setStatusText(
-        `${readiness.summary.readyModels} provider ${readiness.summary.readyModels === 1 ? "model" : "models"} ready. Keys stay server-side.`
-      );
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Provider check failed.");
-    } finally {
-      setCheckingProviders(false);
-    }
-  }
 
-  async function checkSelectedModelPreflight() {
-    if (!selectedModel) {
-      return;
-    }
-    if (connection !== "online") {
-      setStatusText("Start ComfyUI to check the selected model.");
-      return;
-    }
 
-    const kind = studioMode === "video-lab" ? "video" : promptMode;
-    const videoSourceAsset =
-      selectedAsset && selectedAsset.kind !== "reference" && selectedAsset.media_type !== "video"
-        ? selectedAsset
-        : outputAssets.find((asset) => asset.approval_status === "approved" && asset.media_type !== "video") ??
-          outputAssets.find((asset) => asset.media_type !== "video");
-
-    setCheckingProviderPreflight(true);
-    try {
-      const result = await preflightProvider({
-        session_id: activeSession?.id,
-        kind,
-        model: selectedModel.id,
-        prompt,
-        settings,
-        reference_asset_ids: selectedReferenceAssets.map((asset) => asset.id),
-        frank_body_mode: frankBodyMode,
-        preset_key: selectedPresetKey,
-        edit_source_asset_id: kind === "video" ? videoSourceAsset?.id : editSourceAsset?.id,
-        mask_asset_id: kind === "masked_edit" ? maskAsset?.id : undefined
-      });
-      setProviderPreflight(result);
-      setStatusText(result.ready ? `${result.model_label ?? selectedModel.short_label ?? selectedModel.label} preflight ready.` : result.message);
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Selected model preflight failed.");
-    } finally {
-      setCheckingProviderPreflight(false);
-    }
-  }
-
-  async function checkProviderAdapterAudit() {
-    if (connection !== "online") {
-      setStatusText("Start ComfyUI to audit provider adapters.");
-      return;
-    }
-
-    setCheckingProviderAudit(true);
-    try {
-      const audit = await fetchProviderAudit();
-      setProviderAudit(audit);
-      setStatusText(
-        `${audit.summary.runner_registered} / ${audit.summary.model_count} provider adapters audited with no external calls.`
-      );
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Provider adapter audit failed.");
-    } finally {
-      setCheckingProviderAudit(false);
-    }
-  }
 
   async function runDemoDoctor() {
     setCheckingDemoDoctor(true);
@@ -1065,29 +792,6 @@ export default function App() {
     }
   }
 
-  async function saveProviderReadinessReceipt() {
-    if (connection !== "online") {
-      setStatusText("Start ComfyUI to save the provider receipt.");
-      return;
-    }
-
-    setSavingProviderReceipt(true);
-    try {
-      const result = await createProviderReadinessReceipt();
-      setProviderReceiptPath(result.latest_markdown_file ?? result.latest_markdown_path ?? result.markdown_file ?? result.markdown_path);
-      setProviderReceiptUrl(result.latest_markdown_url ?? result.markdown_url);
-      setProviderAudit(result.receipt.adapter_audit);
-      openStudioLink(
-        result.latest_markdown_url ?? result.markdown_url,
-        "Provider receipt",
-        `Provider receipt saved: ${result.latest_markdown_file ?? result.markdown_file}`
-      );
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not save provider readiness receipt.");
-    } finally {
-      setSavingProviderReceipt(false);
-    }
-  }
 
   function openStudioLink(url: string | undefined, label: string, openingText?: string) {
     if (!url) {
@@ -1111,43 +815,7 @@ export default function App() {
     }
   }
 
-  async function copyProviderKeyPlan() {
-    const plan = providerKeyPlanText({
-      rows: providerUnlockRows,
-      envVars: providerSetupState.envVars,
-      readyModels: providerReadiness?.summary.readyModels,
-      modelCount: providerReadiness?.summary.modelCount ?? config.models.filter((model) => model.provider !== "local").length,
-      keyFilePath: providerEnvStatus?.filePath ?? "user\\frank_create\\provider_keys.env"
-    });
 
-    try {
-      if (!navigator.clipboard?.writeText) {
-        throw new Error("Clipboard API unavailable");
-      }
-      await navigator.clipboard.writeText(plan);
-      setStatusText("Provider key plan copied for Cliff. No secret values included.");
-    } catch {
-      setStatusText("Could not copy the provider key plan. Use the visible Cliff key order instead.");
-    }
-  }
-
-  async function copyProductionUnlockPlan() {
-    if (!activationChecklist) {
-      setStatusText("Run the activation checklist before copying the production unlock plan.");
-      return;
-    }
-
-    const plan = productionUnlockPlanText(activationChecklist);
-    try {
-      if (!navigator.clipboard?.writeText) {
-        throw new Error("Clipboard API unavailable");
-      }
-      await navigator.clipboard.writeText(plan);
-      setStatusText("Production unlock plan copied for Cliff. No secret values included.");
-    } catch {
-      setStatusText("Could not copy the production unlock plan. Use the visible activation checklist instead.");
-    }
-  }
 
   async function buildReadinessPack() {
     setBuildingReadinessPack(true);
@@ -1177,7 +845,6 @@ export default function App() {
             result.provider_readiness.markdown_path
         );
         setProviderReceiptUrl(result.provider_readiness.latest_markdown_url ?? result.provider_readiness.markdown_url);
-        setProviderAudit(result.provider_readiness.receipt.adapter_audit);
       }
       if (result.brand_context) {
         setBrandContextPath(
@@ -1211,137 +878,11 @@ export default function App() {
     }
   }
 
-  async function createServerKeyFile() {
-    setProviderEnvBusy(true);
-    try {
-      const status = await createProviderEnvTemplate();
-      setProviderEnvStatus(status);
-      setStatusText(status.created ? "Server key file created. Fill it, then reload keys." : "Server key file is already there.");
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not create the server key file.");
-    } finally {
-      setProviderEnvBusy(false);
-    }
-  }
 
-  async function reloadServerKeys() {
-    setProviderEnvBusy(true);
-    try {
-      const status = await reloadProviderEnv();
-      setProviderEnvStatus(status);
-      if (status.readiness) {
-        setProviderReadiness(status.readiness);
-        if (status.readiness.models.length) {
-          setConfig((current) => ({ ...current, models: status.readiness!.models }));
-        }
-      }
-      const loadedCount = status.loadedEnvVars?.length ?? 0;
-      const ignoredPlaceholderCount = status.ignoredPlaceholderEnvVars?.length ?? 0;
-      setStatusText(
-        ignoredPlaceholderCount
-          ? `${ignoredPlaceholderCount} placeholder key ${ignoredPlaceholderCount === 1 ? "value was" : "values were"} ignored. Paste rotated keys, then reload.`
-          : loadedCount
-          ? `${loadedCount} server key ${loadedCount === 1 ? "name" : "names"} reloaded.`
-          : "No filled server keys found yet."
-      );
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not reload server keys.");
-    } finally {
-      setProviderEnvBusy(false);
-    }
-  }
 
-  function updateProviderKeyDraft(envVar: string, value: string) {
-    setProviderKeyDraft((current) => ({ ...current, [envVar]: value }));
-  }
 
-  async function saveServerKeys() {
-    const keys = Object.fromEntries(
-      Object.entries(providerKeyDraft)
-        .map(([envVar, value]) => [envVar, value.trim()])
-        .filter(([, value]) => value)
-    );
 
-    if (!Object.keys(keys).length) {
-      setStatusText("Paste at least one rotated provider key first.");
-      return;
-    }
 
-    setProviderEnvBusy(true);
-    try {
-      const status = await saveProviderEnvKeys(keys);
-      setProviderEnvStatus(status);
-      if (status.readiness) {
-        setProviderReadiness(status.readiness);
-        if (status.readiness.models.length) {
-          setConfig((current) => ({ ...current, models: status.readiness!.models }));
-        }
-      }
-      setProviderKeyDraft({});
-      const savedCount = status.savedEnvVars?.length ?? 0;
-      const ignoredPlaceholderCount = status.ignoredPlaceholderEnvVars?.length ?? 0;
-      setStatusText(
-        ignoredPlaceholderCount
-          ? `${ignoredPlaceholderCount} placeholder key ${ignoredPlaceholderCount === 1 ? "value was" : "values were"} ignored. Paste rotated keys before saving.`
-          : savedCount
-          ? `${savedCount} server key ${savedCount === 1 ? "name" : "names"} saved. Secret values stayed server-side.`
-          : "No provider keys were saved."
-      );
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not save server keys.");
-    } finally {
-      setProviderEnvBusy(false);
-    }
-  }
-
-  async function prepareLocalEngine() {
-    if (connection !== "online") {
-      setStatusText("Start ComfyUI before preparing local model folders.");
-      return;
-    }
-
-    setLocalEngineBusy(true);
-    try {
-      const result = await prepareLocalEngineFolders();
-      setConfig((current) => ({ ...current, localEngine: result.localEngine }));
-      const createdCount = result.created_dirs?.length ?? 0;
-      setStatusText(
-        createdCount
-          ? `${createdCount} local model folders created. Add checkpoints, then run Demo Doctor.`
-          : "Local model folders are ready. Add checkpoints, then run Demo Doctor."
-      );
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not prepare local model folders.");
-    } finally {
-      setLocalEngineBusy(false);
-    }
-  }
-
-  function downloadWorkflowBlueprint(blueprint: WorkflowBlueprint) {
-    try {
-      const payload = {
-        product: "Frank Create",
-        key: blueprint.key,
-        label: blueprint.label,
-        use: blueprint.use,
-        node_types: blueprint.node_types,
-        workflow_json: blueprint.workflow_json,
-        provider_keys: "server-side only; no secrets included"
-      };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `${safeFileStem(blueprint.key)}-workflow.json`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
-      setStatusText("Comfy workflow blueprint downloaded.");
-    } catch {
-      setStatusText("Could not download that Comfy workflow blueprint.");
-    }
-  }
 
   async function saveBrandKit() {
     setBrandKitBusy(true);
@@ -2499,15 +2040,6 @@ export default function App() {
             <Sparkles size={16} />
             Brand Kit
           </button>
-          <button
-            className="sidebar-nav-button"
-            type="button"
-            aria-label="Open Raw Comfy"
-            onClick={() => openStudioLink(config.advancedGraphUrl, "Raw Comfy canvas")}
-          >
-            <GitBranch size={16} />
-            Raw Comfy
-          </button>
           <button className="sidebar-nav-button" type="button" onClick={startWalkthrough}>
             <MessageSquareText size={16} />
             Demo Walkthrough
@@ -3322,14 +2854,6 @@ export default function App() {
               <GitBranch size={14} />
               Workflow Map
             </button>
-            <button
-              className="mini-button provider-check-button"
-              type="button"
-              onClick={() => openStudioLink(config.advancedGraphUrl, "Raw Comfy canvas")}
-            >
-              <ExternalLink size={14} />
-              Raw Comfy
-            </button>
           </div>
         </section>
 
@@ -3432,256 +2956,6 @@ export default function App() {
           </div>
         </section>
 
-        <section className="control-section provider-setup">
-          <div className="section-title">
-            <p className="eyebrow">Provider Setup</p>
-            <h3>{connection === "online" ? "Server keys" : "Preview mode"}</h3>
-          </div>
-          {providerReadiness ? (
-            <strong>
-              {providerReadiness.summary.readyModels} / {providerReadiness.summary.modelCount} provider models ready
-            </strong>
-          ) : null}
-          <strong>
-            {providerSetupState.waitingModels.length
-              ? `${providerSetupState.waitingModels.length} models waiting on server keys`
-              : connection === "online" ? "All provider keys ready" : "Preview does not need Google keys"}
-          </strong>
-          {activationChecklist ? <small>{activationChecklistInlineStatus(activationChecklist)}</small> : null}
-          {providerSetupState.envVars.length ? (
-            <div className="provider-key-list" aria-label="Missing provider environment variables">
-              {providerSetupState.envVars.map((envVar) => (
-                <code key={envVar}>{envVar}</code>
-              ))}
-            </div>
-          ) : (
-            <p>{connection === "online" ? "Provider proxy is ready for API rounds." : "Live provider checks only run from the local backend."}</p>
-          )}
-          <div className="provider-env-box">
-            <span>{connection === "online" ? "Server key file" : "Backend"}</span>
-            <code>{providerEnvStatus?.filePath ?? "user\\frank_create\\provider_keys.env"}</code>
-            <small>
-              {connection === "online"
-                ? providerEnvStatus?.fileExists
-                  ? "File ready. Edit it locally, then reload."
-                  : "Create the ignored template first."
-                : "Unavailable in Lovable preview; use your local app for live provider runs."}
-            </small>
-          </div>
-          <div className="provider-unlock-plan" aria-label="Provider unlock plan">
-            <div className="provider-unlock-heading">
-              <span>Cliff key order</span>
-              <small>Gemini, Replicate, OpenAI only.</small>
-            </div>
-            {providerUnlockRows.length ? (
-              providerUnlockRows.map((row, index) => (
-                <div className="provider-unlock-row" key={row.id}>
-                  <em>{index + 1}</em>
-                  <div>
-                    <strong>{row.label}</strong>
-                    <small>{row.keyCopy}</small>
-                  </div>
-                  <span>{row.capabilityCopy}</span>
-                </div>
-              ))
-            ) : (
-              <div className="provider-unlock-row">
-                <em>OK</em>
-                <div>
-                  <strong>All visible provider rows are unlocked.</strong>
-                  <small>No extra API providers are part of this demo.</small>
-                </div>
-                <span>Local demo remains available without paid keys.</span>
-              </div>
-            )}
-          </div>
-          {activationChecklist ? (
-            <div className={`activation-checklist ${activationChecklist.status}`} aria-label="Production activation checklist">
-              <div className="activation-checklist-heading">
-                <span>Production unlock checklist</span>
-                <small>
-                  {activationChecklist.summary.ready_provider_models} / {activationModelTotal(activationChecklist)} live model paths unlocked
-                </small>
-              </div>
-              {activationChecklist.steps.map((step) => (
-                <div className={`activation-step ${step.status}`} key={step.key}>
-                  <span>{activationStatusIcon(step.status)}</span>
-                  <div>
-                    <strong>{step.label}</strong>
-                    <small>{step.detail}</small>
-                    <em>{step.action}</em>
-                    {step.env_vars?.length ? (
-                      <div className="provider-key-list compact">
-                        {step.env_vars.slice(0, 5).map((envVar) => (
-                          <code key={envVar}>{envVar}</code>
-                        ))}
-                      </div>
-                    ) : null}
-                    {step.path ? <code className="activation-path">{activationPathLabel(step.path)}</code> : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : null}
-          {providerKeyEnvVars.length ? (
-            <form
-              className="provider-key-editor"
-              aria-label="Save server provider keys"
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (!providerEnvBusy && providerKeyDraftHasValues) {
-                  void saveServerKeys();
-                }
-              }}
-            >
-              <small>Paste rotated keys here to save them server-side. Values clear after save.</small>
-              {providerKeyEnvVars.map((envVar) => (
-                <label key={envVar}>
-                  <span>{envVar}</span>
-                  <input
-                    type="password"
-                    autoComplete="off"
-                    spellCheck={false}
-                    value={providerKeyDraft[envVar] ?? ""}
-                    onChange={(event) => updateProviderKeyDraft(envVar, event.target.value)}
-                    placeholder="paste key"
-                  />
-                </label>
-              ))}
-              <button
-                className="mini-button provider-check-button"
-                type="submit"
-                disabled={providerEnvBusy || !providerKeyDraftHasValues}
-              >
-                {providerEnvBusy ? <RefreshCw className="spin" size={14} /> : <CheckCircle2 size={14} />}
-                Save server keys
-              </button>
-            </form>
-          ) : null}
-          <div className="provider-action-row">
-            <button className="mini-button provider-check-button" type="button" onClick={checkProviderReadiness} disabled={checkingProviders}>
-              {checkingProviders ? <RefreshCw className="spin" size={14} /> : <CheckCircle2 size={14} />}
-              Check server keys
-            </button>
-            <button
-              className="mini-button provider-check-button"
-              type="button"
-              onClick={checkSelectedModelPreflight}
-              disabled={checkingProviderPreflight}
-            >
-              {checkingProviderPreflight ? <RefreshCw className="spin" size={14} /> : <Cpu size={14} />}
-              Check selected model
-            </button>
-            <button
-              className="mini-button provider-check-button"
-              type="button"
-              onClick={checkProviderAdapterAudit}
-              disabled={checkingProviderAudit}
-            >
-              {checkingProviderAudit ? <RefreshCw className="spin" size={14} /> : <GitBranch size={14} />}
-              Audit roster
-            </button>
-            <button
-              className="mini-button provider-check-button"
-              type="button"
-              onClick={saveProviderReadinessReceipt}
-              disabled={connection !== "online" || savingProviderReceipt}
-            >
-              {savingProviderReceipt ? <RefreshCw className="spin" size={14} /> : <Download size={14} />}
-              Save receipt
-            </button>
-            <button className="mini-button provider-check-button" type="button" onClick={copyProviderKeyPlan}>
-              <Clipboard size={14} />
-              Copy key plan
-            </button>
-            <button className="mini-button provider-check-button" type="button" onClick={copyProductionUnlockPlan} disabled={!activationChecklist}>
-              <Clipboard size={14} />
-              Copy unlock plan
-            </button>
-            <button className="mini-button provider-check-button" type="button" onClick={createServerKeyFile} disabled={providerEnvBusy}>
-              {providerEnvBusy ? <RefreshCw className="spin" size={14} /> : <Paperclip size={14} />}
-              Create key file
-            </button>
-            <button className="mini-button provider-check-button" type="button" onClick={reloadServerKeys} disabled={providerEnvBusy}>
-              {providerEnvBusy ? <RefreshCw className="spin" size={14} /> : <RefreshCw size={14} />}
-              Reload keys
-            </button>
-          </div>
-          {providerPreflight ? (
-            <div className={`provider-preflight-card ${providerPreflight.status}`} aria-label="Selected model preflight">
-              <strong>{providerPreflightStatusLabel(providerPreflight.status)}</strong>
-              <small>{providerPreflight.message}</small>
-              {providerPreflight.missing_env_vars.length ? (
-                <div className="provider-key-list compact" aria-label="Selected model missing environment variables">
-                  {providerPreflight.missing_env_vars.map((envVar) => (
-                    <code key={envVar}>{envVar}</code>
-                  ))}
-                </div>
-              ) : null}
-              <dl>
-                <div>
-                  <dt>Mode</dt>
-                  <dd>{titleize(providerPreflight.payloadPreview.kind)}</dd>
-                </div>
-                <div>
-                  <dt>Refs</dt>
-                  <dd>
-                    {providerPreflight.payloadPreview.reference_count} / {providerPreflight.payloadPreview.reference_limit || "local"}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Prompt</dt>
-                  <dd>{providerPreflight.payloadPreview.prompt_length} chars</dd>
-                </div>
-              </dl>
-              {providerPreflight.payloadPreview.prompt_preview ? <p>{providerPreflight.payloadPreview.prompt_preview}</p> : null}
-            </div>
-          ) : null}
-          {providerAudit ? (
-            <div className="provider-audit-card" aria-label="Provider adapter audit">
-              <strong>No-spend adapter audit</strong>
-              <small>
-                {providerAudit.summary.runner_registered} / {providerAudit.summary.model_count} runners registered;
-                {" "}
-                {providerAudit.summary.waiting_for_key} waiting on keys;
-                {" "}
-                {providerAudit.summary.preview_failures} preview issues;
-                {" "}
-                {providerAudit.summary.operation_preview_count ?? 0} operation previews checked
-                {providerAudit.summary.operation_preview_failures
-                  ? ` / ${providerAudit.summary.operation_preview_failures} operation failures`
-                  : ""}.
-              </small>
-              <div className="provider-audit-list">
-                {providerAudit.models.slice(0, 8).map((model) => (
-                  <div className={`provider-audit-row ${model.status}`} key={model.model_id}>
-                    <span>{model.status === "ready" ? <CheckCircle2 size={13} /> : <Cpu size={13} />}</span>
-                    <div>
-                      <strong>{model.label}</strong>
-                      <small>
-                        {model.request_preview?.method ?? "n/a"} {model.provider}
-                        {" / "}
-                        {providerAuditOperationSummary(model.operation_kinds, model.request_previews)}
-                        {model.missing_env_vars.length ? ` / needs ${model.missing_env_vars.join(" or ")}` : " / server-ready"}
-                      </small>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          {providerReceiptPath ? (
-            <div className="demo-evidence-actions provider-receipt-actions">
-              <small className="demo-evidence-path">Provider receipt: {providerReceiptPath}</small>
-              {providerReceiptUrl ? (
-                <button className="mini-button provider-check-button" type="button" onClick={() => openStudioLink(providerReceiptUrl, "Provider receipt")}>
-                  <ExternalLink size={14} />
-                  Open provider receipt
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-        </section>
 
         <section className={`control-section demo-doctor ${demoDoctor?.status ?? "idle"}`}>
           <div className="section-title">
@@ -3997,73 +3271,6 @@ export default function App() {
             <span>{modelOptions.canEdit ? "Edits" : "Generate only"}</span>
             <span>{modelOptions.referenceLimit} refs</span>
           </div>
-          {selectedModel?.provider === "local" ? (
-            <div className="local-engine-note">
-              <strong>{config.localEngine.diffusion_ready ? "Checkpoint diffusion ready" : "Frank renderer ready"}</strong>
-              <span>
-                {config.localEngine.note}
-                {config.localEngine.diffusion_ready && config.localEngine.checkpoints.length
-                  ? ` (${config.localEngine.checkpoints[0]})`
-                  : ""}
-              </span>
-              <code>{config.localEngine.checkpoint_dir ?? "models\\checkpoints"}</code>
-              {config.localEngine.setup_steps?.length ? (
-                <ul className="local-engine-steps" aria-label="Local model setup steps">
-                  {config.localEngine.setup_steps.slice(0, 3).map((step) => (
-                    <li key={step}>{step}</li>
-                  ))}
-                </ul>
-              ) : null}
-              {config.localEngine.ignored_checkpoints?.length ? (
-                <div className="local-engine-ignored" aria-label="Ignored local checkpoint files">
-                  <strong>Ignored incomplete checkpoint</strong>
-                  {config.localEngine.ignored_checkpoints.slice(0, 3).map((checkpoint) => (
-                    <span key={checkpoint.name}>
-                      {checkpoint.name}
-                      {checkpoint.reason ? ` / ${checkpoint.reason}` : ""}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-              {config.localEngine.recommended_checkpoints?.length ? (
-                <div className="local-engine-picks" aria-label="Starter local model picks">
-                  {config.localEngine.recommended_checkpoints.slice(0, 2).map((pick) => (
-                    <span key={`${pick.label}-${pick.folder}`}>
-                      <b>{pick.label}</b>
-                      {pick.use}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-              {workflowBlueprints?.blueprints?.length ? (
-                <div className="workflow-blueprints" aria-label="Comfy workflow blueprints">
-                  <strong>Comfy workflow blueprints</strong>
-                  <small>{workflowBlueprints.note}</small>
-                  {workflowBlueprints.blueprints.map((blueprint) => (
-                    <div className="workflow-blueprint-row" key={blueprint.key}>
-                      <span>
-                        <b>{blueprint.label}</b>
-                        <em>{blueprint.node_types.join(" -> ")}</em>
-                      </span>
-                      <button
-                        className="icon-button"
-                        type="button"
-                        aria-label={`Download ${blueprint.label} workflow JSON`}
-                        title={`Download ${blueprint.label} workflow JSON`}
-                        onClick={() => downloadWorkflowBlueprint(blueprint)}
-                      >
-                        <Download size={15} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-              <button className="mini-button provider-check-button" type="button" onClick={prepareLocalEngine} disabled={localEngineBusy}>
-                {localEngineBusy ? <RefreshCw className="spin" size={14} /> : <Cpu size={14} />}
-                Prepare model folders
-              </button>
-            </div>
-          ) : null}
         </section>
 
         <section className="control-section toggle-section">
@@ -4880,10 +4087,6 @@ function GraphNodeButton({
   );
 }
 
-function formatCount(count: number, singular: string, plural = `${singular}s`) {
-  return `${count} ${count === 1 ? singular : plural}`;
-}
-
 function AssetPreviewMedia({
   asset,
   controls = false,
@@ -5283,14 +4486,6 @@ function parseExportMetadata(metadataJson?: string) {
   }
 }
 
-function titleize(value: string) {
-  return value
-    .split(/[-_\s]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 function initialSurface() {
   if (typeof window === "undefined") {
     return "studio";
@@ -5533,16 +4728,6 @@ function workflowSummary(workflow: Record<string, unknown>) {
   return checkpoint ? `${label} / ${checkpoint}` : label;
 }
 
-function providerDisplayName(provider?: string) {
-  const names: Record<string, string> = {
-    google: "Google",
-    local: "Local",
-    openai: "OpenAI",
-    replicate: "Replicate"
-  };
-  return provider ? names[provider] ?? titleize(provider) : "Provider";
-}
-
 function turnEmptyLabel(turn: StudioTurn) {
   if (turn.status === "blocked") {
     let code: string | undefined;
@@ -5570,10 +4755,6 @@ function turnKindLabel(turn: StudioTurn) {
     return "Motion round";
   }
   return "Generate round";
-}
-
-function referenceCountLabel(count: number) {
-  return `${count} reference${count === 1 ? "" : "s"}`;
 }
 
 function doctorStatusIcon(status: "ready" | "warning" | "fail") {
@@ -5734,25 +4915,6 @@ function turnErrorCopy(turn: StudioTurn) {
   }
 }
 
-function parseJsonRecord(value?: unknown) {
-  if (!value) {
-    return {} as Record<string, unknown>;
-  }
-  if (typeof value === "object" && !Array.isArray(value)) {
-    return value as Record<string, unknown>;
-  }
-  if (typeof value !== "string") {
-    return {} as Record<string, unknown>;
-  }
-
-  try {
-    const parsed = JSON.parse(value) as unknown;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
-  } catch {
-    return {};
-  }
-}
-
 function nextRoundPrompt(asset: Asset, direction: "similar" | "cleanup" | "campaign", preset?: PromptPreset) {
   const note = asset.notes?.trim();
   const base =
@@ -5813,15 +4975,6 @@ function modelReferenceLimitAction(model: StudioModel | undefined, referenceCoun
   } before making this round.`;
 }
 
-function providerPreflightStatusLabel(status: ProviderPreflight["status"]) {
-  if (status === "ready") {
-    return "Preflight ready";
-  }
-  if (status === "blocked") {
-    return "Preflight blocked";
-  }
-  return "Preflight unsupported";
-}
 
 function providerSetup(models: StudioModel[]) {
   const waitingModels = models.filter((model) => model.configured === false);
@@ -5911,85 +5064,7 @@ function providerModelEnvVars(model: StudioModel) {
   return Array.from(new Set(envVars));
 }
 
-function providerKeyPlanText({
-  rows,
-  envVars,
-  readyModels,
-  modelCount,
-  keyFilePath
-}: {
-  rows: ReturnType<typeof providerUnlockPlan>;
-  envVars: string[];
-  readyModels?: number;
-  modelCount: number;
-  keyFilePath: string;
-}) {
-  const lines = [
-    "Frank Create Provider Key Plan",
-    "",
-    `Server key file: ${keyFilePath}`,
-    `Provider readiness: ${readyModels ?? 0} / ${modelCount} live provider models ready`,
-    "Provider secret values are not included. Paste rotated keys only into Provider Setup or the local server key file.",
-    ""
-  ];
 
-  if (rows.length) {
-    lines.push("Cliff key order:");
-    rows.forEach((row, index) => {
-      lines.push(`${index + 1}. ${row.label}`);
-      lines.push(`   Keys: ${row.keyCopy}`);
-      lines.push(`   Unlocks: ${row.capabilityCopy}`);
-    });
-  } else {
-    lines.push("Cliff key order: all visible provider rows are unlocked.");
-  }
-
-  if (envVars.length) {
-    lines.push("", `Missing env vars: ${envVars.join(", ")}`);
-  }
-
-  lines.push("", "Rotate any exposed token before live provider use.");
-  return lines.join("\n");
-}
-
-function productionUnlockPlanText(checklist: ActivationChecklist) {
-  const summary = checklist.summary;
-  const lines = [
-    "Frank Create Production Unlock Plan",
-    "",
-    `Status: ${checklist.status}`,
-    `Live model paths unlocked: ${summary.ready_provider_models} / ${activationModelTotal(checklist)}`,
-    `Server key file: ${summary.server_key_file || "user\\frank_create\\provider_keys.env"}`,
-    `Local checkpoints detected: ${summary.checkpoint_count}`,
-    "Allowed provider env vars: GOOGLE_API_KEY, REPLICATE_API_TOKEN, OPENAI_API_KEY",
-    "No provider secret values are included.",
-    ""
-  ];
-
-  lines.push("Actions:");
-  checklist.steps.forEach((step, index) => {
-    lines.push(`${index + 1}. ${step.label} (${step.status})`);
-    lines.push(`   ${step.detail}`);
-    lines.push(`   Action: ${step.action}`);
-    if (step.env_vars?.length) {
-      lines.push(`   Env vars: ${step.env_vars.join(", ")}`);
-    }
-    if (step.path) {
-      const checkpointNote = step.minimum_checkpoint_mb ? `; minimum ${step.minimum_checkpoint_mb} MB` : "";
-      lines.push(`   Path: ${activationPathLabel(step.path)}${checkpointNote}`);
-    }
-  });
-
-  if (summary.missing_env_vars?.length) {
-    lines.push("", `Missing env vars: ${summary.missing_env_vars.join(", ")}`);
-  }
-  if (checklist.notes.length) {
-    lines.push("", "Notes:");
-    checklist.notes.forEach((note) => lines.push(`- ${note}`));
-  }
-  lines.push("", "Paste rotated keys only into Provider Setup or the local server key file.");
-  return lines.join("\n");
-}
 
 function parseReadyStatusLink(text: string) {
   const match = text.match(/^(.+?) link ready: (.+)$/);
@@ -6035,14 +5110,6 @@ function providerAuditOperationSummary(operationKinds: string[] = [], requestPre
   const previewCount = Object.keys(requestPreviews ?? {}).length || operationKinds.length;
   const labels = operationKinds.map((kind) => kind.replace(/_/g, " "));
   return `${previewCount} ops: ${labels.join(", ") || "none"}`;
-}
-
-function joinWithOr(values: string[]) {
-  if (values.length <= 1) {
-    return values[0] ?? "";
-  }
-
-  return `${values.slice(0, -1).join(", ")} or ${values[values.length - 1]}`;
 }
 
 function referenceIdsFromAssets(assets: Asset[]) {

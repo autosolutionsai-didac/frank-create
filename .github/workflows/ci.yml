@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build (installs frank-create deps + type-checks + builds)
+        run: npm run build
+      - name: Test
+        run: npm --prefix frank-create test -- --reporter=dot --reporter=json --outputFile=test-results.json
+        env:
+          DEBUG_PRINT_LIMIT: "0"
+      - name: Failed test summary
+        if: failure()
+        run: |
+          node -e "try{const r=require('./frank-create/test-results.json');const f=r.testResults.flatMap(t=>t.assertionResults||[]).filter(a=>a.status==='failed');console.log('FAILED COUNT: '+f.length);for(const a of f){console.log('* '+(a.fullName||a.title)+' :: '+String((a.failureMessages||[''])[0]).split(String.fromCharCode(10))[0].slice(0,180));}}catch(e){console.log('summary-error',e.message);}"
+      - name: Lint (non-blocking)
+        run: npm --prefix frank-create run lint
+        continue-on-error: true
