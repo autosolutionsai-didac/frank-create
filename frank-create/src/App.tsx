@@ -44,11 +44,9 @@ import {
   createDemoCallBrief,
   createDemoEvidence,
   createDemoReadinessPack,
-  createProviderEnvTemplate,
   createExport,
   createInferenceTurn,
   createProject,
-  createProviderReadinessReceipt,
   createReference,
   createSession,
   createSessionHandoff,
@@ -59,22 +57,14 @@ import {
   fetchConfig,
   fetchDemoDoctor,
   fetchHealth,
-  fetchProviderAudit,
-  fetchProviderEnvStatus,
-  fetchProviderStatus,
-  fetchWorkflowBlueprints,
   listBriefs,
   listExports,
   listAssets,
   listProjects,
   listSessions,
   listTurns,
-  prepareLocalEngineFolders,
-  preflightProvider,
-  reloadProviderEnv,
   remixPrompt,
   resetDemo,
-  saveProviderEnvKeys,
   sessionReviewBoardUrl,
   sessionSyncManifestUrl,
   updateAsset,
@@ -110,10 +100,6 @@ import type {
   ExportPreset,
   FrankConfig,
   FrankTask,
-  ProviderAdapterAudit,
-  ProviderEnvStatus,
-  ProviderPreflight,
-  ProviderReadiness,
   PromptPreset,
   PromptRemixVariant,
   Project,
@@ -121,8 +107,6 @@ import type {
   StudioSession,
   StudioSettings,
   StudioTurn,
-  WorkflowBlueprint,
-  WorkflowBlueprintsResponse
 } from "./lib/types";
 import { formatCount, joinWithOr, parseJsonRecord, providerDisplayName, referenceCountLabel, titleize } from "./lib/format";
 import { WALKTHROUGH_STEPS } from "./lib/walkthrough";
@@ -169,20 +153,10 @@ export default function App() {
   const [sessionCancelTarget, setSessionCancelTarget] = useState<StudioSession | null>(null);
   const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>([]);
   const [assetNotesDraft, setAssetNotesDraft] = useState("");
-  const [providerReadiness, setProviderReadiness] = useState<ProviderReadiness | null>(null);
   const [activationChecklist, setActivationChecklist] = useState<ActivationChecklist | null>(null);
-  const [providerEnvStatus, setProviderEnvStatus] = useState<ProviderEnvStatus | null>(null);
-  const [providerKeyDraft, setProviderKeyDraft] = useState<Record<string, string>>({});
-  const [providerPreflight, setProviderPreflight] = useState<ProviderPreflight | null>(null);
-  const [providerAudit, setProviderAudit] = useState<ProviderAdapterAudit | null>(null);
   const [brandKit, setBrandKit] = useState<BrandKit>(fallbackBrandKit);
   const [brandKitDraft, setBrandKitDraft] = useState<BrandKit>(fallbackBrandKit);
   const [demoDoctor, setDemoDoctor] = useState<DemoDoctorStatus | null>(null);
-  const [workflowBlueprints, setWorkflowBlueprints] = useState<WorkflowBlueprintsResponse | null>(null);
-  const [checkingProviders, setCheckingProviders] = useState(false);
-  const [checkingProviderPreflight, setCheckingProviderPreflight] = useState(false);
-  const [checkingProviderAudit, setCheckingProviderAudit] = useState(false);
-  const [savingProviderReceipt, setSavingProviderReceipt] = useState(false);
   const [checkingDemoDoctor, setCheckingDemoDoctor] = useState(false);
   const [resettingDemo, setResettingDemo] = useState(false);
   const [savingDemoEvidence, setSavingDemoEvidence] = useState(false);
@@ -205,8 +179,6 @@ export default function App() {
   const [implementationManifestPath, setImplementationManifestPath] = useState("");
   const [implementationManifestUrl, setImplementationManifestUrl] = useState("");
   const [readinessPackManifest, setReadinessPackManifest] = useState<DemoReadinessPackResult["manifest"] | null>(null);
-  const [providerEnvBusy, setProviderEnvBusy] = useState(false);
-  const [localEngineBusy, setLocalEngineBusy] = useState(false);
   const [maskPainterBusy, setMaskPainterBusy] = useState(false);
   const [brandKitBusy, setBrandKitBusy] = useState(false);
   const [brandContextBusy, setBrandContextBusy] = useState(false);
@@ -252,20 +224,16 @@ export default function App() {
           turnResult,
           assetResult,
           exportResult,
-          providerEnvResult,
           activationChecklistResult,
           brandKitResult,
           projectResult,
-          workflowBlueprintResult
         ] = await Promise.all([
           listTurns(nextSession.id),
           listAssets({ sessionId: nextSession.id }),
           listExports().catch(() => ({ exports: [] })),
-          fetchProviderEnvStatus().catch(() => null),
           fetchActivationChecklist().catch(() => null),
           fetchBrandKit().catch(() => null),
           listProjects().catch(() => ({ projects: [] })),
-          fetchWorkflowBlueprints().catch(() => null)
         ]);
         const projectForSession =
           projectResult.projects.find((project) => project.id === nextSession.project_id) ?? projectResult.projects[0] ?? null;
@@ -293,13 +261,11 @@ export default function App() {
         setAssets(assetResult.assets);
         setSelectedReferenceIds(referenceIdsFromAssets(assetResult.assets));
         setExports(filterExportsForAssets(exportResult.exports, assetResult.assets));
-        setProviderEnvStatus(providerEnvResult);
         setActivationChecklist(activationChecklistResult);
         if (brandKitResult?.brandKit) {
           setBrandKit(brandKitResult.brandKit);
           setBrandKitDraft(brandKitResult.brandKit);
         }
-        setWorkflowBlueprints(workflowBlueprintResult);
         setSelectedAsset(firstReviewableAsset(assetResult.assets));
         setConnection("online");
         setStatusText("Comfy is in the room.");
@@ -323,12 +289,6 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    if (connection !== "online" || providerAudit || checkingProviderAudit || !shouldAutoOpenProviderAudit()) {
-      return;
-    }
-    void checkProviderAdapterAudit();
-  }, [connection, providerAudit, checkingProviderAudit]);
 
   useEffect(() => {
     function handlePopState() {
@@ -362,24 +322,6 @@ export default function App() {
   const providerSetupState = useMemo(
     () => (connection === "online" ? providerSetup(config.models) : { waitingModels: [], envVars: [] }),
     [config.models, connection]
-  );
-  const providerUnlockRows = useMemo(() => (connection === "online" ? providerUnlockPlan(config.models) : []), [config.models, connection]);
-  const providerKeyEnvVars = useMemo(() => {
-    if (connection !== "online") {
-      return [];
-    }
-    const missingFromStatus = providerEnvStatus?.missingEnvVars ?? [];
-    if (missingFromStatus.length) {
-      return orderProviderEnvVars(missingFromStatus, providerUnlockRows);
-    }
-    if (providerSetupState.envVars.length) {
-      return providerSetupState.envVars;
-    }
-    return orderProviderEnvVars(providerEnvStatus?.envVars ?? [], providerUnlockRows);
-  }, [connection, providerEnvStatus?.envVars, providerEnvStatus?.missingEnvVars, providerSetupState.envVars, providerUnlockRows]);
-  const providerKeyDraftHasValues = useMemo(
-    () => Object.values(providerKeyDraft).some((value) => value.trim().length > 0),
-    [providerKeyDraft]
   );
   const activePreset = useMemo(
     () => config.promptPresets.find((preset) => preset.key === selectedPresetKey) ?? config.promptPresets[0],
@@ -419,7 +361,6 @@ export default function App() {
     if (!selectedModel.capabilities.masked_edit) {
       setMaskAsset(null);
     }
-    setProviderPreflight(null);
   }, [selectedModel]);
 
   useEffect(() => {
@@ -691,82 +632,8 @@ export default function App() {
     await archiveSession(target);
   }
 
-  async function checkProviderReadiness() {
-    setCheckingProviders(true);
-    try {
-      const readiness = await fetchProviderStatus();
-      setProviderReadiness(readiness);
-      if (readiness.models.length) {
-        setConfig((current) => ({ ...current, models: readiness.models }));
-      }
-      setStatusText(
-        `${readiness.summary.readyModels} provider ${readiness.summary.readyModels === 1 ? "model" : "models"} ready. Keys stay server-side.`
-      );
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Provider check failed.");
-    } finally {
-      setCheckingProviders(false);
-    }
-  }
 
-  async function checkSelectedModelPreflight() {
-    if (!selectedModel) {
-      return;
-    }
-    if (connection !== "online") {
-      setStatusText("Start ComfyUI to check the selected model.");
-      return;
-    }
 
-    const kind = studioMode === "video-lab" ? "video" : promptMode;
-    const videoSourceAsset =
-      selectedAsset && selectedAsset.kind !== "reference" && selectedAsset.media_type !== "video"
-        ? selectedAsset
-        : outputAssets.find((asset) => asset.approval_status === "approved" && asset.media_type !== "video") ??
-          outputAssets.find((asset) => asset.media_type !== "video");
-
-    setCheckingProviderPreflight(true);
-    try {
-      const result = await preflightProvider({
-        session_id: activeSession?.id,
-        kind,
-        model: selectedModel.id,
-        prompt,
-        settings,
-        reference_asset_ids: selectedReferenceAssets.map((asset) => asset.id),
-        frank_body_mode: frankBodyMode,
-        preset_key: selectedPresetKey,
-        edit_source_asset_id: kind === "video" ? videoSourceAsset?.id : editSourceAsset?.id,
-        mask_asset_id: kind === "masked_edit" ? maskAsset?.id : undefined
-      });
-      setProviderPreflight(result);
-      setStatusText(result.ready ? `${result.model_label ?? selectedModel.short_label ?? selectedModel.label} preflight ready.` : result.message);
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Selected model preflight failed.");
-    } finally {
-      setCheckingProviderPreflight(false);
-    }
-  }
-
-  async function checkProviderAdapterAudit() {
-    if (connection !== "online") {
-      setStatusText("Start ComfyUI to audit provider adapters.");
-      return;
-    }
-
-    setCheckingProviderAudit(true);
-    try {
-      const audit = await fetchProviderAudit();
-      setProviderAudit(audit);
-      setStatusText(
-        `${audit.summary.runner_registered} / ${audit.summary.model_count} provider adapters audited with no external calls.`
-      );
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Provider adapter audit failed.");
-    } finally {
-      setCheckingProviderAudit(false);
-    }
-  }
 
   async function runDemoDoctor() {
     setCheckingDemoDoctor(true);
@@ -925,29 +792,6 @@ export default function App() {
     }
   }
 
-  async function saveProviderReadinessReceipt() {
-    if (connection !== "online") {
-      setStatusText("Start ComfyUI to save the provider receipt.");
-      return;
-    }
-
-    setSavingProviderReceipt(true);
-    try {
-      const result = await createProviderReadinessReceipt();
-      setProviderReceiptPath(result.latest_markdown_file ?? result.latest_markdown_path ?? result.markdown_file ?? result.markdown_path);
-      setProviderReceiptUrl(result.latest_markdown_url ?? result.markdown_url);
-      setProviderAudit(result.receipt.adapter_audit);
-      openStudioLink(
-        result.latest_markdown_url ?? result.markdown_url,
-        "Provider receipt",
-        `Provider receipt saved: ${result.latest_markdown_file ?? result.markdown_file}`
-      );
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not save provider readiness receipt.");
-    } finally {
-      setSavingProviderReceipt(false);
-    }
-  }
 
   function openStudioLink(url: string | undefined, label: string, openingText?: string) {
     if (!url) {
@@ -971,43 +815,7 @@ export default function App() {
     }
   }
 
-  async function copyProviderKeyPlan() {
-    const plan = providerKeyPlanText({
-      rows: providerUnlockRows,
-      envVars: providerSetupState.envVars,
-      readyModels: providerReadiness?.summary.readyModels,
-      modelCount: providerReadiness?.summary.modelCount ?? config.models.filter((model) => model.provider !== "local").length,
-      keyFilePath: providerEnvStatus?.filePath ?? "user\\frank_create\\provider_keys.env"
-    });
 
-    try {
-      if (!navigator.clipboard?.writeText) {
-        throw new Error("Clipboard API unavailable");
-      }
-      await navigator.clipboard.writeText(plan);
-      setStatusText("Provider key plan copied for Cliff. No secret values included.");
-    } catch {
-      setStatusText("Could not copy the provider key plan. Use the visible Cliff key order instead.");
-    }
-  }
-
-  async function copyProductionUnlockPlan() {
-    if (!activationChecklist) {
-      setStatusText("Run the activation checklist before copying the production unlock plan.");
-      return;
-    }
-
-    const plan = productionUnlockPlanText(activationChecklist);
-    try {
-      if (!navigator.clipboard?.writeText) {
-        throw new Error("Clipboard API unavailable");
-      }
-      await navigator.clipboard.writeText(plan);
-      setStatusText("Production unlock plan copied for Cliff. No secret values included.");
-    } catch {
-      setStatusText("Could not copy the production unlock plan. Use the visible activation checklist instead.");
-    }
-  }
 
   async function buildReadinessPack() {
     setBuildingReadinessPack(true);
@@ -1037,7 +845,6 @@ export default function App() {
             result.provider_readiness.markdown_path
         );
         setProviderReceiptUrl(result.provider_readiness.latest_markdown_url ?? result.provider_readiness.markdown_url);
-        setProviderAudit(result.provider_readiness.receipt.adapter_audit);
       }
       if (result.brand_context) {
         setBrandContextPath(
@@ -1071,137 +878,11 @@ export default function App() {
     }
   }
 
-  async function createServerKeyFile() {
-    setProviderEnvBusy(true);
-    try {
-      const status = await createProviderEnvTemplate();
-      setProviderEnvStatus(status);
-      setStatusText(status.created ? "Server key file created. Fill it, then reload keys." : "Server key file is already there.");
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not create the server key file.");
-    } finally {
-      setProviderEnvBusy(false);
-    }
-  }
 
-  async function reloadServerKeys() {
-    setProviderEnvBusy(true);
-    try {
-      const status = await reloadProviderEnv();
-      setProviderEnvStatus(status);
-      if (status.readiness) {
-        setProviderReadiness(status.readiness);
-        if (status.readiness.models.length) {
-          setConfig((current) => ({ ...current, models: status.readiness!.models }));
-        }
-      }
-      const loadedCount = status.loadedEnvVars?.length ?? 0;
-      const ignoredPlaceholderCount = status.ignoredPlaceholderEnvVars?.length ?? 0;
-      setStatusText(
-        ignoredPlaceholderCount
-          ? `${ignoredPlaceholderCount} placeholder key ${ignoredPlaceholderCount === 1 ? "value was" : "values were"} ignored. Paste rotated keys, then reload.`
-          : loadedCount
-          ? `${loadedCount} server key ${loadedCount === 1 ? "name" : "names"} reloaded.`
-          : "No filled server keys found yet."
-      );
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not reload server keys.");
-    } finally {
-      setProviderEnvBusy(false);
-    }
-  }
 
-  function updateProviderKeyDraft(envVar: string, value: string) {
-    setProviderKeyDraft((current) => ({ ...current, [envVar]: value }));
-  }
 
-  async function saveServerKeys() {
-    const keys = Object.fromEntries(
-      Object.entries(providerKeyDraft)
-        .map(([envVar, value]) => [envVar, value.trim()])
-        .filter(([, value]) => value)
-    );
 
-    if (!Object.keys(keys).length) {
-      setStatusText("Paste at least one rotated provider key first.");
-      return;
-    }
 
-    setProviderEnvBusy(true);
-    try {
-      const status = await saveProviderEnvKeys(keys);
-      setProviderEnvStatus(status);
-      if (status.readiness) {
-        setProviderReadiness(status.readiness);
-        if (status.readiness.models.length) {
-          setConfig((current) => ({ ...current, models: status.readiness!.models }));
-        }
-      }
-      setProviderKeyDraft({});
-      const savedCount = status.savedEnvVars?.length ?? 0;
-      const ignoredPlaceholderCount = status.ignoredPlaceholderEnvVars?.length ?? 0;
-      setStatusText(
-        ignoredPlaceholderCount
-          ? `${ignoredPlaceholderCount} placeholder key ${ignoredPlaceholderCount === 1 ? "value was" : "values were"} ignored. Paste rotated keys before saving.`
-          : savedCount
-          ? `${savedCount} server key ${savedCount === 1 ? "name" : "names"} saved. Secret values stayed server-side.`
-          : "No provider keys were saved."
-      );
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not save server keys.");
-    } finally {
-      setProviderEnvBusy(false);
-    }
-  }
-
-  async function prepareLocalEngine() {
-    if (connection !== "online") {
-      setStatusText("Start ComfyUI before preparing local model folders.");
-      return;
-    }
-
-    setLocalEngineBusy(true);
-    try {
-      const result = await prepareLocalEngineFolders();
-      setConfig((current) => ({ ...current, localEngine: result.localEngine }));
-      const createdCount = result.created_dirs?.length ?? 0;
-      setStatusText(
-        createdCount
-          ? `${createdCount} local model folders created. Add checkpoints, then run Demo Doctor.`
-          : "Local model folders are ready. Add checkpoints, then run Demo Doctor."
-      );
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not prepare local model folders.");
-    } finally {
-      setLocalEngineBusy(false);
-    }
-  }
-
-  function downloadWorkflowBlueprint(blueprint: WorkflowBlueprint) {
-    try {
-      const payload = {
-        product: "Frank Create",
-        key: blueprint.key,
-        label: blueprint.label,
-        use: blueprint.use,
-        node_types: blueprint.node_types,
-        workflow_json: blueprint.workflow_json,
-        provider_keys: "server-side only; no secrets included"
-      };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `${safeFileStem(blueprint.key)}-workflow.json`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
-      setStatusText("Comfy workflow blueprint downloaded.");
-    } catch {
-      setStatusText("Could not download that Comfy workflow blueprint.");
-    }
-  }
 
   async function saveBrandKit() {
     setBrandKitBusy(true);
@@ -5294,15 +4975,6 @@ function modelReferenceLimitAction(model: StudioModel | undefined, referenceCoun
   } before making this round.`;
 }
 
-function providerPreflightStatusLabel(status: ProviderPreflight["status"]) {
-  if (status === "ready") {
-    return "Preflight ready";
-  }
-  if (status === "blocked") {
-    return "Preflight blocked";
-  }
-  return "Preflight unsupported";
-}
 
 function providerSetup(models: StudioModel[]) {
   const waitingModels = models.filter((model) => model.configured === false);
@@ -5392,85 +5064,7 @@ function providerModelEnvVars(model: StudioModel) {
   return Array.from(new Set(envVars));
 }
 
-function providerKeyPlanText({
-  rows,
-  envVars,
-  readyModels,
-  modelCount,
-  keyFilePath
-}: {
-  rows: ReturnType<typeof providerUnlockPlan>;
-  envVars: string[];
-  readyModels?: number;
-  modelCount: number;
-  keyFilePath: string;
-}) {
-  const lines = [
-    "Frank Create Provider Key Plan",
-    "",
-    `Server key file: ${keyFilePath}`,
-    `Provider readiness: ${readyModels ?? 0} / ${modelCount} live provider models ready`,
-    "Provider secret values are not included. Paste rotated keys only into Provider Setup or the local server key file.",
-    ""
-  ];
 
-  if (rows.length) {
-    lines.push("Cliff key order:");
-    rows.forEach((row, index) => {
-      lines.push(`${index + 1}. ${row.label}`);
-      lines.push(`   Keys: ${row.keyCopy}`);
-      lines.push(`   Unlocks: ${row.capabilityCopy}`);
-    });
-  } else {
-    lines.push("Cliff key order: all visible provider rows are unlocked.");
-  }
-
-  if (envVars.length) {
-    lines.push("", `Missing env vars: ${envVars.join(", ")}`);
-  }
-
-  lines.push("", "Rotate any exposed token before live provider use.");
-  return lines.join("\n");
-}
-
-function productionUnlockPlanText(checklist: ActivationChecklist) {
-  const summary = checklist.summary;
-  const lines = [
-    "Frank Create Production Unlock Plan",
-    "",
-    `Status: ${checklist.status}`,
-    `Live model paths unlocked: ${summary.ready_provider_models} / ${activationModelTotal(checklist)}`,
-    `Server key file: ${summary.server_key_file || "user\\frank_create\\provider_keys.env"}`,
-    `Local checkpoints detected: ${summary.checkpoint_count}`,
-    "Allowed provider env vars: GOOGLE_API_KEY, REPLICATE_API_TOKEN, OPENAI_API_KEY",
-    "No provider secret values are included.",
-    ""
-  ];
-
-  lines.push("Actions:");
-  checklist.steps.forEach((step, index) => {
-    lines.push(`${index + 1}. ${step.label} (${step.status})`);
-    lines.push(`   ${step.detail}`);
-    lines.push(`   Action: ${step.action}`);
-    if (step.env_vars?.length) {
-      lines.push(`   Env vars: ${step.env_vars.join(", ")}`);
-    }
-    if (step.path) {
-      const checkpointNote = step.minimum_checkpoint_mb ? `; minimum ${step.minimum_checkpoint_mb} MB` : "";
-      lines.push(`   Path: ${activationPathLabel(step.path)}${checkpointNote}`);
-    }
-  });
-
-  if (summary.missing_env_vars?.length) {
-    lines.push("", `Missing env vars: ${summary.missing_env_vars.join(", ")}`);
-  }
-  if (checklist.notes.length) {
-    lines.push("", "Notes:");
-    checklist.notes.forEach((note) => lines.push(`- ${note}`));
-  }
-  lines.push("", "Paste rotated keys only into Provider Setup or the local server key file.");
-  return lines.join("\n");
-}
 
 function parseReadyStatusLink(text: string) {
   const match = text.match(/^(.+?) link ready: (.+)$/);
