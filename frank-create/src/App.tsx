@@ -86,7 +86,9 @@ import {
   uploadImage
 } from "./lib/api";
 import { AmbientBackground } from "./ds";
-import osLockup from "./ds/assets/logos/autosolutions-os-sm.png";
+// The -md cut (680px wide) serves placements above ~30px tall; -sm mushes the
+// endorsement line when the browser downscales it into a 44px box.
+import osLockup from "./ds/assets/logos/autosolutions-os-md.png";
 import { fallbackBrandKit, fallbackConfig } from "./lib/presets";
 import { supabase } from "./lib/supabaseClient";
 import { assetStatusCopy, createBriefPayload, makeStoredImagePath, makeViewUrl } from "./lib/frankWorkflow";
@@ -2466,19 +2468,11 @@ export default function App() {
       >
         <aside className="guided-header app-sidebar" data-tour-id="app-header" data-tour-active={tourActive("app-header")}>
         <div className="sidebar-brand-block">
-          <svg
-            className="brand-mark sidebar-brand-mark"
-            viewBox="0 0 158 26"
-            role="img"
-            aria-label="art-ificial studio"
-          >
-            <text className="sidebar-lockup-name" x="0" y="19">
-              art-ificial
-            </text>
-            <text className="sidebar-lockup-qualifier" x="94" y="19">
-              STUDIO
-            </text>
-          </svg>
+          {/* role="img" gives the two-part lockup one accessible name. */}
+          <div className="brand-mark sidebar-brand-mark" role="img" aria-label="art-ificial studio">
+            <span className="sidebar-lockup-name">art-ificial</span>
+            <span className="sidebar-lockup-qualifier">studio</span>
+          </div>
         </div>
 
         <nav className="sidebar-nav" aria-label="Frank Create navigation">
@@ -2646,10 +2640,21 @@ export default function App() {
               Brief in plain English. References and settings are optional. Click a pick to edit, approve, or export.
             </p>
           </div>
+          {/* Joined pill cluster: metric over a mono uppercase label. The
+              readable "N rounds" string stays as each cell's accessible name. */}
           <div className="stat-row" aria-label="Studio stats">
-            <span>{turns.length} rounds</span>
-            <span>{approvedCount} approved</span>
-            <span>{favoriteCount} favorites</span>
+            <span aria-label={`${turns.length} rounds`}>
+              <strong>{turns.length}</strong>
+              <small>Rounds</small>
+            </span>
+            <span aria-label={`${approvedCount} approved`}>
+              <strong>{approvedCount}</strong>
+              <small>Approved</small>
+            </span>
+            <span aria-label={`${favoriteCount} favorites`}>
+              <strong>{favoriteCount}</strong>
+              <small>Favourites</small>
+            </span>
           </div>
         </header>
 
@@ -2669,6 +2674,10 @@ export default function App() {
               </button>
             </div>
           ) : null}
+          <div className="thread-head">
+            <h3>Rounds</h3>
+            <span>{displayOutputAssets.length ? `${displayOutputAssets.length} picks` : "Empty"}</span>
+          </div>
           {turns.length ? (
             turns.map((turn) => (
               <article className="turn-card" key={turn.id}>
@@ -2711,6 +2720,13 @@ export default function App() {
           data-tour-id="composer"
           data-tour-active={tourActive("composer")}
         >
+          <div className="composer-head">
+            <span className="eyebrow">Brief</span>
+            <span>
+              {settings.aspect_ratio} &middot; {settings.image_size} &middot; {settings.count}{" "}
+              {settings.count === 1 ? "pick" : "picks"}
+            </span>
+          </div>
           {editSourceAsset ? (
             <div className="edit-banner">
               <ImageIcon size={16} />

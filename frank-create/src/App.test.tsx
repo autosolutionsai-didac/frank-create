@@ -35,7 +35,7 @@ describe("App", () => {
     expect(screen.getByText("Model & output")).toBeInTheDocument();
     expect(screen.queryByText("Provider Setup")).not.toBeInTheDocument();
     expect(screen.queryByText("Demo Doctor")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Workflow Map/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Advanced Graph Workflow Map/i })).not.toBeInTheDocument();
     expect(screen.queryByText("GOOGLE_API_KEY")).not.toBeInTheDocument();
     expect(screen.queryByText(/No diffusion checkpoint detected/i)).not.toBeInTheDocument();
     expect(await screen.findByText("Comfy offline")).toBeInTheDocument();
@@ -542,7 +542,7 @@ describe("App", () => {
     expect(within(advancedDrawer).getByRole("button", { name: /^Close$/i })).toBeInTheDocument();
     expect(screen.getByText("Provider Setup")).toBeInTheDocument();
     expect(screen.getByText("Demo Doctor")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Workflow Map/i })).toBeInTheDocument();
+    expect(within(advancedDrawer).getByRole("button", { name: /Advanced Graph Workflow Map/i })).toBeInTheDocument();
     expect(screen.getByText("Cliff key order")).toBeInTheDocument();
     expect(screen.getAllByText("GOOGLE_API_KEY").length).toBeGreaterThan(0);
 

@@ -4375,7 +4375,7 @@ input {
 .os-topbar-logo img {
   width: 100%;
   height: auto;
-  max-height: 30px;
+  max-height: 44px;
   object-fit: contain;
   display: block;
 }
@@ -4493,32 +4493,53 @@ input {
   justify-content: center;
 }
 
+/* Live text, baseline-aligned: name in ink, qualifier in muted at the same
+   size. Not artwork — it has to pick up the Google Sans webface. */
 .sidebar-brand-mark {
-  width: 152px;
-  height: 26px;
+  width: auto;
+  height: auto;
   margin: 0;
-  display: block;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
   font-size: inherit;
 }
 
-.sidebar-lockup-name {
+/* The rail lockup is plain text, not the boxed two-cell wordmark that
+   .brand-mark span paints for the tenant picker — reset that here. */
+.sidebar-brand-mark span {
+  background: none;
+  border: 0;
+  padding: 0;
+  border-radius: 0;
+}
+
+.sidebar-lockup-name,
+.sidebar-lockup-qualifier {
   font-family: var(--font-display);
-  font-weight: var(--weight-medium);
   font-size: 18px;
-  fill: var(--ink);
+  line-height: 22px;
+  letter-spacing: var(--tracking-tight);
+  text-transform: none;
+}
+
+.sidebar-lockup-name {
+  font-weight: var(--weight-medium);
+  color: var(--ink);
 }
 
 .sidebar-lockup-qualifier {
-  font-family: var(--font-display);
-  font-weight: var(--weight-medium);
-  font-size: 11px;
-  letter-spacing: 2.5px;
-  fill: #8a8a8a;
+  font-weight: 400;
+  color: var(--muted);
 }
 
 .sidebar-nav {
-  flex: 1;
-  min-height: 0;
+  /* Must not shrink below its content: the rows are flex-shrink: 0, so a
+     shrinking nav overflows its box and draws over the footer on short
+     viewports. The rail scrolls instead. */
+  flex: 1 0 auto;
+  min-height: auto;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -5707,4 +5728,121 @@ i {
     height: auto;
     max-height: none;
   }
+}
+
+/* ── main panel details, per the design ──────────────────────────────────
+   Stat cluster: metric over a mono uppercase label, joined by hairlines.
+   Card heads: a mono eyebrow on the left, mono meta on the right. */
+.studio-shell.guided-studio .stat-row span {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 18px;
+}
+
+.studio-shell.guided-studio .stat-row strong {
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
+  font-size: var(--text-title);
+  line-height: 26px;
+  letter-spacing: var(--tracking-tight);
+  color: var(--ink);
+}
+
+.studio-shell.guided-studio .stat-row small {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-light);
+  font-size: var(--text-micro);
+  line-height: 14px;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.composer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.composer-head .eyebrow {
+  margin: 0;
+}
+
+.composer-head > span:last-child {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-light);
+  font-size: var(--text-caption);
+  letter-spacing: var(--tracking-label-sm);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* The rounds head sits inside the ink panel, so it takes on-dark values and
+   owns the panel's top padding and divider. */
+.studio-shell.guided-studio .thread-surface {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-dark-panel);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-card-glow);
+  overflow: hidden;
+  gap: 0;
+}
+
+.thread-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--on-dark-divider);
+}
+
+.thread-head h3 {
+  color: var(--text-on-ink);
+}
+
+.thread-head > span {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-light);
+  font-size: var(--text-caption);
+  letter-spacing: var(--tracking-label-sm);
+  text-transform: uppercase;
+  color: var(--on-dark-tertiary);
+}
+
+/* The rounds and the empty state now live inside that one panel, so they
+   stop being cards of their own. */
+.studio-shell.guided-studio .turn-card,
+.studio-shell.guided-studio .empty-thread {
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.studio-shell.guided-studio .turn-card + .turn-card {
+  border-top: 1px solid var(--on-dark-divider);
+}
+
+.studio-shell.guided-studio .empty-thread {
+  flex: 1;
+  align-content: center;
+  padding: 40px 24px;
+}
+
+.studio-shell.guided-studio .empty-thread span {
+  max-width: 46ch;
+  color: var(--on-dark-body);
+  text-wrap: pretty;
+}
+
+/* Cancel session is a destructive action; it leaves the brief row and sits
+   under it so the row reads add-reference / remix / generate. */
+.studio-shell.guided-studio .composer-cancel-button {
+  margin-left: 0;
+  align-self: flex-start;
 }
