@@ -64,16 +64,16 @@ describe("studio helpers", () => {
     });
   });
 
-  it("advertises local Comfy as the offline-safe Video Lab option", () => {
-    expect(selectModelOptions(fallbackConfig.models, "frank-local-comfy")).toMatchObject({
+  it("advertises the local renderer as the offline-safe Video Lab option", () => {
+    expect(selectModelOptions(fallbackConfig.models, "frank-local-renderer")).toMatchObject({
       canVideo: true,
       resolutionBadge: "Ready"
     });
   });
 
-  it("keeps the fallback launch registry aligned with the Cliff model roster", () => {
+  it("keeps the fallback launch registry aligned with the model roster", () => {
     expect(fallbackConfig.models.map((model) => model.id)).toEqual([
-      "frank-local-comfy",
+      "frank-local-renderer",
       "google-nb-pro",
       "google-nb-2",
       "openai-gpt-image-2",
@@ -119,16 +119,14 @@ describe("studio helpers", () => {
   });
 
   it("names the local engine used for completed rounds", () => {
-    expect(inferenceStatusCopy({ status: "complete", assetCount: 2, localEngine: "comfy" })).toBe(
-      "Comfy round is on the wall."
-    );
+    expect(inferenceStatusCopy({ status: "complete", assetCount: 2 })).toBe("Round is on the wall.");
     expect(
       inferenceStatusCopy({
         status: "complete",
         assetCount: 1,
         localEngine: "fallback",
-        fallbackReason: "No Comfy queue"
+        fallbackReason: "Provider unavailable"
       })
-    ).toBe("Comfy was unavailable, so the fallback renderer made this round.");
+    ).toBe("The provider was unavailable, so the fallback renderer made this round.");
   });
 });

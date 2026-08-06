@@ -70,16 +70,16 @@ export const fallbackConfig: FrankConfig = {
   ],
   models: [
     {
-      id: "frank-local-comfy",
-      label: "Frank Local Comfy Studio",
-      short_label: "Local Comfy",
+      id: "frank-local-renderer",
+      label: "Frank Local Studio",
+      short_label: "Local renderer",
       provider: "local",
-      provider_model: "frank-local-comfy",
+      provider_model: "frank-local-renderer",
       status: "ready",
       badge: "Ready",
       max_resolution_label: "4K",
       description:
-        "Local Comfy-backed product variants, edits, masked retouch demos, crops, export prep, and storyboard motion without API keys.",
+        "Local product variants, edits, masked retouch demos, crops, export prep, and storyboard motion without API keys.",
       capabilities: { generation: true, edit: true, masked_edit: true, video: true },
       allowed_aspect_ratios: ["1:1", "4:5", "3:4", "16:9", "9:16", "3:2", "2:3"],
       allowed_image_sizes: ["1K", "2K", "4K"],
@@ -219,44 +219,13 @@ export const fallbackConfig: FrankConfig = {
     { key: "high-res-master", label: "High-res master", size: "source/upscaled", format: "PNG/TIFF", media_types: ["image"] },
     { key: "video-storyboard", label: "Motion storyboard", size: "source loop", format: "GIF + JSON", media_types: ["video"] }
   ],
-  localEngine: {
-    active_engine: "frank_renderer",
-    diffusion_ready: false,
-    checkpoint_count: 0,
-    checkpoints: [],
-    ignored_checkpoints: [],
-    minimum_checkpoint_mb: 100,
-    checkpoint_dir: "models\\checkpoints",
-    model_root: "models",
-    setup_readme: "models\\FRANK_CREATE_MODELS_README.txt",
-    setup_steps: [
-      "Put a full SDXL-style .safetensors checkpoint in models\\checkpoints for Local Comfy txt2img, reference/edit img2img, and masked inpaint workflows.",
-      "Files smaller than 100 MB are treated as incomplete downloads/placeholders.",
-      "Use the raw Comfy canvas for FLUX or custom loader workflows until a curated FLUX app workflow is added.",
-      "Run Demo Doctor again after adding model files."
-    ],
-    recommended_checkpoints: [
-      {
-        label: "SDXL 1.0 Base or an approved SDXL product checkpoint",
-        use: "Best first local checkpoint for campaign/image rounds, reference-guided edits, and masked retouching through built-in Comfy txt2img/img2img/inpaint workflows.",
-        folder: "models\\checkpoints"
-      },
-      {
-        label: "Frank-approved SDXL LoRA",
-        use: "Later brand-tuning layer for open models after the image set and rights are approved.",
-        folder: "models\\loras"
-      }
-    ],
-    note: "No diffusion checkpoint detected. Local Comfy uses the Frank renderer until a checkpoint is installed."
-  },
   voice: {
     appTitle: "The Art Dept.",
     labTitle: "Frank Body Image Studio",
     primaryAction: "Generate",
     emptyState: "Waiting for the brief...",
     approved: "Approved. Hot."
-  },
-  advancedGraphUrl: "/comfy/"
+  }
 };
 
 export const defaultBrief = {

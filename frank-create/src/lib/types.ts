@@ -75,84 +75,6 @@ export interface BrandKit {
   updated_at?: string;
 }
 
-export interface BrandContextReceiptResult {
-  receipt: {
-    title: string;
-    generated_at: string;
-    session: Record<string, unknown>;
-    summary: {
-      style_guidance_chars: number;
-      negative_prompt_chars: number;
-      reference_notes_chars: number;
-      reference_asset_count: number;
-      approved_asset_count: number;
-      prompt_guided_status: "missing" | "starter" | "ready" | "strong";
-      lora_training_status: "missing" | "starter" | "ready" | "strong";
-      prompt_guided_target: string;
-      lora_training_target: string;
-    };
-    brand_kit: BrandKit;
-    reference_assets: Array<Record<string, unknown>>;
-    approved_assets: Array<Record<string, unknown>>;
-    training_recommendation: Record<string, string>;
-    next_inputs: string[];
-  };
-  markdown_path: string;
-  json_path: string;
-  latest_markdown_path?: string;
-  latest_json_path?: string;
-  markdown_file: string;
-  json_file: string;
-  latest_markdown_file?: string;
-  latest_json_file?: string;
-  markdown_url: string;
-  json_url: string;
-  latest_markdown_url?: string;
-  latest_json_url?: string;
-}
-
-export interface LocalEngineStatus {
-  active_engine: string;
-  diffusion_ready: boolean;
-  checkpoint_count: number;
-  checkpoints: string[];
-  ignored_checkpoints?: Array<{
-    name: string;
-    path?: string;
-    size_bytes?: number;
-    reason?: string;
-  }>;
-  minimum_checkpoint_mb?: number;
-  checkpoint_dir?: string;
-  model_root?: string;
-  setup_readme?: string;
-  setup_steps?: string[];
-  recommended_checkpoints?: Array<{
-    label: string;
-    use: string;
-    folder: string;
-  }>;
-  note: string;
-}
-
-export interface WorkflowBlueprint {
-  key: string;
-  label: string;
-  use: string;
-  node_types: string[];
-  workflow_json: Record<string, unknown>;
-}
-
-export interface WorkflowBlueprintsResponse {
-  status: "ready" | "warning" | "fail";
-  product: string;
-  checkpoint_name: string;
-  source_placeholder?: string;
-  mask_placeholder?: string;
-  note: string;
-  blueprints: WorkflowBlueprint[];
-}
-
 export interface FrankConfig {
   tasks: FrankTask[];
   providers: FrankProvider[];
@@ -160,7 +82,6 @@ export interface FrankConfig {
   models: StudioModel[];
   backlogModels: StudioModel[];
   promptPresets: PromptPreset[];
-  localEngine: LocalEngineStatus;
   voice: {
     appTitle: string;
     labTitle: string;
@@ -168,7 +89,6 @@ export interface FrankConfig {
     emptyState: string;
     approved: string;
   };
-  advancedGraphUrl: string;
 }
 
 export interface ProviderReadiness {
@@ -191,37 +111,6 @@ export interface ProviderReadiness {
   }>;
   models: StudioModel[];
   notes: string[];
-}
-
-export interface ProviderReadinessReceiptResult {
-  receipt: {
-    title: string;
-    generated_at: string;
-    summary: {
-      model_count: number;
-      ready_models: number;
-      waiting_models: number;
-      configured_env_vars: string[];
-      missing_env_vars: string[];
-    };
-    providers: ProviderReadiness["providers"];
-    model_roster: Array<Record<string, unknown>>;
-    adapter_audit: ProviderAdapterAudit;
-    mocked_live_path_coverage: Array<Record<string, unknown>>;
-    notes: string[];
-  };
-  markdown_path: string;
-  json_path: string;
-  latest_markdown_path?: string;
-  latest_json_path?: string;
-  markdown_file: string;
-  json_file: string;
-  latest_markdown_file?: string;
-  latest_json_file?: string;
-  markdown_url: string;
-  json_url: string;
-  latest_markdown_url?: string;
-  latest_json_url?: string;
 }
 
 export interface ActivationChecklist {
@@ -250,22 +139,6 @@ export interface ActivationChecklist {
   notes: string[];
 }
 
-export interface ActivationChecklistReceiptResult {
-  checklist: ActivationChecklist;
-  markdown_path: string;
-  json_path: string;
-  latest_markdown_path?: string;
-  latest_json_path?: string;
-  markdown_file: string;
-  json_file: string;
-  latest_markdown_file?: string;
-  latest_json_file?: string;
-  markdown_url: string;
-  json_url: string;
-  latest_markdown_url?: string;
-  latest_json_url?: string;
-}
-
 export interface ProviderEnvStatus {
   filePath: string;
   fileExists: boolean;
@@ -279,32 +152,6 @@ export interface ProviderEnvStatus {
   ignoredEnvVars?: string[];
   ignoredPlaceholderEnvVars?: string[];
   readiness?: ProviderReadiness;
-}
-
-export interface ProviderPreflight {
-  status: "ready" | "blocked" | "unsupported";
-  ready: boolean;
-  provider?: string | null;
-  model_id?: string;
-  model_label?: string;
-  configured_env_var?: string;
-  missing_env_vars: string[];
-  message: string;
-  payloadPreview: {
-    provider?: string | null;
-    provider_model?: string;
-    model_id?: string;
-    kind: "generate" | "edit" | "masked_edit" | "video";
-    settings?: Record<string, unknown>;
-    reference_count: number;
-    reference_limit: number;
-    source_asset_id?: string;
-    mask_asset_id?: string;
-    frank_body_mode: boolean;
-    preset_key?: string;
-    prompt_length: number;
-    prompt_preview: string;
-  };
 }
 
 export interface ProviderAdapterAudit {
@@ -381,14 +228,6 @@ export interface DemoDoctorStatus {
     workflowSmokeChannelExportFileCount?: number;
     secretIssueCount?: number;
     graphBrandingReady?: boolean;
-    demoEvidenceReady?: boolean;
-    callBriefReady?: boolean;
-    providerReadinessReceiptReady?: boolean;
-    brandContextReceiptReady?: boolean;
-    activationChecklistReady?: boolean;
-    readinessPackReady?: boolean;
-    readinessPackBytes?: number;
-    readinessPackSha256?: string;
     providerAdapterCount?: number;
     missingProviderAdapterCount?: number;
     readyProviderModels: number;
@@ -406,125 +245,6 @@ export interface DemoDoctorStatus {
     action?: string;
   }>;
   notes: string[];
-}
-
-export interface DemoEvidenceResult {
-  evidence: {
-    title: string;
-    generated_at: string;
-    headline: string;
-    status: string;
-    ready_for_demo: boolean;
-    summary: Record<string, unknown>;
-    workflow_smoke: Record<string, unknown>;
-    demo_urls: Record<string, string>;
-  };
-  markdown_path: string;
-  json_path: string;
-  latest_markdown_path?: string;
-  latest_json_path?: string;
-  markdown_file: string;
-  json_file: string;
-  latest_markdown_file?: string;
-  latest_json_file?: string;
-  markdown_url: string;
-  json_url: string;
-  latest_markdown_url?: string;
-  latest_json_url?: string;
-}
-
-export interface DemoCallDecision {
-  status: "GO" | "GO WITH WARNINGS" | "NO-GO" | string;
-  headline: string;
-  can_present: boolean;
-  warning_keys: string[];
-  failure_keys: string[];
-}
-
-export interface DemoCallBriefResult {
-  brief: {
-    title: string;
-    headline: string;
-    ready_for_demo: boolean;
-    call_decision?: DemoCallDecision;
-    [key: string]: unknown;
-  };
-  markdown_path: string;
-  json_path: string;
-  latest_markdown_path?: string;
-  latest_json_path?: string;
-  markdown_file: string;
-  json_file: string;
-  latest_markdown_file?: string;
-  latest_json_file?: string;
-  markdown_url: string;
-  json_url: string;
-  latest_markdown_url?: string;
-  latest_json_url?: string;
-}
-
-export interface DemoReadinessPackResult {
-  file_path: string;
-  file_name: string;
-  download_url: string;
-  latest_file_path?: string;
-  latest_file_name?: string;
-  latest_download_url?: string;
-  checksum_path?: string;
-  checksum_sha256?: string;
-  latest_checksum_path?: string;
-  latest_checksum_sha256?: string;
-  latest_file_size_bytes?: number;
-  latest_implementation_manifest_path?: string;
-  latest_implementation_manifest_url?: string;
-  manifest: {
-    product: string;
-    purpose: string;
-    created_at: string;
-    base_url: string;
-    includes: string[];
-    missing_files: string[];
-    screenshot_count: number;
-    screenshot_capture?: {
-      status: "captured" | "partial" | "skipped" | "failed";
-      generated_at?: string;
-      tool?: string;
-      base_url?: string;
-      captured?: Array<{ key: string; label: string; file: string; url?: string; viewport?: string }>;
-      issues?: Array<{ key: string; label: string; file: string; reason: string }>;
-      issue_count?: number;
-      notes?: string[];
-    };
-    notes: string[];
-    screenshots?: string[];
-    browser_qa?: {
-      status: string;
-      checks: Array<{
-        key: string;
-        label?: string;
-        status?: string;
-        browser_status?: string;
-        detail?: string;
-      }>;
-    };
-    cliff_pack?: {
-      status: "included" | "missing";
-      export_id?: string;
-      session_id?: string;
-      session_name?: string;
-      archive_path?: string | null;
-      approved_asset_count?: number;
-      approved_image_count?: number;
-      approved_video_count?: number;
-      reference_count?: number;
-      detail?: string;
-    };
-  };
-  evidence: DemoEvidenceResult;
-  call_brief?: DemoCallBriefResult;
-  provider_readiness?: ProviderReadinessReceiptResult;
-  activation_checklist?: ActivationChecklistReceiptResult;
-  brand_context?: BrandContextReceiptResult;
 }
 
 export interface Project {
@@ -655,8 +375,8 @@ export interface BriefFormState {
 
 export interface UploadedImage {
   name: string;
-  subfolder?: string;
-  type?: string;
+  storage_path: string;
+  preview_url: string;
 }
 
 export interface StudioSettings {

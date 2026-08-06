@@ -38,19 +38,12 @@ import {
   fetchActivationChecklist,
   assetDownloadUrl,
   assetWorkflowReceiptUrl,
-  comfyCanvasAssetUrl,
   createAsset,
   createAssetChannelSet,
   createBrief,
-  createBrandContextReceipt,
-  createDemoCallBrief,
-  createDemoEvidence,
-  createDemoReadinessPack,
-  createProviderEnvTemplate,
   createExport,
   createInferenceTurn,
   createProject,
-  createProviderReadinessReceipt,
   createReference,
   createSession,
   createSessionHandoff,
@@ -64,19 +57,13 @@ import {
   fetchProviderAudit,
   fetchProviderEnvStatus,
   fetchProviderStatus,
-  fetchWorkflowBlueprints,
   listBriefs,
   listExports,
   listAssets,
   listProjects,
   listSessions,
   listTurns,
-  prepareLocalEngineFolders,
-  preflightProvider,
-  reloadProviderEnv,
   remixPrompt,
-  resetDemo,
-  saveProviderEnvKeys,
   sessionReviewBoardUrl,
   sessionSyncManifestUrl,
   updateAsset,
@@ -91,7 +78,7 @@ import { AmbientBackground } from "./ds";
 import osLockup from "./ds/assets/logos/autosolutions-os-md.png";
 import { fallbackBrandKit, fallbackConfig } from "./lib/presets";
 import { supabase } from "./lib/supabaseClient";
-import { assetStatusCopy, createBriefPayload, makeStoredImagePath, makeViewUrl } from "./lib/frankWorkflow";
+import { assetStatusCopy, createBriefPayload } from "./lib/frankWorkflow";
 import {
   buildTurnRequest,
   defaultStudioSettings,
@@ -110,15 +97,12 @@ import type {
   Brief,
   BriefFormState,
   DemoDoctorStatus,
-  DemoCallDecision,
-  DemoReadinessPackResult,
   ExportRecord,
   ExportPreset,
   FrankConfig,
   FrankTask,
   ProviderAdapterAudit,
   ProviderEnvStatus,
-  ProviderPreflight,
   ProviderReadiness,
   PromptPreset,
   PromptRemixVariant,
@@ -126,9 +110,7 @@ import type {
   StudioModel,
   StudioSession,
   StudioSettings,
-  StudioTurn,
-  WorkflowBlueprint,
-  WorkflowBlueprintsResponse
+  StudioTurn
 } from "./lib/types";
 
 type WalkthroughTarget =
@@ -192,7 +174,7 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   {
     title: "Model summary",
     detail: "The right panel starts with the active model, aspect ratio, image size, and number of picks. This is the quick confidence check before spending an API call.",
-    points: ["Nano Banana Pro is the recommended live proof.", "Local Comfy stays as the clearly labelled fallback.", "Change model opens the full drawer."],
+    points: ["Nano Banana Pro is the recommended live proof.", "The local renderer stays as the clearly labelled fallback.", "Change model opens the full drawer."],
     target: "model-settings"
   },
   {
@@ -219,7 +201,7 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   {
     title: "Review desk",
     detail: "After a result is selected, this panel becomes the review desk. It shows the chosen image and all actions for deciding what happens next.",
-    points: ["Open selected asset for a larger view.", "Review controls stay beside the image.", "Nothing needs the raw Comfy graph for normal review."],
+    points: ["Open selected asset for a larger view.", "Review controls stay beside the image.", "Everything needed for normal review lives right here."],
     target: "review-panel",
     selectOutput: true
   },
@@ -246,7 +228,7 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   },
   {
     title: "Edit, mask, and reuse",
-    detail: "These controls are the production tools: copy the brief, download workflow JSON, open Comfy, edit with the selected model, paint a mask, or reuse a pick as a reference.",
+    detail: "These controls are the production tools: copy the brief, download workflow JSON, edit with the selected model, paint a mask, or reuse a pick as a reference.",
     points: ["Edit with selected model starts image-to-image.", "Paint edit mask appears when the model supports masked edit.", "Use as reference turns a good pick into guidance for the next round."],
     target: "edit-controls",
     selectOutput: true
@@ -267,8 +249,8 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   },
   {
     title: "Advanced tools",
-    detail: "Advanced is for setup, diagnostics, raw Comfy access, provider keys, Demo Doctor, readiness packs, and proof receipts. It is intentionally outside the normal creative path.",
-    points: ["Provider keys are only Gemini, Replicate, and OpenAI.", "Demo Doctor checks call readiness.", "Workflow Map and raw Comfy are escape hatches for power users."],
+    detail: "Advanced is for setup, diagnostics, provider readiness, and the Demo Doctor. It is intentionally outside the normal creative path.",
+    points: ["Provider keys stay server-side.", "Demo Doctor checks demo readiness.", "Workflow Map is the escape hatch for power users."],
     target: "advanced-tools",
     openAdvanced: true
   }
@@ -319,44 +301,15 @@ export default function App() {
   const [providerReadiness, setProviderReadiness] = useState<ProviderReadiness | null>(null);
   const [activationChecklist, setActivationChecklist] = useState<ActivationChecklist | null>(null);
   const [providerEnvStatus, setProviderEnvStatus] = useState<ProviderEnvStatus | null>(null);
-  const [providerKeyDraft, setProviderKeyDraft] = useState<Record<string, string>>({});
-  const [providerPreflight, setProviderPreflight] = useState<ProviderPreflight | null>(null);
   const [providerAudit, setProviderAudit] = useState<ProviderAdapterAudit | null>(null);
   const [brandKit, setBrandKit] = useState<BrandKit>(fallbackBrandKit);
   const [brandKitDraft, setBrandKitDraft] = useState<BrandKit>(fallbackBrandKit);
   const [demoDoctor, setDemoDoctor] = useState<DemoDoctorStatus | null>(null);
-  const [workflowBlueprints, setWorkflowBlueprints] = useState<WorkflowBlueprintsResponse | null>(null);
   const [checkingProviders, setCheckingProviders] = useState(false);
-  const [checkingProviderPreflight, setCheckingProviderPreflight] = useState(false);
   const [checkingProviderAudit, setCheckingProviderAudit] = useState(false);
-  const [savingProviderReceipt, setSavingProviderReceipt] = useState(false);
   const [checkingDemoDoctor, setCheckingDemoDoctor] = useState(false);
-  const [resettingDemo, setResettingDemo] = useState(false);
-  const [savingDemoEvidence, setSavingDemoEvidence] = useState(false);
-  const [savingCallBrief, setSavingCallBrief] = useState(false);
-  const [buildingReadinessPack, setBuildingReadinessPack] = useState(false);
-  const [demoEvidencePath, setDemoEvidencePath] = useState("");
-  const [demoEvidenceUrl, setDemoEvidenceUrl] = useState("");
-  const [callBriefPath, setCallBriefPath] = useState("");
-  const [callBriefUrl, setCallBriefUrl] = useState("");
-  const [callDecision, setCallDecision] = useState<DemoCallDecision | null>(null);
-  const [providerReceiptPath, setProviderReceiptPath] = useState("");
-  const [providerReceiptUrl, setProviderReceiptUrl] = useState("");
-  const [brandContextPath, setBrandContextPath] = useState("");
-  const [brandContextUrl, setBrandContextUrl] = useState("");
-  const [activationChecklistPath, setActivationChecklistPath] = useState("");
-  const [activationChecklistUrl, setActivationChecklistUrl] = useState("");
-  const [readinessPackPath, setReadinessPackPath] = useState("");
-  const [readinessPackUrl, setReadinessPackUrl] = useState("");
-  const [readinessPackSha, setReadinessPackSha] = useState("");
-  const [implementationManifestPath, setImplementationManifestPath] = useState("");
-  const [implementationManifestUrl, setImplementationManifestUrl] = useState("");
-  const [readinessPackManifest, setReadinessPackManifest] = useState<DemoReadinessPackResult["manifest"] | null>(null);
-  const [providerEnvBusy, setProviderEnvBusy] = useState(false);
-  const [localEngineBusy, setLocalEngineBusy] = useState(false);
   const [maskPainterBusy, setMaskPainterBusy] = useState(false);
   const [brandKitBusy, setBrandKitBusy] = useState(false);
-  const [brandContextBusy, setBrandContextBusy] = useState(false);
   const [briefBusy, setBriefBusy] = useState(false);
   const [handoffBusy, setHandoffBusy] = useState(false);
   const [handoffProofText, setHandoffProofText] = useState("");
@@ -402,8 +355,7 @@ export default function App() {
           providerEnvResult,
           activationChecklistResult,
           brandKitResult,
-          projectResult,
-          workflowBlueprintResult
+          projectResult
         ] = await Promise.all([
           listTurns(nextSession.id),
           listAssets({ sessionId: nextSession.id }),
@@ -411,8 +363,7 @@ export default function App() {
           fetchProviderEnvStatus().catch(() => null),
           fetchActivationChecklist().catch(() => null),
           fetchBrandKit().catch(() => null),
-          listProjects().catch(() => ({ projects: [] })),
-          fetchWorkflowBlueprints().catch(() => null)
+          listProjects().catch(() => ({ projects: [] }))
         ]);
         const projectForSession =
           projectResult.projects.find((project) => project.id === nextSession.project_id) ?? projectResult.projects[0] ?? null;
@@ -446,10 +397,9 @@ export default function App() {
           setBrandKit(brandKitResult.brandKit);
           setBrandKitDraft(brandKitResult.brandKit);
         }
-        setWorkflowBlueprints(workflowBlueprintResult);
         setSelectedAsset(firstReviewableAsset(assetResult.assets));
         setConnection("online");
-        setStatusText("Comfy is in the room.");
+        setStatusText("Studio backend connected.");
       } catch {
         if (cancelled) {
           return;
@@ -511,23 +461,6 @@ export default function App() {
     [config.models, connection]
   );
   const providerUnlockRows = useMemo(() => (connection === "online" ? providerUnlockPlan(config.models) : []), [config.models, connection]);
-  const providerKeyEnvVars = useMemo(() => {
-    if (connection !== "online") {
-      return [];
-    }
-    const missingFromStatus = providerEnvStatus?.missingEnvVars ?? [];
-    if (missingFromStatus.length) {
-      return orderProviderEnvVars(missingFromStatus, providerUnlockRows);
-    }
-    if (providerSetupState.envVars.length) {
-      return providerSetupState.envVars;
-    }
-    return orderProviderEnvVars(providerEnvStatus?.envVars ?? [], providerUnlockRows);
-  }, [connection, providerEnvStatus?.envVars, providerEnvStatus?.missingEnvVars, providerSetupState.envVars, providerUnlockRows]);
-  const providerKeyDraftHasValues = useMemo(
-    () => Object.values(providerKeyDraft).some((value) => value.trim().length > 0),
-    [providerKeyDraft]
-  );
   const activePreset = useMemo(
     () => config.promptPresets.find((preset) => preset.key === selectedPresetKey) ?? config.promptPresets[0],
     [config.promptPresets, selectedPresetKey]
@@ -566,7 +499,6 @@ export default function App() {
     if (!selectedModel.capabilities.masked_edit) {
       setMaskAsset(null);
     }
-    setProviderPreflight(null);
   }, [selectedModel]);
 
   useEffect(() => {
@@ -610,18 +542,6 @@ export default function App() {
   );
   const recentExports = useMemo(() => filterExportsForAssets(exports, assets).slice(0, 6), [exports, assets]);
   const showHandoffPanel = Boolean(selectedAsset) || approvedCount > 0 || recentExports.length > 0;
-  const cliffGuideSteps = useMemo(
-    () => buildCliffGuideSteps(outputAssets, referenceAssets, approvedCount, approvedMotionCount),
-    [approvedCount, approvedMotionCount, outputAssets, referenceAssets]
-  );
-  const cliffGuideProofs = useMemo(
-    () => buildCliffGuideProofs(demoDoctor, readinessPackManifest),
-    [demoDoctor, readinessPackManifest]
-  );
-  const launchReadinessItems = useMemo(
-    () => buildLaunchReadinessItems(config, providerSetupState.waitingModels.length, demoDoctor, activationChecklist, readinessPackSha),
-    [activationChecklist, config, demoDoctor, providerSetupState.waitingModels.length, readinessPackSha]
-  );
   const mainDemoSession = useMemo(() => sessions.find(isMainDemoSession) ?? null, [sessions]);
   const showMainDemoAction = Boolean(mainDemoSession && activeSession?.id !== mainDemoSession.id);
 
@@ -856,48 +776,9 @@ export default function App() {
     }
   }
 
-  async function checkSelectedModelPreflight() {
-    if (!selectedModel) {
-      return;
-    }
-    if (connection !== "online") {
-      setStatusText("Start ComfyUI to check the selected model.");
-      return;
-    }
-
-    const kind = studioMode === "video-lab" ? "video" : promptMode;
-    const videoSourceAsset =
-      selectedAsset && selectedAsset.kind !== "reference" && selectedAsset.media_type !== "video"
-        ? selectedAsset
-        : outputAssets.find((asset) => asset.approval_status === "approved" && asset.media_type !== "video") ??
-          outputAssets.find((asset) => asset.media_type !== "video");
-
-    setCheckingProviderPreflight(true);
-    try {
-      const result = await preflightProvider({
-        session_id: activeSession?.id,
-        kind,
-        model: selectedModel.id,
-        prompt,
-        settings,
-        reference_asset_ids: selectedReferenceAssets.map((asset) => asset.id),
-        frank_body_mode: frankBodyMode,
-        preset_key: selectedPresetKey,
-        edit_source_asset_id: kind === "video" ? videoSourceAsset?.id : editSourceAsset?.id,
-        mask_asset_id: kind === "masked_edit" ? maskAsset?.id : undefined
-      });
-      setProviderPreflight(result);
-      setStatusText(result.ready ? `${result.model_label ?? selectedModel.short_label ?? selectedModel.label} preflight ready.` : result.message);
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Selected model preflight failed.");
-    } finally {
-      setCheckingProviderPreflight(false);
-    }
-  }
-
   async function checkProviderAdapterAudit() {
     if (connection !== "online") {
-      setStatusText("Start ComfyUI to audit provider adapters.");
+      setStatusText("Connect the studio backend to audit provider adapters.");
       return;
     }
 
@@ -920,8 +801,7 @@ export default function App() {
     try {
       const report = await fetchDemoDoctor();
       setDemoDoctor(report);
-      hydrateLatestDemoArtifacts(report);
-      setStatusText(report.readyForDemo ? "Demo Doctor says this is ready for Cliff." : "Demo Doctor found setup jobs.");
+      setStatusText(report.readyForDemo ? "Demo Doctor says this demo is ready." : "Demo Doctor found setup jobs.");
     } catch (error) {
       setStatusText(error instanceof Error ? error.message : "Demo Doctor could not run.");
     } finally {
@@ -929,172 +809,6 @@ export default function App() {
     }
   }
 
-  async function resetDemoFromDoctor() {
-    setResettingDemo(true);
-    try {
-      const result = await resetDemo({ create_assets: true });
-      const seededAssets = result.assets ?? [];
-      const seededOutputs = seededAssets.filter((asset) => !["reference", "mask"].includes(asset.kind));
-      const turnSettings = parseJsonRecord(result.turn.settings_json) as Partial<StudioSettings>;
-
-      setSessions([result.session]);
-      setActiveSession(result.session);
-      setProjects([result.project]);
-      setActiveProject(result.project);
-      setProjectName(result.project.name);
-      setBriefs([result.brief]);
-      setActiveBrief(result.brief);
-      setBriefDraft(briefToDraft(result.brief));
-      setTurns([result.turn]);
-      setAssets(seededAssets);
-      setSelectedReferenceIds(referenceIdsFromAssets(seededAssets));
-      setExports([]);
-      setSelectedAsset(firstReviewableAsset(seededOutputs));
-      setLightboxAsset(null);
-      clearEditSource();
-      clearCompare();
-      setPrompt(result.brief.prompt ?? result.turn.prompt ?? "");
-      setPromptRemixes([]);
-      setSelectedPresetKey(result.turn.preset_key ?? result.brief.task_type ?? "product-shot-lab");
-      setSettings((current) => ({ ...current, ...turnSettings }));
-      setDemoDoctor(result.doctor);
-      setDemoEvidencePath("");
-      setDemoEvidenceUrl("");
-      setCallBriefPath("");
-      setCallBriefUrl("");
-      setCallDecision(null);
-      setProviderReceiptPath("");
-      setProviderReceiptUrl("");
-      setBrandContextPath("");
-      setBrandContextUrl("");
-      setActivationChecklistPath("");
-      setActivationChecklistUrl("");
-      setReadinessPackPath("");
-      setReadinessPackUrl("");
-      setReadinessPackSha("");
-      setImplementationManifestPath("");
-      setImplementationManifestUrl("");
-      setReadinessPackManifest(null);
-      setHandoffProofText("");
-      setStatusText("Demo reset. Fresh Frank Body starter session loaded.");
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not reset the Frank demo.");
-    } finally {
-      setResettingDemo(false);
-    }
-  }
-
-  function hydrateLatestDemoArtifacts(report: DemoDoctorStatus) {
-    if (report.summary.demoEvidenceReady) {
-      setDemoEvidencePath("frank-create-demo-evidence-latest.md");
-      setDemoEvidenceUrl("/api/frank/demo/evidence/frank-create-demo-evidence-latest.md");
-    } else {
-      setDemoEvidencePath("");
-      setDemoEvidenceUrl("");
-    }
-
-    if (report.summary.callBriefReady) {
-      setCallBriefPath("frank-create-call-brief-latest.md");
-      setCallBriefUrl("/api/frank/demo/call-brief/frank-create-call-brief-latest.md");
-    } else {
-      setCallBriefPath("");
-      setCallBriefUrl("");
-    }
-    setCallDecision(null);
-
-    if (report.summary.providerReadinessReceiptReady) {
-      setProviderReceiptPath("frank-create-provider-readiness-latest.md");
-      setProviderReceiptUrl("/api/frank/demo/provider-readiness/frank-create-provider-readiness-latest.md");
-    } else {
-      setProviderReceiptPath("");
-      setProviderReceiptUrl("");
-    }
-
-    if (report.summary.brandContextReceiptReady) {
-      setBrandContextPath("frank-create-brand-context-latest.md");
-      setBrandContextUrl("/api/frank/demo/brand-context/frank-create-brand-context-latest.md");
-    } else {
-      setBrandContextPath("");
-      setBrandContextUrl("");
-    }
-
-    if (report.summary.activationChecklistReady) {
-      setActivationChecklistPath("frank-create-activation-checklist-latest.md");
-      setActivationChecklistUrl("/api/frank/demo/activation-checklist/frank-create-activation-checklist-latest.md");
-    } else {
-      setActivationChecklistPath("");
-      setActivationChecklistUrl("");
-    }
-
-    if (report.summary.readinessPackReady) {
-      setReadinessPackPath("frank-create-cliff-readiness-latest.zip");
-      setReadinessPackUrl("/api/frank/demo/readiness-pack/frank-create-cliff-readiness-latest.zip");
-      setReadinessPackSha(report.summary.readinessPackSha256 ?? "");
-      setImplementationManifestPath("frank-create-implementation-manifest-latest.md");
-      setImplementationManifestUrl("/api/frank/demo/readiness-pack/frank-create-implementation-manifest-latest.md");
-      setReadinessPackManifest(null);
-    } else {
-      setReadinessPackPath("");
-      setReadinessPackUrl("");
-      setReadinessPackSha("");
-      setImplementationManifestPath("");
-      setImplementationManifestUrl("");
-      setReadinessPackManifest(null);
-    }
-  }
-
-  async function saveDemoEvidence() {
-    setSavingDemoEvidence(true);
-    try {
-      const result = await createDemoEvidence({ base_url: window.location.origin });
-      setDemoEvidencePath(result.latest_markdown_file ?? result.latest_markdown_path ?? result.markdown_file ?? result.markdown_path);
-      setDemoEvidenceUrl(result.latest_markdown_url ?? result.markdown_url);
-      openStudioLink(result.latest_markdown_url ?? result.markdown_url, "Demo evidence", `Demo evidence saved: ${result.markdown_file}`);
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not save demo evidence.");
-    } finally {
-      setSavingDemoEvidence(false);
-    }
-  }
-
-  async function saveCallBrief() {
-    setSavingCallBrief(true);
-    try {
-      const result = await createDemoCallBrief({ base_url: window.location.origin });
-      setCallBriefPath(result.latest_markdown_file ?? result.latest_markdown_path ?? result.markdown_file ?? result.markdown_path);
-      setCallBriefUrl(result.latest_markdown_url ?? result.markdown_url);
-      setCallDecision(result.brief.call_decision ?? null);
-      openStudioLink(result.latest_markdown_url ?? result.markdown_url, "Call brief", `Call brief saved: ${result.latest_markdown_file ?? result.markdown_file}`);
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not save the call brief.");
-    } finally {
-      setSavingCallBrief(false);
-    }
-  }
-
-  async function saveProviderReadinessReceipt() {
-    if (connection !== "online") {
-      setStatusText("Start ComfyUI to save the provider receipt.");
-      return;
-    }
-
-    setSavingProviderReceipt(true);
-    try {
-      const result = await createProviderReadinessReceipt();
-      setProviderReceiptPath(result.latest_markdown_file ?? result.latest_markdown_path ?? result.markdown_file ?? result.markdown_path);
-      setProviderReceiptUrl(result.latest_markdown_url ?? result.markdown_url);
-      setProviderAudit(result.receipt.adapter_audit);
-      openStudioLink(
-        result.latest_markdown_url ?? result.markdown_url,
-        "Provider receipt",
-        `Provider receipt saved: ${result.latest_markdown_file ?? result.markdown_file}`
-      );
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not save provider readiness receipt.");
-    } finally {
-      setSavingProviderReceipt(false);
-    }
-  }
 
   function openStudioLink(url: string | undefined, label: string, openingText?: string) {
     if (!url) {
@@ -1156,206 +870,13 @@ export default function App() {
     }
   }
 
-  async function buildReadinessPack() {
-    setBuildingReadinessPack(true);
-    try {
-      const result = await createDemoReadinessPack({ base_url: window.location.origin });
-      setDemoEvidencePath(
-        result.evidence.latest_markdown_file ??
-          result.evidence.markdown_file ??
-          result.evidence.latest_markdown_path ??
-          result.evidence.markdown_path
-      );
-      setDemoEvidenceUrl(result.evidence.latest_markdown_url ?? result.evidence.markdown_url);
-      if (result.call_brief) {
-        setCallBriefPath(
-          result.call_brief.latest_markdown_file ??
-            result.call_brief.markdown_file ??
-            result.call_brief.latest_markdown_path ??
-            result.call_brief.markdown_path
-        );
-        setCallBriefUrl(result.call_brief.latest_markdown_url ?? result.call_brief.markdown_url);
-      }
-      if (result.provider_readiness) {
-        setProviderReceiptPath(
-          result.provider_readiness.latest_markdown_file ??
-            result.provider_readiness.markdown_file ??
-            result.provider_readiness.latest_markdown_path ??
-            result.provider_readiness.markdown_path
-        );
-        setProviderReceiptUrl(result.provider_readiness.latest_markdown_url ?? result.provider_readiness.markdown_url);
-        setProviderAudit(result.provider_readiness.receipt.adapter_audit);
-      }
-      if (result.brand_context) {
-        setBrandContextPath(
-          result.brand_context.latest_markdown_file ??
-            result.brand_context.markdown_file ??
-            result.brand_context.latest_markdown_path ??
-            result.brand_context.markdown_path
-        );
-        setBrandContextUrl(result.brand_context.latest_markdown_url ?? result.brand_context.markdown_url);
-      }
-      if (result.activation_checklist) {
-        setActivationChecklistPath(
-          result.activation_checklist.latest_markdown_file ??
-            result.activation_checklist.markdown_file ??
-            result.activation_checklist.latest_markdown_path ??
-            result.activation_checklist.markdown_path
-        );
-        setActivationChecklistUrl(result.activation_checklist.latest_markdown_url ?? result.activation_checklist.markdown_url);
-      }
-      setReadinessPackPath(result.latest_file_name ?? result.latest_file_path ?? result.file_name ?? result.file_path);
-      setReadinessPackUrl(result.latest_download_url ?? result.download_url);
-      setReadinessPackSha(result.latest_checksum_sha256 ?? result.checksum_sha256 ?? "");
-      setImplementationManifestPath(result.latest_implementation_manifest_path ? "frank-create-implementation-manifest-latest.md" : "");
-      setImplementationManifestUrl(result.latest_implementation_manifest_url ?? "");
-      setReadinessPackManifest(result.manifest);
-      openStudioLink(result.latest_download_url ?? result.download_url, "Call pack", `Call pack built: ${result.latest_file_name ?? result.file_name}`);
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not build the call pack.");
-    } finally {
-      setBuildingReadinessPack(false);
-    }
-  }
-
-  async function createServerKeyFile() {
-    setProviderEnvBusy(true);
-    try {
-      const status = await createProviderEnvTemplate();
-      setProviderEnvStatus(status);
-      setStatusText(status.created ? "Server key file created. Fill it, then reload keys." : "Server key file is already there.");
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not create the server key file.");
-    } finally {
-      setProviderEnvBusy(false);
-    }
-  }
-
-  async function reloadServerKeys() {
-    setProviderEnvBusy(true);
-    try {
-      const status = await reloadProviderEnv();
-      setProviderEnvStatus(status);
-      if (status.readiness) {
-        setProviderReadiness(status.readiness);
-        if (status.readiness.models.length) {
-          setConfig((current) => ({ ...current, models: status.readiness!.models }));
-        }
-      }
-      const loadedCount = status.loadedEnvVars?.length ?? 0;
-      const ignoredPlaceholderCount = status.ignoredPlaceholderEnvVars?.length ?? 0;
-      setStatusText(
-        ignoredPlaceholderCount
-          ? `${ignoredPlaceholderCount} placeholder key ${ignoredPlaceholderCount === 1 ? "value was" : "values were"} ignored. Paste rotated keys, then reload.`
-          : loadedCount
-          ? `${loadedCount} server key ${loadedCount === 1 ? "name" : "names"} reloaded.`
-          : "No filled server keys found yet."
-      );
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not reload server keys.");
-    } finally {
-      setProviderEnvBusy(false);
-    }
-  }
-
-  function updateProviderKeyDraft(envVar: string, value: string) {
-    setProviderKeyDraft((current) => ({ ...current, [envVar]: value }));
-  }
-
-  async function saveServerKeys() {
-    const keys = Object.fromEntries(
-      Object.entries(providerKeyDraft)
-        .map(([envVar, value]) => [envVar, value.trim()])
-        .filter(([, value]) => value)
-    );
-
-    if (!Object.keys(keys).length) {
-      setStatusText("Paste at least one rotated provider key first.");
-      return;
-    }
-
-    setProviderEnvBusy(true);
-    try {
-      const status = await saveProviderEnvKeys(keys);
-      setProviderEnvStatus(status);
-      if (status.readiness) {
-        setProviderReadiness(status.readiness);
-        if (status.readiness.models.length) {
-          setConfig((current) => ({ ...current, models: status.readiness!.models }));
-        }
-      }
-      setProviderKeyDraft({});
-      const savedCount = status.savedEnvVars?.length ?? 0;
-      const ignoredPlaceholderCount = status.ignoredPlaceholderEnvVars?.length ?? 0;
-      setStatusText(
-        ignoredPlaceholderCount
-          ? `${ignoredPlaceholderCount} placeholder key ${ignoredPlaceholderCount === 1 ? "value was" : "values were"} ignored. Paste rotated keys before saving.`
-          : savedCount
-          ? `${savedCount} server key ${savedCount === 1 ? "name" : "names"} saved. Secret values stayed server-side.`
-          : "No provider keys were saved."
-      );
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not save server keys.");
-    } finally {
-      setProviderEnvBusy(false);
-    }
-  }
-
-  async function prepareLocalEngine() {
-    if (connection !== "online") {
-      setStatusText("Start ComfyUI before preparing local model folders.");
-      return;
-    }
-
-    setLocalEngineBusy(true);
-    try {
-      const result = await prepareLocalEngineFolders();
-      setConfig((current) => ({ ...current, localEngine: result.localEngine }));
-      const createdCount = result.created_dirs?.length ?? 0;
-      setStatusText(
-        createdCount
-          ? `${createdCount} local model folders created. Add checkpoints, then run Demo Doctor.`
-          : "Local model folders are ready. Add checkpoints, then run Demo Doctor."
-      );
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not prepare local model folders.");
-    } finally {
-      setLocalEngineBusy(false);
-    }
-  }
-
-  function downloadWorkflowBlueprint(blueprint: WorkflowBlueprint) {
-    try {
-      const payload = {
-        product: "Frank Create",
-        key: blueprint.key,
-        label: blueprint.label,
-        use: blueprint.use,
-        node_types: blueprint.node_types,
-        workflow_json: blueprint.workflow_json,
-        provider_keys: "server-side only; no secrets included"
-      };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `${safeFileStem(blueprint.key)}-workflow.json`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
-      setStatusText("Comfy workflow blueprint downloaded.");
-    } catch {
-      setStatusText("Could not download that Comfy workflow blueprint.");
-    }
-  }
 
   async function saveBrandKit() {
     setBrandKitBusy(true);
     try {
       if (connection !== "online") {
         setBrandKit(brandKitDraft);
-        setStatusText("Start ComfyUI to save the Brand Kit server-side.");
+        setStatusText("Connect the studio backend to save the Brand Kit server-side.");
         return;
       }
       const updated = await updateBrandKit(brandKitDraft);
@@ -1369,29 +890,6 @@ export default function App() {
     }
   }
 
-  async function saveBrandContextBrief() {
-    if (connection !== "online") {
-      setStatusText("Start ComfyUI to save the brand context brief.");
-      return;
-    }
-
-    setBrandContextBusy(true);
-    try {
-      const result = await createBrandContextReceipt({ session_id: activeSession?.id });
-      setBrandContextPath(result.latest_markdown_file ?? result.latest_markdown_path ?? result.markdown_file ?? result.markdown_path);
-      setBrandContextUrl(result.latest_markdown_url ?? result.markdown_url);
-      const refs = result.receipt.summary.reference_asset_count;
-      openStudioLink(
-        result.latest_markdown_url ?? result.markdown_url,
-        "Brand context",
-        `Brand context brief saved: ${refs} reference ${refs === 1 ? "asset" : "assets"} counted.`
-      );
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "Could not save the brand context brief.");
-    } finally {
-      setBrandContextBusy(false);
-    }
-  }
 
   async function saveProjectBrief() {
     if (!activeSession) {
@@ -1402,7 +900,7 @@ export default function App() {
     setBriefBusy(true);
     try {
       if (connection !== "online") {
-        setStatusText("Start ComfyUI to save the brief server-side.");
+        setStatusText("Connect the studio backend to save the brief server-side.");
         return;
       }
 
@@ -1524,8 +1022,8 @@ export default function App() {
           const created = await createReference({
             session_id: activeSession.id,
             title: file.name,
-            file_path: makeStoredImagePath(uploaded),
-            preview_url: makeViewUrl(uploaded),
+            file_path: uploaded.storage_path,
+            preview_url: uploaded.preview_url,
             media_type: "image",
             sync_status: "local"
           });
@@ -1557,7 +1055,7 @@ export default function App() {
     if (failedUploads.length && createdAssets.length) {
       setStatusText(`${createdAssets.length} reference${createdAssets.length === 1 ? "" : "s"} locked. ${failedUploads.length} upload${failedUploads.length === 1 ? "" : "s"} failed.`);
     } else if (failedUploads.length) {
-      setStatusText("Reference upload failed. Try again after restarting Comfy.");
+      setStatusText("Reference upload failed. Check the studio backend and try again.");
     } else if (createdAssets.length) {
       setStatusText("Reference locked. Nice.");
     }
@@ -1612,8 +1110,8 @@ export default function App() {
         session_id: sourceAsset.session_id ?? activeSession.id,
         kind: "mask",
         title: file.name,
-        file_path: makeStoredImagePath(uploaded),
-        preview_url: makeViewUrl(uploaded),
+        file_path: uploaded.storage_path,
+        preview_url: uploaded.preview_url,
         media_type: "image",
         source_asset_id: sourceAsset.id,
         sync_status: "local"
@@ -1652,7 +1150,7 @@ export default function App() {
     try {
       await saveMaskFile(file, editSourceAsset);
     } catch {
-      setStatusText("Mask upload failed. Try again after restarting Comfy.");
+      setStatusText("Mask upload failed. Check the studio backend and try again.");
     }
     event.target.value = "";
   }
@@ -1870,7 +1368,7 @@ export default function App() {
     }
 
     if (connection !== "online") {
-      setStatusText("Start Comfy/Frank backend to make the motion board.");
+      setStatusText("Connect the studio backend to make the motion board.");
       return;
     }
 
@@ -1879,7 +1377,7 @@ export default function App() {
         ? selectedAsset
         : outputAssets.find((asset) => asset.approval_status === "approved" && asset.media_type !== "video") ??
           outputAssets.find((asset) => asset.media_type !== "video");
-    const localVideoModel = config.models.find((model) => model.id === "frank-local-comfy");
+    const localVideoModel = config.models.find((model) => model.id === "frank-local-renderer");
     const videoModel =
       selectedModel && selectedModel.provider !== "local" && selectedModel.capabilities.video
         ? selectedModel
@@ -2121,15 +1619,9 @@ export default function App() {
     }
   }
 
-  function openAssetInComfyCanvas(asset: Asset) {
-    const url = comfyCanvasAssetUrl(asset.id);
-    const opened = window.open(url, "_blank");
-    setStatusText(opened ? "Opening this pick in the branded Comfy canvas." : `Comfy canvas link ready: ${url}`);
-  }
-
   async function exportAsset(asset: Asset, preset: ExportPreset) {
     if (connection !== "online") {
-      setStatusText("Start ComfyUI to export this pick.");
+      setStatusText("Connect the studio backend to export this pick.");
       return;
     }
 
@@ -2169,7 +1661,7 @@ export default function App() {
     }
 
     if (connection !== "online") {
-      setStatusText("Start ComfyUI to export a channel set.");
+      setStatusText("Connect the studio backend to export a channel set.");
       return;
     }
 
@@ -2417,7 +1909,6 @@ export default function App() {
         activeSession={activeSession}
         assets={assets}
         connection={connection}
-        rawGraphUrl={config.advancedGraphUrl}
         selectedModel={selectedModel}
         statusText={statusText}
         statusReadyLink={statusReadyLink}
@@ -2526,15 +2017,6 @@ export default function App() {
             <Sparkles size={16} />
             Brand Kit
           </button>
-          <button
-            className="sidebar-nav-button"
-            type="button"
-            aria-label="Open Raw Comfy"
-            onClick={() => openStudioLink(config.advancedGraphUrl, "Raw Comfy canvas")}
-          >
-            <GitBranch size={16} />
-            Raw Comfy
-          </button>
           <button className="sidebar-nav-button" type="button" onClick={startWalkthrough}>
             <MessageSquareText size={16} />
             Demo Walkthrough
@@ -2606,14 +2088,6 @@ export default function App() {
 
         <div className="sidebar-footer-block">
           <p className="sidebar-section-label">Workspace</p>
-          <button
-            className="sidebar-workspace-row"
-            type="button"
-            onClick={() => openStudioLink(config.advancedGraphUrl, "Raw Comfy canvas")}
-          >
-            <span className="series-dot series-1" />
-            Comfy canvas
-          </button>
           <button className="sidebar-workspace-row" type="button" onClick={showGraph}>
             <span className="series-dot series-2" />
             Workflow map
@@ -3136,12 +2610,6 @@ export default function App() {
                     Download workflow JSON
                   </button>
                 ) : null}
-                {selectedAsset.kind !== "reference" ? (
-                  <button className="secondary-button" type="button" onClick={() => openAssetInComfyCanvas(selectedAsset)}>
-                    <GitBranch size={16} />
-                    Open in Comfy Canvas
-                  </button>
-                ) : null}
                 <button className="secondary-button" type="button" onClick={() => startEditFromAsset(selectedAsset)}>
                   <Sparkles size={16} />
                   Edit with selected model
@@ -3317,33 +2785,7 @@ export default function App() {
               {brandKitBusy ? <RefreshCw className="spin" size={14} /> : <CheckCircle2 size={14} />}
               Save Brand Kit
             </button>
-            <button
-              className="mini-button provider-check-button"
-              type="button"
-              aria-label="Save inspector context brief"
-              onClick={saveBrandContextBrief}
-              disabled={connection !== "online" || brandContextBusy}
-            >
-              {brandContextBusy ? <RefreshCw className="spin" size={14} /> : <Download size={14} />}
-              Save context brief
-            </button>
           </div>
-          {brandContextPath ? (
-            <div className="demo-evidence-actions brand-context-actions">
-              <small className="demo-evidence-path">Inspector brand context: {brandContextPath}</small>
-              {brandContextUrl ? (
-                <button
-                  className="mini-button provider-check-button"
-                  type="button"
-                  aria-label="Open inspector context brief"
-                  onClick={() => openStudioLink(brandContextUrl, "Brand context")}
-                >
-                  <ExternalLink size={14} />
-                  Open context brief
-                </button>
-              ) : null}
-            </div>
-          ) : null}
         </section>
 
         <section className="context-section preset-library-section inspector-panel active" aria-label="Prompt preset library">
@@ -3399,7 +2841,7 @@ export default function App() {
           ) : null}
           <span className={`connection-pill ${connection}`}>
             <span />
-            {connection === "online" ? "Comfy connected" : connection === "checking" ? "Checking Comfy" : "Comfy offline"}
+            {connection === "online" ? "Backend connected" : connection === "checking" ? "Checking backend" : "Backend offline"}
           </span>
         </div>
       </aside>
@@ -3415,7 +2857,7 @@ export default function App() {
         <div className="drawer-toolbar advanced-drawer-toolbar">
           <span>
             <strong>Advanced tools</strong>
-            <small>Setup, diagnostics, Comfy, and call-day receipts.</small>
+            <small>Setup, diagnostics, and provider checks.</small>
           </span>
           <button className="mini-button drawer-close-button" type="button" onClick={() => setAdvancedOpen(false)}>
             <XCircle size={14} />
@@ -3427,7 +2869,7 @@ export default function App() {
             <p className="eyebrow">Advanced</p>
             <h3>Workflow Map</h3>
           </div>
-          <p>Power-user route for the Frank-branded flow map and raw Comfy canvas.</p>
+          <p>Power-user route for the Frank-branded flow map.</p>
           <div className="provider-action-row">
             <button
               className="mini-button provider-check-button"
@@ -3437,14 +2879,6 @@ export default function App() {
             >
               <GitBranch size={14} />
               Workflow Map
-            </button>
-            <button
-              className="mini-button provider-check-button"
-              type="button"
-              onClick={() => openStudioLink(config.advancedGraphUrl, "Raw Comfy canvas")}
-            >
-              <ExternalLink size={14} />
-              Raw Comfy
             </button>
           </div>
         </section>
@@ -3526,24 +2960,6 @@ export default function App() {
                 </span>
                 <em>{model.badge}</em>
               </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="control-section launch-readiness" aria-label="Cliff call readiness">
-          <div className="section-title">
-            <p className="eyebrow">Call Ready</p>
-            <h3>{demoDoctor?.headline ?? "Cliff Call Readiness"}</h3>
-          </div>
-          <div className="launch-readiness-grid">
-            {launchReadinessItems.map((item) => (
-              <div className={`launch-readiness-item ${item.status}`} key={item.key}>
-                <span>{item.badge}</span>
-                <div>
-                  <strong>{item.label}</strong>
-                  <small>{item.detail}</small>
-                </div>
-              </div>
             ))}
           </div>
         </section>
@@ -3639,54 +3055,10 @@ export default function App() {
               ))}
             </div>
           ) : null}
-          {providerKeyEnvVars.length ? (
-            <form
-              className="provider-key-editor"
-              aria-label="Save server provider keys"
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (!providerEnvBusy && providerKeyDraftHasValues) {
-                  void saveServerKeys();
-                }
-              }}
-            >
-              <small>Paste rotated keys here to save them server-side. Values clear after save.</small>
-              {providerKeyEnvVars.map((envVar) => (
-                <label key={envVar}>
-                  <span>{envVar}</span>
-                  <input
-                    type="password"
-                    autoComplete="off"
-                    spellCheck={false}
-                    value={providerKeyDraft[envVar] ?? ""}
-                    onChange={(event) => updateProviderKeyDraft(envVar, event.target.value)}
-                    placeholder="paste key"
-                  />
-                </label>
-              ))}
-              <button
-                className="mini-button provider-check-button"
-                type="submit"
-                disabled={providerEnvBusy || !providerKeyDraftHasValues}
-              >
-                {providerEnvBusy ? <RefreshCw className="spin" size={14} /> : <CheckCircle2 size={14} />}
-                Save server keys
-              </button>
-            </form>
-          ) : null}
           <div className="provider-action-row">
             <button className="mini-button provider-check-button" type="button" onClick={checkProviderReadiness} disabled={checkingProviders}>
               {checkingProviders ? <RefreshCw className="spin" size={14} /> : <CheckCircle2 size={14} />}
               Check server keys
-            </button>
-            <button
-              className="mini-button provider-check-button"
-              type="button"
-              onClick={checkSelectedModelPreflight}
-              disabled={checkingProviderPreflight}
-            >
-              {checkingProviderPreflight ? <RefreshCw className="spin" size={14} /> : <Cpu size={14} />}
-              Check selected model
             </button>
             <button
               className="mini-button provider-check-button"
@@ -3697,15 +3069,6 @@ export default function App() {
               {checkingProviderAudit ? <RefreshCw className="spin" size={14} /> : <GitBranch size={14} />}
               Audit roster
             </button>
-            <button
-              className="mini-button provider-check-button"
-              type="button"
-              onClick={saveProviderReadinessReceipt}
-              disabled={connection !== "online" || savingProviderReceipt}
-            >
-              {savingProviderReceipt ? <RefreshCw className="spin" size={14} /> : <Download size={14} />}
-              Save receipt
-            </button>
             <button className="mini-button provider-check-button" type="button" onClick={copyProviderKeyPlan}>
               <Clipboard size={14} />
               Copy key plan
@@ -3714,45 +3077,7 @@ export default function App() {
               <Clipboard size={14} />
               Copy unlock plan
             </button>
-            <button className="mini-button provider-check-button" type="button" onClick={createServerKeyFile} disabled={providerEnvBusy}>
-              {providerEnvBusy ? <RefreshCw className="spin" size={14} /> : <Paperclip size={14} />}
-              Create key file
-            </button>
-            <button className="mini-button provider-check-button" type="button" onClick={reloadServerKeys} disabled={providerEnvBusy}>
-              {providerEnvBusy ? <RefreshCw className="spin" size={14} /> : <RefreshCw size={14} />}
-              Reload keys
-            </button>
           </div>
-          {providerPreflight ? (
-            <div className={`provider-preflight-card ${providerPreflight.status}`} aria-label="Selected model preflight">
-              <strong>{providerPreflightStatusLabel(providerPreflight.status)}</strong>
-              <small>{providerPreflight.message}</small>
-              {providerPreflight.missing_env_vars.length ? (
-                <div className="provider-key-list compact" aria-label="Selected model missing environment variables">
-                  {providerPreflight.missing_env_vars.map((envVar) => (
-                    <code key={envVar}>{envVar}</code>
-                  ))}
-                </div>
-              ) : null}
-              <dl>
-                <div>
-                  <dt>Mode</dt>
-                  <dd>{titleize(providerPreflight.payloadPreview.kind)}</dd>
-                </div>
-                <div>
-                  <dt>Refs</dt>
-                  <dd>
-                    {providerPreflight.payloadPreview.reference_count} / {providerPreflight.payloadPreview.reference_limit || "local"}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Prompt</dt>
-                  <dd>{providerPreflight.payloadPreview.prompt_length} chars</dd>
-                </div>
-              </dl>
-              {providerPreflight.payloadPreview.prompt_preview ? <p>{providerPreflight.payloadPreview.prompt_preview}</p> : null}
-            </div>
-          ) : null}
           {providerAudit ? (
             <div className="provider-audit-card" aria-label="Provider adapter audit">
               <strong>No-spend adapter audit</strong>
@@ -3786,17 +3111,6 @@ export default function App() {
               </div>
             </div>
           ) : null}
-          {providerReceiptPath ? (
-            <div className="demo-evidence-actions provider-receipt-actions">
-              <small className="demo-evidence-path">Provider receipt: {providerReceiptPath}</small>
-              {providerReceiptUrl ? (
-                <button className="mini-button provider-check-button" type="button" onClick={() => openStudioLink(providerReceiptUrl, "Provider receipt")}>
-                  <ExternalLink size={14} />
-                  Open provider receipt
-                </button>
-              ) : null}
-            </div>
-          ) : null}
         </section>
 
         <section className={`control-section demo-doctor ${demoDoctor?.status ?? "idle"}`}>
@@ -3808,7 +3122,7 @@ export default function App() {
           <p>
             {demoDoctor
               ? demoDoctorSummary(demoDoctor)
-              : "Run this before the call to check the local demo path, provider keys, seeded assets, and Comfy shell."}
+              : "Run this before a demo to check provider keys, seeded assets, and the studio backend."}
           </p>
           {demoDoctor ? (
             <div className="doctor-check-list" aria-label="Demo Doctor checks">
@@ -3829,169 +3143,6 @@ export default function App() {
               {checkingDemoDoctor ? <RefreshCw className="spin" size={14} /> : <CheckCircle2 size={14} />}
               Run demo check
             </button>
-            <button className="mini-button provider-check-button" type="button" onClick={resetDemoFromDoctor} disabled={connection !== "online" || resettingDemo}>
-              {resettingDemo ? <RefreshCw className="spin" size={14} /> : <RefreshCw size={14} />}
-              Reset demo
-            </button>
-            <button
-              className="mini-button provider-check-button"
-              type="button"
-              onClick={saveDemoEvidence}
-              disabled={connection !== "online" || savingDemoEvidence}
-            >
-              {savingDemoEvidence ? <RefreshCw className="spin" size={14} /> : <Download size={14} />}
-              Save evidence
-            </button>
-            <button
-              className="mini-button provider-check-button"
-              type="button"
-              onClick={saveCallBrief}
-              disabled={connection !== "online" || savingCallBrief}
-            >
-              {savingCallBrief ? <RefreshCw className="spin" size={14} /> : <Download size={14} />}
-              Call brief
-            </button>
-            <button
-              className="mini-button provider-check-button"
-              type="button"
-              onClick={buildReadinessPack}
-              disabled={connection !== "online" || buildingReadinessPack}
-            >
-              {buildingReadinessPack ? <RefreshCw className="spin" size={14} /> : <Download size={14} />}
-              Build call pack
-            </button>
-          </div>
-          {demoEvidencePath ? (
-            <div className="demo-evidence-actions">
-              <small className="demo-evidence-path">Latest receipt: {demoEvidencePath}</small>
-              {demoEvidenceUrl ? (
-                <button className="mini-button provider-check-button" type="button" onClick={() => openStudioLink(demoEvidenceUrl, "Latest receipt")}>
-                  <ExternalLink size={14} />
-                  Open latest receipt
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-          {callBriefPath ? (
-            <div className="demo-evidence-actions">
-              <small className="demo-evidence-path">Call brief: {callBriefPath}</small>
-              {callDecision ? (
-                <div className={`call-decision-card ${callDecision.can_present ? "ready" : "fail"}`} aria-label="Call-day decision">
-                  <strong>Call decision: {callDecision.status}</strong>
-                  <small>{callDecision.headline}</small>
-                </div>
-              ) : null}
-              {callBriefUrl ? (
-                <button className="mini-button provider-check-button" type="button" onClick={() => openStudioLink(callBriefUrl, "Call brief")}>
-                  <ExternalLink size={14} />
-                  Open call brief
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-          {activationChecklistPath ? (
-            <div className="demo-evidence-actions">
-              <small className="demo-evidence-path">Activation checklist: {activationChecklistPath}</small>
-              {activationChecklistUrl ? (
-                <button className="mini-button provider-check-button" type="button" onClick={() => openStudioLink(activationChecklistUrl, "Activation checklist")}>
-                  <ExternalLink size={14} />
-                  Open activation checklist
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-          {readinessPackPath ? (
-            <div className="demo-evidence-actions">
-              <small className="demo-evidence-path">Call pack: {readinessPackPath}</small>
-              {readinessPackManifest ? (
-                <div className={`readiness-pack-proof ${readinessPackManifest.missing_files.length ? "warning" : "ready"}`}>
-                  <span>
-                    <strong>{readinessPackManifest.includes.length}</strong>
-                    proof files
-                  </span>
-                  <span>
-                    <strong>{readinessPackManifest.screenshot_count}</strong>
-                    screenshots
-                  </span>
-                  <span>
-                    <strong>{readinessPackManifest.missing_files.length}</strong>
-                    missing
-                  </span>
-                  <span>
-                    <strong>{readinessPackManifest.cliff_pack?.status === "included" ? "yes" : "no"}</strong>
-                    Handoff pack
-                  </span>
-                  <span>
-                    <strong>{readinessPackManifest.screenshot_capture?.status ?? "reused"}</strong>
-                    QA capture
-                  </span>
-                  {readinessPackSha ? (
-                    <span className="readiness-pack-sha">
-                      <strong>Verified SHA-256</strong>
-                      {readinessPackSha}
-                    </span>
-                  ) : null}
-                  <p>
-                    {readinessPackManifest.missing_files.length
-                      ? `Missing: ${readinessPackManifest.missing_files.join(", ")}`
-                      : readinessPackManifest.cliff_pack?.status === "included"
-                        ? `Open evidence first. Handoff included with ${readinessPackManifest.cliff_pack.approved_asset_count ?? 0} approved.`
-                        : `Open evidence first. Handoff not bundled: ${readinessPackManifest.cliff_pack?.detail ?? "no approved pack available."}`}
-                  </p>
-                </div>
-              ) : readinessPackSha ? (
-                <div className="readiness-pack-proof ready">
-                  <span className="readiness-pack-sha">
-                    <strong>Verified SHA-256</strong>
-                    {readinessPackSha}
-                  </span>
-                </div>
-              ) : null}
-              {readinessPackUrl ? (
-                <button className="mini-button provider-check-button" type="button" onClick={() => openStudioLink(readinessPackUrl, "Call pack")}>
-                  <ExternalLink size={14} />
-                  Download call pack
-                </button>
-              ) : null}
-              {implementationManifestPath ? (
-                <div className="demo-evidence-actions nested">
-                  <small className="demo-evidence-path">Implementation manifest: {implementationManifestPath}</small>
-                  {implementationManifestUrl ? (
-                    <button
-                      className="mini-button provider-check-button"
-                      type="button"
-                      onClick={() => openStudioLink(implementationManifestUrl, "Implementation manifest")}
-                    >
-                      <ExternalLink size={14} />
-                      Open manifest
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          <div className="cliff-demo-guide" aria-label="Cliff demo guide" data-cliff-guide="true">
-            <div className="cliff-guide-heading">
-              <span>Cliff Run of Show</span>
-              <strong>{demoDoctor?.readyForDemo ? "Ready, with receipts" : "Run Demo Doctor first"}</strong>
-            </div>
-            <div className="cliff-guide-steps">
-              {cliffGuideSteps.map((step, index) => (
-                <div className="cliff-guide-step" key={step.label}>
-                  <span>{index + 1}</span>
-                  <div>
-                    <strong>{step.label}</strong>
-                    <small>{step.detail}</small>
-                  </div>
-                  <em>{step.status}</em>
-                </div>
-              ))}
-            </div>
-            <div className="cliff-guide-proofs" aria-label="Cliff demo proof points">
-              {cliffGuideProofs.map((proof) => (
-                <span key={proof}>{proof}</span>
-              ))}
-            </div>
           </div>
         </section>
 
@@ -4113,73 +3264,6 @@ export default function App() {
             <span>{modelOptions.canEdit ? "Edits" : "Generate only"}</span>
             <span>{modelOptions.referenceLimit} refs</span>
           </div>
-          {selectedModel?.provider === "local" ? (
-            <div className="local-engine-note">
-              <strong>{config.localEngine.diffusion_ready ? "Checkpoint diffusion ready" : "Frank renderer ready"}</strong>
-              <span>
-                {config.localEngine.note}
-                {config.localEngine.diffusion_ready && config.localEngine.checkpoints.length
-                  ? ` (${config.localEngine.checkpoints[0]})`
-                  : ""}
-              </span>
-              <code>{config.localEngine.checkpoint_dir ?? "models\\checkpoints"}</code>
-              {config.localEngine.setup_steps?.length ? (
-                <ul className="local-engine-steps" aria-label="Local model setup steps">
-                  {config.localEngine.setup_steps.slice(0, 3).map((step) => (
-                    <li key={step}>{step}</li>
-                  ))}
-                </ul>
-              ) : null}
-              {config.localEngine.ignored_checkpoints?.length ? (
-                <div className="local-engine-ignored" aria-label="Ignored local checkpoint files">
-                  <strong>Ignored incomplete checkpoint</strong>
-                  {config.localEngine.ignored_checkpoints.slice(0, 3).map((checkpoint) => (
-                    <span key={checkpoint.name}>
-                      {checkpoint.name}
-                      {checkpoint.reason ? ` / ${checkpoint.reason}` : ""}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-              {config.localEngine.recommended_checkpoints?.length ? (
-                <div className="local-engine-picks" aria-label="Starter local model picks">
-                  {config.localEngine.recommended_checkpoints.slice(0, 2).map((pick) => (
-                    <span key={`${pick.label}-${pick.folder}`}>
-                      <b>{pick.label}</b>
-                      {pick.use}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-              {workflowBlueprints?.blueprints?.length ? (
-                <div className="workflow-blueprints" aria-label="Comfy workflow blueprints">
-                  <strong>Comfy workflow blueprints</strong>
-                  <small>{workflowBlueprints.note}</small>
-                  {workflowBlueprints.blueprints.map((blueprint) => (
-                    <div className="workflow-blueprint-row" key={blueprint.key}>
-                      <span>
-                        <b>{blueprint.label}</b>
-                        <em>{blueprint.node_types.join(" -> ")}</em>
-                      </span>
-                      <button
-                        className="icon-button"
-                        type="button"
-                        aria-label={`Download ${blueprint.label} workflow JSON`}
-                        title={`Download ${blueprint.label} workflow JSON`}
-                        onClick={() => downloadWorkflowBlueprint(blueprint)}
-                      >
-                        <Download size={15} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-              <button className="mini-button provider-check-button" type="button" onClick={prepareLocalEngine} disabled={localEngineBusy}>
-                {localEngineBusy ? <RefreshCw className="spin" size={14} /> : <Cpu size={14} />}
-                Prepare model folders
-              </button>
-            </div>
-          ) : null}
         </section>
 
         <section className="control-section toggle-section">
@@ -4232,27 +3316,7 @@ export default function App() {
               {brandKitBusy ? <RefreshCw className="spin" size={14} /> : <CheckCircle2 size={14} />}
               Save Brand Kit
             </button>
-            <button
-              className="mini-button provider-check-button"
-              type="button"
-              onClick={saveBrandContextBrief}
-              disabled={connection !== "online" || brandContextBusy}
-            >
-              {brandContextBusy ? <RefreshCw className="spin" size={14} /> : <Download size={14} />}
-              Save context brief
-            </button>
           </div>
-          {brandContextPath ? (
-            <div className="demo-evidence-actions brand-context-actions">
-              <small className="demo-evidence-path">Brand context: {brandContextPath}</small>
-              {brandContextUrl ? (
-                <button className="mini-button provider-check-button" type="button" onClick={() => openStudioLink(brandContextUrl, "Brand context")}>
-                  <ExternalLink size={14} />
-                  Open context brief
-                </button>
-              ) : null}
-            </div>
-          ) : null}
         </section>
 
         <section className="control-section">
@@ -4679,7 +3743,6 @@ function FrankGraphView({
   activeSession,
   assets,
   connection,
-  rawGraphUrl,
   selectedModel,
   statusText,
   statusReadyLink,
@@ -4691,7 +3754,6 @@ function FrankGraphView({
   activeSession: StudioSession | null;
   assets: Asset[];
   connection: "checking" | "online" | "offline";
-  rawGraphUrl: string;
   selectedModel?: StudioModel;
   statusText: string;
   statusReadyLink: ReturnType<typeof parseReadyStatusLink>;
@@ -4753,8 +3815,8 @@ function FrankGraphView({
       stage: "make",
       tone: "dark",
       title: "Make Magic",
-      meta: selectedModel?.short_label ?? "Local Comfy",
-      detail: "Comfy queue, provider proxy, model settings, and retry-friendly runs.",
+      meta: selectedModel?.short_label ?? "Local renderer",
+      detail: "Inference queue, provider proxy, model settings, and retry-friendly runs.",
       icon: <Cpu size={18} />
     },
     {
@@ -4803,7 +3865,7 @@ function FrankGraphView({
     {
       key: "make",
       title: "Make",
-      helper: "Where Comfy and providers work",
+      helper: "Where the models work",
       nodes: graphNodes.slice(2, 5)
     },
     {
@@ -4829,13 +3891,9 @@ function FrankGraphView({
           <div>
             <p className="eyebrow">Studio workflow map</p>
             <h1>Workflow Map</h1>
-            <p className="graph-kicker">Real node graph lives in Comfy Canvas.</p>
+            <p className="graph-kicker">The studio flow, stage by stage.</p>
           </div>
         </div>
-        <button className="secondary-button graph-raw" type="button" onClick={() => onOpenLink(rawGraphUrl, "Raw Comfy canvas")}>
-          <ExternalLink size={16} />
-          Open Comfy Canvas
-        </button>
       </header>
       <div className="status-strip graph-status-strip">
         <span>{statusText}</span>
@@ -4858,7 +3916,7 @@ function FrankGraphView({
           <div className="graph-canvas-heading">
             <p className="eyebrow">Frank Create</p>
             <h2>From brief to approved asset</h2>
-            <p>Click a stage to see what it owns. Use the Comfy button when you need the raw node canvas.</p>
+            <p>Click a stage to see what it owns.</p>
           </div>
           <div className="graph-flow" aria-label="Studio stages">
             {stageGroups.map((group) => (
@@ -4893,7 +3951,7 @@ function FrankGraphView({
         <aside className="graph-inspector">
           <div className="graph-explainer">
             <p className="eyebrow">What this page is</p>
-            <p>Use it to inspect the Frank Create flow without opening the raw Comfy node canvas.</p>
+            <p>Use it to inspect the Frank Create flow from brief to export.</p>
           </div>
           <div className="graph-selected-panel" aria-label="Selected workflow stage">
             <p className="graph-selected-step">Selected stage {selectedNode.step}</p>
@@ -4904,16 +3962,12 @@ function FrankGraphView({
                 <ArrowLeft size={16} />
                 Use in Studio
               </button>
-              <button className="secondary-button" type="button" onClick={() => onOpenLink(rawGraphUrl, "Raw Comfy canvas")}>
-                <ExternalLink size={16} />
-                Open Comfy Canvas
-              </button>
             </div>
           </div>
           <div className="graph-stat-list">
             <span>
               <strong>{connection === "online" ? "Connected" : connection === "checking" ? "Checking" : "Offline"}</strong>
-              Comfy
+              Backend
             </span>
             <span>
               <strong>{selectedModel?.badge ?? "Ready"}</strong>
@@ -4957,7 +4011,7 @@ function FrankGraphView({
           <div className="graph-mini-node">
             <Box size={18} />
             <span>
-              {selectedModel?.short_label ?? "Local Comfy"} / {selectedModel?.provider ?? "local"}
+              {selectedModel?.short_label ?? "Local renderer"} / {selectedModel?.provider ?? "local"}
             </span>
           </div>
         </aside>
@@ -5310,7 +4364,6 @@ function mergeConfig(config: FrankConfig): FrankConfig {
     exportPresets: config.exportPresets?.length ? config.exportPresets : fallbackConfig.exportPresets,
     tasks: config.tasks?.length ? config.tasks : fallbackConfig.tasks,
     providers: config.providers?.length ? config.providers : fallbackConfig.providers,
-    localEngine: { ...fallbackConfig.localEngine, ...config.localEngine },
     voice: { ...fallbackConfig.voice, ...config.voice }
   };
 }
@@ -5450,7 +4503,7 @@ function shouldAutoOpenProviderAudit() {
 function preferredStudioModel(models: StudioModel[]) {
   return (
     models.find((model) => model.id === "google-nb-pro" && model.configured !== false) ??
-    models.find((model) => model.id === "frank-local-comfy") ??
+    models.find((model) => model.id === "frank-local-renderer") ??
     models[0] ??
     fallbackConfig.models[0]
   );
@@ -5505,7 +4558,6 @@ function selectedAssetRunBrief(asset: Asset, assets: Asset[], config: FrankConfi
     metadata.settingsLabel ? `Settings: ${metadata.settingsLabel}` : "",
     metadata.dimensionsLabel ? `Size: ${metadata.dimensionsLabel}` : "",
     metadata.workflowLabel ? `Workflow: ${metadata.workflowLabel}` : "",
-    workflowBridge.raw_canvas_url ? `Raw Comfy: ${workflowBridge.raw_canvas_url}` : "",
     workflowBridge.workflow_receipt_url ? `Workflow receipt: ${workflowBridge.workflow_receipt_url}` : "",
     metadata.sourceLabel ? `Source: ${metadata.sourceLabel}` : "",
     `References: ${referenceNames.length ? referenceNames.join(", ") : metadata.referenceLabel}`,
@@ -5559,16 +4611,11 @@ function assetWorkflowBridge(asset: Asset, turns: StudioTurn[], workflowProvenan
     : (parseJsonRecord(asset.settings_json ?? turn?.settings_json) as Record<string, unknown>);
   const workflow = workflowProvenance ?? parseJsonRecord(settings.workflow_provenance);
   const workflowJson = parseJsonRecord(workflow.workflow_json);
-  const canLoadComfyApiPrompt = Boolean(Object.keys(workflowJson).length);
   return {
     asset_id: asset.id,
     workflow_key: typeof workflow.workflow_key === "string" ? workflow.workflow_key : asset.model ?? turn?.model ?? null,
     engine: typeof workflow.engine === "string" ? workflow.engine : asset.provider ?? turn?.provider ?? null,
-    can_open_raw_canvas: asset.kind !== "reference",
-    can_load_comfy_api_prompt: canLoadComfyApiPrompt,
-    raw_canvas_load_status: canLoadComfyApiPrompt ? "api_prompt_attached" : "receipt_only",
-    comfy_node_types: workflowNodeTypes(workflow, workflowJson),
-    raw_canvas_url: comfyCanvasAssetUrl(asset.id),
+    node_types: workflowNodeTypes(workflow, workflowJson),
     workflow_receipt_url: assetWorkflowReceiptUrl(asset.id)
   };
 }
@@ -5578,8 +4625,9 @@ function workflowNodeTypes(workflow: Record<string, unknown>, workflowJson: Reco
   if (localNodeTypes.length) {
     return localNodeTypes;
   }
-  if (Array.isArray(workflow.comfy_node_types)) {
-    return workflow.comfy_node_types.filter((item): item is string => typeof item === "string" && item.length > 0);
+  const provenanceNodeTypes = workflow.node_types ?? workflow.comfy_node_types;
+  if (Array.isArray(provenanceNodeTypes)) {
+    return provenanceNodeTypes.filter((item): item is string => typeof item === "string" && item.length > 0);
   }
   return Object.entries(workflowJson)
     .sort(([left], [right]) => workflowNodeSortKey(left).localeCompare(workflowNodeSortKey(right)))
@@ -5749,106 +4797,6 @@ function demoDoctorSummary(doctor: DemoDoctorStatus) {
   return `${doctor.summary.outputAssetCount} outputs, ${doctor.summary.referenceAssetCount} refs, ${smokeCopy}, ${doctor.summary.waitingProviderModels} live models waiting.`;
 }
 
-function buildLaunchReadinessItems(
-  config: FrankConfig,
-  waitingModelCount: number,
-  doctor: DemoDoctorStatus | null,
-  checklist: ActivationChecklist | null,
-  readinessPackSha: string
-) {
-  const hasDiffusionCheckpoint = config.localEngine.diffusion_ready && config.localEngine.checkpoint_count > 0;
-  const liveWaiting = checklist?.summary.waiting_provider_models ?? doctor?.summary.waitingProviderModels ?? waitingModelCount;
-  const packReady = Boolean(readinessPackSha || doctor?.summary.readinessPackReady);
-  const demoIsCurated = doctor ? doctor.summary.demoCurated !== false : true;
-  return [
-    {
-      key: "local-demo",
-      status: doctor?.readyForDemo === false || !demoIsCurated ? "warning" : "ready",
-      badge: doctor?.readyForDemo === false || !demoIsCurated ? "Do" : "OK",
-      label: !demoIsCurated ? "Reset demo before Cliff" : "Local demo ready",
-      detail: !demoIsCurated
-        ? `${doctor?.summary.imageOutputAssetCount ?? doctor?.summary.outputAssetCount ?? 0} visible image outputs; use Reset demo for the clean seed.`
-        : doctor?.summary.workflowSmokeOk
-          ? "Smoke-tested generate, edit, approve, export, and handoff."
-          : "Local Comfy renderer is the fallback path for the call."
-    },
-    {
-      key: "live-keys",
-      status: liveWaiting ? "warning" : "ready",
-      badge: liveWaiting ? "Do" : "OK",
-      label: liveWaiting ? `${liveWaiting} live key models waiting` : "Live APIs unlocked",
-      detail: liveWaiting
-        ? "Use Provider Setup for rotated server-side keys; no browser secrets."
-        : "Provider proxy can run the visible live model roster."
-    },
-    {
-      key: "checkpoint",
-      status: hasDiffusionCheckpoint ? "ready" : "recommended",
-      badge: hasDiffusionCheckpoint ? "OK" : "Tip",
-      label: hasDiffusionCheckpoint ? "Checkpoint installed" : "Checkpoint optional",
-      detail: hasDiffusionCheckpoint
-        ? `${config.localEngine.checkpoint_count} local checkpoint file ready for Comfy workflows.`
-        : "Frank renderer works now; add a checkpoint later for native txt2img/img2img/inpaint."
-    },
-    {
-      key: "proof-pack",
-      status: packReady ? "ready" : "recommended",
-      badge: packReady ? "OK" : "Tip",
-      label: packReady ? "Proof pack ready" : "Build proof pack",
-      detail: readinessPackSha ? `Verified SHA-256 ${readinessPackSha.slice(0, 12)}...` : "Run Demo Doctor, then build the call pack before sending."
-    }
-  ];
-}
-
-function buildCliffGuideSteps(outputAssets: Asset[], referenceAssets: Asset[], approvedCount: number, approvedMotionCount: number) {
-  const reviewableImages = outputAssets.filter((asset) => (asset.media_type ?? "image") !== "video");
-  return [
-    {
-      label: "Image Studio",
-      detail: "Open with sessions, prompt thread, references, model picker, and Brand mode.",
-      status: outputAssets.length ? `${outputAssets.length} outputs` : "seed demo"
-    },
-    {
-      label: "Product Shot Lab",
-      detail: "Use the product presets, run a local round, then approve the best shot.",
-      status: referenceAssets.length ? `${referenceAssets.length} refs` : "add refs"
-    },
-    {
-      label: "Paint edit mask",
-      detail: "Select an image, paint a retouch mask, save it into Masked Edit, then make another round.",
-      status: reviewableImages.length ? "image ready" : "need image"
-    },
-    {
-      label: "Video Lab",
-      detail: "Turn an approved image into a motion storyboard and export the storyboard ZIP.",
-      status: approvedMotionCount ? `${approvedMotionCount} motion` : "storyboard path"
-    },
-    {
-      label: "Advanced Graph",
-      detail: "Open the Frank-branded Comfy escape hatch and raw canvas for power users.",
-      status: approvedCount ? `${approvedCount} approved` : "show escape"
-    }
-  ];
-}
-
-function buildCliffGuideProofs(doctor: DemoDoctorStatus | null, manifest: DemoReadinessPackResult["manifest"] | null) {
-  const screenshots = manifest?.screenshot_count ?? 0;
-  const browserQaChecks = new Set(
-    (manifest?.browser_qa?.checks ?? [])
-      .filter((check) => check.status === "ready" || check.browser_status === "ready")
-      .map((check) => check.key)
-  );
-  return [
-    doctor?.summary.workflowSmokeOk ? "Workflow smoke passed" : "Run workflow smoke",
-    doctor?.summary.activationChecklistReady ? "Production checklist ready" : "Build call pack for checklist",
-    screenshots > 0 ? `${screenshots} QA screenshots ready` : "Build call pack for screenshots",
-    manifest?.cliff_pack?.status === "included" ? "Handoff pack included" : "Export the pack before sending",
-    browserQaChecks.has("studio_model_preflight") ? "Model preflight proved" : "Run selected model preflight",
-    browserQaChecks.has("studio_local_generate") ? "Local Generate proved" : "Run local Generate proof",
-    browserQaChecks.has("studio_masked_edit_generate") ? "Masked edit proved" : "Run masked edit proof"
-  ];
-}
-
 function turnErrorCopy(turn: StudioTurn) {
   if (!turn.error_json) {
     return "";
@@ -5942,16 +4890,6 @@ function modelReferenceLimitAction(model: StudioModel | undefined, referenceCoun
   return `${model.short_label ?? model.label} can use ${limit} references. Remove ${extraCount} ${
     extraCount === 1 ? "reference" : "references"
   } before making this round.`;
-}
-
-function providerPreflightStatusLabel(status: ProviderPreflight["status"]) {
-  if (status === "ready") {
-    return "Preflight ready";
-  }
-  if (status === "blocked") {
-    return "Preflight blocked";
-  }
-  return "Preflight unsupported";
 }
 
 function providerSetup(models: StudioModel[]) {

@@ -89,13 +89,6 @@ const DEFAULT_CONFIG = {
     { key: "default", label: "Default", description: "No styling.", prompt: "" },
     { key: "studio", label: "Studio photo", description: "Clean studio look.", prompt: "studio lighting, high detail, sharp focus" },
   ],
-  localEngine: {
-    active_engine: "lovable",
-    diffusion_ready: true,
-    checkpoint_count: 0,
-    checkpoints: [],
-    note: "Running on Lovable AI Gateway — no local checkpoints required.",
-  },
   voice: {
     appTitle: "Frank Create",
     labTitle: "Studio",
@@ -103,7 +96,6 @@ const DEFAULT_CONFIG = {
     emptyState: "Describe an image to get started.",
     approved: "Approved",
   },
-  advancedGraphUrl: "/comfy/",
 };
 
 // ----- Helpers ----------------------------------------------------------
@@ -387,8 +379,88 @@ async function handleInference(body: any, userId: string) {
     status: "complete" as const,
     assets: [rowToAsset(assetIns.data, url)],
     providerPayload: { provider: "lovable", model: "google/gemini-2.5-flash-image" },
-    localEngine: "fallback" as const,
   };
+}
+
+// Minimal multipart/form-data parser for single-file uploads.
+function parseMultipartFile(body: Buffer, contentType: string): { filename: string; mime: string; data: Buffer } | null {
+  const m = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
+  if (!m) return null;
+  const boundary = Buffer.from(`--${(m[1] || m[2]).trim()}`);
+  let start = body.indexOf(boundary);
+  while (start !== -1) {
+    const headerStart = start + boundary.length + 2; // skip CRLF
+    const headerEnd = body.indexOf("\r\n\r\n", headerStart);
+    if (headerEnd === -1) break;
+    const headers = body.slice(headerStart, headerEnd).toString("utf8");
+    const next = body.indexOf(boundary, headerEnd);
+    if (next === -1) break;
+    if (/name="image"/i.test(headers) && /filename="/i.test(headers)) {
+      const filename = headers.match(/filename="([^"]*)"/i)?.[1] || "upload.png";
+      const mime = headers.match(/Content-Type:\s*([^\r\n]+)/i)?.[1]?.trim() || "image/png";
+      const data = body.slice(headerEnd + 4, next - 2); // trailing CRLF before boundary
+      return { filename, mime, data };
+    }
+    start = next;
+  }
+  return null;
+}
+
+async function readRawBody(req: Connect.IncomingMessage): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) chunks.push(chunk as Buffer);
+  return Buffer.concat(chunks);
+}
+
+async function handleImageUpload(req: Connect.IncomingMessage, userId: string) {
+  const contentType = String(req.headers["content-type"] || "");
+  if (!contentType.startsWith("multipart/form-data")) {
+    throw new Error("Expected multipart/form-data upload");
+  }
+  const file = parseMultipartFile(await readRawBody(req), contentType);
+  if (!file || !file.data.length) {
+    throw new Error("No image found in upload");
+  }
+  const sb = supabase();
+  const ext = (file.mime.split("/")[1] || "png").toLowerCase();
+  const storagePath = `${userId}/uploads/${randomUUID()}.${ext}`;
+  const up = await sb.storage.from(BUCKET).upload(storagePath, file.data, {
+    contentType: file.mime,
+    upsert: false,
+  });
+  if (up.error) throw up.error;
+  return {
+    name: file.filename,
+    storage_path: storagePath,
+    preview_url: await signed(storagePath),
+  };
+}
+
+async function handleCreateAsset(body: any, userId: string, kind: string) {
+  const sb = supabase();
+  const assetId = randomUUID();
+  const ins = await sb
+    .from("assets")
+    .insert({
+      id: assetId,
+      user_id: userId,
+      session_id: body.session_id,
+      storage_path: body.file_path || `${userId}/uploads/${assetId}`,
+      asset_type: body.kind || kind,
+      prompt_snapshot: body.prompt || null,
+      model_key: body.model || null,
+      metadata_json: {
+        title: body.title || "Reference",
+        media_type: body.media_type || "image",
+        source_asset_id: body.source_asset_id,
+        sync_status: body.sync_status || "local",
+      },
+    })
+    .select()
+    .single();
+  if (ins.error) throw ins.error;
+  const previewUrl = typeof body.preview_url === "string" && body.preview_url ? body.preview_url : await signed(ins.data.storage_path);
+  return { asset: rowToAsset(ins.data, previewUrl) };
 }
 
 async function handleRemix(body: any) {
@@ -569,6 +641,24 @@ export function frankApiPlugin(): Plugin {
             return send(res, 200, { turns: (data || []).map(rowToTurn) });
           }
 
+          // Image upload (references, masks)
+          if (url === "/api/upload/image" && req.method === "POST") {
+            const uploaded = await handleImageUpload(req, userId);
+            return send(res, 200, uploaded);
+          }
+
+          // Reference assets
+          if (url === "/api/frank/references" && req.method === "POST") {
+            const body = await readJson(req);
+            return send(res, 200, await handleCreateAsset(body, userId, "reference"));
+          }
+
+          // Generic asset creation (masks, local storyboards)
+          if (url === "/api/frank/assets" && req.method === "POST") {
+            const body = await readJson(req);
+            return send(res, 200, await handleCreateAsset(body, userId, "output"));
+          }
+
           // Assets
           if (url.startsWith("/api/frank/assets") && req.method === "GET") {
             const u = new URL(url, "http://x");
@@ -601,11 +691,6 @@ export function frankApiPlugin(): Plugin {
               status: "blocked",
               error: { code: "video_not_supported", message: "Video is not wired to Lovable AI yet." },
             });
-          }
-
-          // ComfyUI compat stubs
-          if (url === "/api/upload/image" || url === "/api/prompt") {
-            return send(res, 501, { error: { code: "not_implemented", message: "Not supported on Lovable AI backend." } });
           }
 
           // Anything else under /api/frank → empty object so the UI doesn't crash

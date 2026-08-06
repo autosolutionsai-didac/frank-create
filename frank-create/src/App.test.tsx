@@ -8,7 +8,7 @@ describe("App", () => {
   beforeEach(() => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(() => Promise.reject(new Error("Comfy offline")))
+      vi.fn(() => Promise.reject(new Error("Backend offline")))
     );
   });
 
@@ -38,7 +38,7 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: /Advanced Graph Workflow Map/i })).not.toBeInTheDocument();
     expect(screen.queryByText("GOOGLE_API_KEY")).not.toBeInTheDocument();
     expect(screen.queryByText(/No diffusion checkpoint detected/i)).not.toBeInTheDocument();
-    expect(await screen.findByText("Comfy offline")).toBeInTheDocument();
+    expect(await screen.findByText("Backend offline")).toBeInTheDocument();
   });
 
   it("opens the populated demo by default and gives blank sessions a Main demo escape hatch", async () => {
@@ -544,7 +544,7 @@ describe("App", () => {
     expect(screen.getByText("Demo Doctor")).toBeInTheDocument();
     expect(within(advancedDrawer).getByRole("button", { name: /Advanced Graph Workflow Map/i })).toBeInTheDocument();
     expect(screen.getByText("Cliff key order")).toBeInTheDocument();
-    expect(screen.getAllByText("GOOGLE_API_KEY").length).toBeGreaterThan(0);
+    expect(screen.getByText("Live provider checks only run from the local backend.")).toBeInTheDocument();
 
     fireEvent.click(within(advancedDrawer).getByRole("button", { name: /^Close$/i }));
     expect(screen.queryByLabelText("Advanced tools")).not.toBeInTheDocument();
@@ -583,30 +583,10 @@ describe("App", () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     const copied = writeText.mock.calls[0][0] as string;
     expect(copied).toContain("Frank Create Provider Key Plan");
-    expect(copied).toContain("1. Nano Banana Pro + NB 2");
-    expect(copied).toContain("GOOGLE_API_KEY");
-    expect(copied).toContain("2. FLUX Ultra");
-    expect(copied).toContain("REPLICATE_API_TOKEN");
-    expect(copied).toContain("3. gpt-image-2");
-    expect(copied).toContain("OPENAI_API_KEY");
     expect(copied).not.toMatch(/FAL_KEY|RECRAFT|IDEOGRAM|XAI|RUNWAY|Grok|Recraft|Ideogram|Runway/);
     expect(copied).toContain("Provider secret values are not included");
     expect(copied).not.toMatch(/server-side|sk-|r8_|AIza/);
     expect(await screen.findByText("Provider key plan copied for Cliff. No secret values included.")).toBeInTheDocument();
-  });
-
-  it("limits provider key inputs to Gemini, Replicate, and OpenAI", async () => {
-    render(<App />);
-
-    expect(await screen.findByLabelText("art-ificial studio")).toBeInTheDocument();
-    openAdvanced();
-    expect(screen.getByText("Cliff key order")).toBeInTheDocument();
-    const editor = screen.getByLabelText("Save server provider keys");
-    const fieldNames = within(editor)
-      .getAllByText(/_KEY|_TOKEN|_SECRET/)
-      .map((element) => element.textContent ?? "");
-
-    expect(fieldNames).toEqual(["GOOGLE_API_KEY", "REPLICATE_API_TOKEN", "OPENAI_API_KEY"]);
   });
 
   it("marks the studio shell for provider audit screenshot mode", async () => {
@@ -700,7 +680,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText("Comfy is in the room.");
+    await screen.findByText("Studio backend connected.");
     openAdvanced();
     fireEvent.click(screen.getByRole("button", { name: /Audit roster/i }));
 
@@ -785,7 +765,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Comfy is in the room.")).toBeInTheDocument();
+    expect(await screen.findByText("Studio backend connected.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Video$/i }));
     openSessionList();
     fireEvent.click(screen.getByRole("button", { name: /^New session$/i }));
@@ -812,198 +792,6 @@ describe("App", () => {
     expect(await screen.findByLabelText("art-ificial studio")).toBeInTheDocument();
     expect(navButton(container, "Video Lab")).toHaveClass("active");
     expect(screen.getByRole("button", { name: /^Generate$/i })).toBeInTheDocument();
-  });
-
-  it("prepares local Comfy model folders from the studio", async () => {
-    const session = {
-      id: "session-local-engine",
-      name: "Local Engine QA",
-      mode: "image",
-      status: "active",
-      created_at: "2026-06-08T00:00:00Z",
-      updated_at: "2026-06-08T00:00:00Z"
-    };
-    const preparedEngine = {
-      ...fallbackConfig.localEngine,
-      checkpoint_dir: "F:\\AI Project\\Vibe Coding\\frankComfy\\ComfyUI\\models\\checkpoints",
-      setup_readme: "F:\\AI Project\\Vibe Coding\\frankComfy\\ComfyUI\\models\\FRANK_CREATE_MODELS_README.txt"
-    };
-    const calls: string[] = [];
-
-    vi.unstubAllGlobals();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = String(input);
-        const method = init?.method ?? "GET";
-        if (url.endsWith("/api/frank/health")) {
-          return jsonResponse({ ok: true, product: "Frank Create" });
-        }
-        if (url.endsWith("/api/frank/config")) {
-          return jsonResponse(fallbackConfig);
-        }
-        if (url.endsWith("/api/frank/sessions") && method === "GET") {
-          return jsonResponse({ sessions: [session] });
-        }
-        if (url.includes("/api/frank/turns")) {
-          return jsonResponse({ turns: [] });
-        }
-        if (url.includes("/api/frank/assets")) {
-          return jsonResponse({ assets: [] });
-        }
-        if (url.includes("/api/frank/exports")) {
-          return jsonResponse({ exports: [] });
-        }
-        if (url.endsWith("/api/frank/provider-env")) {
-          return jsonResponse({
-            filePath: "user/frank_create/provider_keys.env",
-            fileExists: false,
-            envVars: [],
-            configuredEnvVars: [],
-            missingEnvVars: [],
-            notes: []
-          });
-        }
-        if (url.endsWith("/api/frank/local-engine/setup") && method === "POST") {
-          calls.push(url);
-          return jsonResponse({
-            created_dirs: [
-              "F:\\AI Project\\Vibe Coding\\frankComfy\\ComfyUI\\models\\checkpoints",
-              "F:\\AI Project\\Vibe Coding\\frankComfy\\ComfyUI\\models\\loras"
-            ],
-            readme_path: preparedEngine.setup_readme,
-            localEngine: preparedEngine
-          });
-        }
-        throw new Error(`Unhandled fetch: ${method} ${url}`);
-      })
-    );
-
-    render(<App />);
-
-    await screen.findByText("Comfy is in the room.");
-    openAdvanced();
-    fireEvent.click(screen.getByRole("button", { name: /Prepare model folders/i }));
-
-    expect(await screen.findByText("2 local model folders created. Add checkpoints, then run Demo Doctor.")).toBeInTheDocument();
-    expect(calls).toEqual(["/api/frank/local-engine/setup"]);
-    expect(screen.getByText(preparedEngine.checkpoint_dir)).toBeInTheDocument();
-  });
-
-  it("shows and downloads curated Comfy workflow blueprints", async () => {
-    const session = {
-      id: "session-workflow-blueprints",
-      name: "Workflow Blueprint QA",
-      mode: "image",
-      status: "active",
-      created_at: "2026-06-08T00:00:00Z",
-      updated_at: "2026-06-08T00:00:00Z"
-    };
-    const blueprintPayload = {
-      status: "ready",
-      product: "Frank Create",
-      checkpoint_name: "frank-create-placeholder.safetensors",
-      note: "Blueprints use stock Comfy nodes.",
-      blueprints: [
-        {
-          key: "comfy-checkpoint-txt2img",
-          label: "Checkpoint txt2img",
-          use: "Prompt-only campaign generation.",
-          node_types: ["CheckpointLoaderSimple", "CLIPTextEncode", "KSampler", "VAEDecode", "SaveImage"],
-          workflow_json: {
-            "1": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: "frank-create-placeholder.safetensors" } }
-          }
-        },
-        {
-          key: "comfy-checkpoint-img2img",
-          label: "Checkpoint img2img",
-          use: "Reference-guided product edits.",
-          node_types: ["CheckpointLoaderSimple", "LoadImage", "VAEEncode", "KSampler", "SaveImage"],
-          workflow_json: {
-            "4": { class_type: "VAEEncode", inputs: { pixels: ["3", 0] } }
-          }
-        },
-        {
-          key: "comfy-checkpoint-inpaint",
-          label: "Checkpoint inpaint",
-          use: "Masked retouching.",
-          node_types: ["CheckpointLoaderSimple", "LoadImageMask", "InpaintModelConditioning", "KSampler", "SaveImage"],
-          workflow_json: {
-            "7": { class_type: "InpaintModelConditioning", inputs: { mask: ["4", 0] } }
-          }
-        }
-      ]
-    };
-    const objectUrls: Blob[] = [];
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
-    const createObjectUrlSpy = vi.spyOn(URL, "createObjectURL").mockImplementation((blob) => {
-      objectUrls.push(blob as Blob);
-      return `blob:blueprint-${objectUrls.length}`;
-    });
-    const revokeObjectUrlSpy = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
-    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
-
-    vi.unstubAllGlobals();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = String(input);
-        const method = init?.method ?? "GET";
-        if (url.endsWith("/api/frank/health")) {
-          return jsonResponse({ ok: true, product: "Frank Create" });
-        }
-        if (url.endsWith("/api/frank/config")) {
-          return jsonResponse(fallbackConfig);
-        }
-        if (url.endsWith("/api/frank/local-engine/workflow-blueprints")) {
-          return jsonResponse(blueprintPayload);
-        }
-        if (url.endsWith("/api/frank/sessions") && method === "GET") {
-          return jsonResponse({ sessions: [session] });
-        }
-        if (url.includes("/api/frank/turns")) {
-          return jsonResponse({ turns: [] });
-        }
-        if (url.includes("/api/frank/assets")) {
-          return jsonResponse({ assets: [] });
-        }
-        if (url.includes("/api/frank/exports")) {
-          return jsonResponse({ exports: [] });
-        }
-        if (url.endsWith("/api/frank/provider-env")) {
-          return jsonResponse({
-            filePath: "user/frank_create/provider_keys.env",
-            fileExists: false,
-            envVars: [],
-            configuredEnvVars: [],
-            missingEnvVars: [],
-            notes: []
-          });
-        }
-        throw new Error(`Unhandled fetch: ${method} ${url}`);
-      })
-    );
-
-    render(<App />);
-
-    expect(await screen.findByLabelText("art-ificial studio")).toBeInTheDocument();
-    openAdvanced();
-    expect(screen.getByText("Comfy workflow blueprints")).toBeInTheDocument();
-    expect(screen.getByText("Checkpoint txt2img")).toBeInTheDocument();
-    expect(screen.getByText("Checkpoint img2img")).toBeInTheDocument();
-    expect(screen.getByText("Checkpoint inpaint")).toBeInTheDocument();
-    expect(screen.getByText(/LoadImageMask/)).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /Download Checkpoint inpaint workflow JSON/i }));
-
-    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
-    expect(createObjectUrlSpy).toHaveBeenCalledTimes(1);
-    expect(revokeObjectUrlSpy).toHaveBeenCalledWith("blob:blueprint-1");
-    const downloaded = JSON.parse(await objectUrls[0].text());
-    expect(downloaded.key).toBe("comfy-checkpoint-inpaint");
-    expect(downloaded.workflow_json["7"].class_type).toBe("InpaintModelConditioning");
-    expect(JSON.stringify(downloaded)).not.toMatch(/sk-|r8_|AIza/i);
-    expect(screen.getByText("Comfy workflow blueprint downloaded.")).toBeInTheDocument();
   });
 
   it("loads and saves the Frank Body Brand Kit guidance", async () => {
@@ -1153,12 +941,9 @@ describe("App", () => {
     );
     expect(await screen.findByText("Brand kit saved for brand mode.")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Save context brief/i }));
-
-    await waitFor(() => expect(brandContextRequests).toEqual([{ session_id: session.id }]));
-    expect(await screen.findByText("Brand context: frank-create-brand-context-latest.md")).toBeInTheDocument();
-    expect(await screen.findByText("Brand context link ready: /api/frank/demo/brand-context/frank-create-brand-context-latest.md")).toBeInTheDocument();
-    expect(openSpy).toHaveBeenCalledWith("/api/frank/demo/brand-context/frank-create-brand-context-latest.md", "_blank");
+    expect(screen.queryByRole("button", { name: /Save context brief/i })).not.toBeInTheDocument();
+    expect(brandContextRequests).toEqual([]);
+    expect(openSpy).not.toHaveBeenCalled();
     openSpy.mockRestore();
   });
 
@@ -1624,7 +1409,7 @@ describe("App", () => {
 
     expect(await screen.findByRole("heading", { name: "Workflow Map" })).toBeInTheDocument();
     expect(screen.getByText("Studio workflow map")).toBeInTheDocument();
-    expect(screen.getByText("Real node graph lives in Comfy Canvas.")).toBeInTheDocument();
+    expect(screen.getByText("The studio flow, stage by stage.")).toBeInTheDocument();
     expect(container.querySelector(".graph-shell")).toHaveAttribute("data-frank-surface", "workflow-map");
     expect(screen.queryByText("The Raw Goods")).not.toBeInTheDocument();
 
@@ -1639,7 +1424,7 @@ describe("App", () => {
     expect(within(makeMagicNode).getByText("View details")).toBeInTheDocument();
     let selectedStage = screen.getByLabelText("Selected workflow stage");
     expect(within(selectedStage).getByText("Selected stage 04")).toBeInTheDocument();
-    expect(within(selectedStage).getByText("Comfy queue, provider proxy, model settings, and retry-friendly runs.")).toBeInTheDocument();
+    expect(within(selectedStage).getByText("Inference queue, provider proxy, model settings, and retry-friendly runs.")).toBeInTheDocument();
 
     const briefNode = screen.getByRole("button", { name: /Inspect The Brief/i });
     fireEvent.click(briefNode);
@@ -1657,7 +1442,7 @@ describe("App", () => {
     expect(within(selectedStage).getByText("Channel packs, prompt metadata, and sync-ready files for the next home.")).toBeInTheDocument();
 
     expect(screen.getByText("What this page is")).toBeInTheDocument();
-    expect(screen.getByText("Use it to inspect the Frank Create flow without opening the raw Comfy node canvas.")).toBeInTheDocument();
+    expect(screen.getByText("Use it to inspect the Frank Create flow from brief to export.")).toBeInTheDocument();
     expect(screen.getByLabelText("Workflow receipts")).toBeInTheDocument();
     expect(container.querySelectorAll(".graph-node")).toHaveLength(7);
     const makeStageNodes = Array.from(container.querySelectorAll('[data-brand-stage="make"]'));
@@ -1666,13 +1451,7 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /Back to Studio/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Use in Studio/i })).toBeInTheDocument();
     expect(openSpy).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getAllByRole("button", { name: /Open Comfy Canvas/i })[0]);
-
-    expect(openSpy).toHaveBeenCalledWith("/comfy/", "_blank");
-    expect(screen.getByText("Raw Comfy canvas link ready: /comfy/")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Try Raw Comfy canvas link/i }));
-    expect(openSpy).toHaveBeenLastCalledWith("/comfy/", "_blank");
+    expect(screen.queryByRole("button", { name: /Open Comfy Canvas/i })).not.toBeInTheDocument();
   });
 
   it("checks provider readiness from the server without exposing key values", async () => {
@@ -1776,22 +1555,14 @@ describe("App", () => {
 
     const { container } = render(<App />);
 
-    await screen.findByText("Comfy is in the room.");
+    await screen.findByText("Studio backend connected.");
     openAdvanced();
     fireEvent.click(screen.getByRole("button", { name: /Check server keys/i }));
 
     expect(await screen.findByText("3 / 8 provider models ready")).toBeInTheDocument();
-    expect(screen.getAllByText("OPENAI_API_KEY").length).toBeGreaterThan(0);
     expect(screen.queryByText(/server-side-replicate|server-side-openai/i)).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /Save receipt/i }));
-
-    expect(await screen.findByText("Provider receipt: frank-create-provider-readiness-latest.md")).toBeInTheDocument();
-    expect(openSpy).toHaveBeenCalledWith(
-      "/api/frank/demo/provider-readiness/frank-create-provider-readiness-latest.md",
-      "_blank"
-    );
-    expect(screen.queryByText(/server-side-replicate|server-side-openai/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Save receipt/i })).not.toBeInTheDocument();
+    expect(openSpy).not.toHaveBeenCalled();
     openSpy.mockRestore();
   });
 
@@ -2006,307 +1777,6 @@ describe("App", () => {
     expect(copied).toContain("Rotate the exposed Replicate token");
     expect(copied).toContain("No provider secret values are included.");
     expect(copied).not.toMatch(/sk-|r8_|AIza|server-side-openai|server-side-replicate/i);
-  });
-
-  it("preflights the selected model with server-side key and capability checks", async () => {
-    const session = {
-      id: "session-provider-preflight",
-      name: "Provider Preflight QA",
-      mode: "image",
-      status: "active",
-      created_at: "2026-06-08T00:00:00Z",
-      updated_at: "2026-06-08T00:00:00Z"
-    };
-    const config = {
-      ...fallbackConfig,
-      models: fallbackConfig.models.map((model) =>
-        model.id === "openai-gpt-image-2"
-          ? { ...model, configured: false, missing_env_vars: ["OPENAI_API_KEY"] }
-          : model
-      )
-    };
-    const preflightCalls: unknown[] = [];
-
-    vi.unstubAllGlobals();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = String(input);
-        const method = init?.method ?? "GET";
-        if (url.endsWith("/api/frank/health")) {
-          return jsonResponse({ ok: true, product: "Frank Create" });
-        }
-        if (url.endsWith("/api/frank/config")) {
-          return jsonResponse(config);
-        }
-        if (url.endsWith("/api/frank/sessions") && method === "GET") {
-          return jsonResponse({ sessions: [session] });
-        }
-        if (url.includes("/api/frank/turns")) {
-          return jsonResponse({ turns: [] });
-        }
-        if (url.includes("/api/frank/assets")) {
-          return jsonResponse({ assets: [] });
-        }
-        if (url.endsWith("/api/frank/provider-preflight") && method === "POST") {
-          preflightCalls.push(JSON.parse(String(init?.body)));
-          return jsonResponse({
-            status: "blocked",
-            ready: false,
-            provider: "openai",
-            model_id: "openai-gpt-image-2",
-            model_label: "gpt-image-2",
-            missing_env_vars: ["OPENAI_API_KEY"],
-            message: "Add OPENAI_API_KEY in the server key file, then reload keys.",
-            payloadPreview: {
-              provider: "openai",
-              model_id: "openai-gpt-image-2",
-              provider_model: "gpt-image-2",
-              kind: "generate",
-              reference_count: 0,
-              prompt_length: 27,
-              prompt_preview: "Pink tile product shot."
-            }
-          });
-        }
-        throw new Error(`Unhandled fetch: ${method} ${url}`);
-      })
-    );
-
-    render(<App />);
-
-    await screen.findByText("Comfy is in the room.");
-    openModelSettings();
-    fireEvent.click(screen.getByRole("button", { name: /gpt-image-2/i }));
-    fireEvent.change(screen.getByPlaceholderText(/Brief the image/i), { target: { value: "Pink tile product shot." } });
-    openAdvanced();
-    fireEvent.click(screen.getByRole("button", { name: /Check selected model/i }));
-
-    await waitFor(() =>
-      expect(preflightCalls).toEqual([
-        expect.objectContaining({
-          model: "openai-gpt-image-2",
-          kind: "generate",
-          prompt: "Pink tile product shot."
-        })
-      ])
-    );
-    const preflightCard = screen.getByLabelText("Selected model preflight");
-    expect(within(preflightCard).getByText("Preflight blocked")).toBeInTheDocument();
-    expect(within(preflightCard).getAllByText(/OPENAI_API_KEY/).length).toBeGreaterThan(0);
-    expect(within(preflightCard).getByText(/Pink tile product shot/i)).toBeInTheDocument();
-    expect(screen.queryByText(/server-side-openai/i)).not.toBeInTheDocument();
-  });
-
-  it("creates and reloads the server-side provider key file without exposing values", async () => {
-    const session = {
-      id: "session-provider-env",
-      name: "Provider Env QA",
-      mode: "image",
-      status: "active",
-      created_at: "2026-06-08T00:00:00Z",
-      updated_at: "2026-06-08T00:00:00Z"
-    };
-    const providerEnvPath = "F:\\AI Project\\Vibe Coding\\frankComfy\\ComfyUI\\user\\frank_create\\provider_keys.env";
-    const providerStatus = {
-      summary: {
-        modelCount: 8,
-        readyModels: 2,
-        waitingModels: 6,
-        configuredEnvVars: ["OPENAI_API_KEY"],
-        missingEnvVars: ["GOOGLE_API_KEY"]
-      },
-      providers: [],
-      models: fallbackConfig.models.map((model) =>
-        model.id === "openai-gpt-image-2"
-          ? { ...model, configured: true, configured_env_var: "OPENAI_API_KEY", missing_env_vars: [] }
-          : model
-      ),
-      notes: ["Provider keys are read server-side only."]
-    };
-    const providerEnvCalls: string[] = [];
-    const providerSaveBodies: unknown[] = [];
-
-    vi.unstubAllGlobals();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = String(input);
-        const method = init?.method ?? "GET";
-        if (url.endsWith("/api/frank/health")) {
-          return jsonResponse({ ok: true, product: "Frank Create" });
-        }
-        if (url.endsWith("/api/frank/config")) {
-          return jsonResponse(fallbackConfig);
-        }
-        if (url.endsWith("/api/frank/sessions") && method === "GET") {
-          return jsonResponse({ sessions: [session] });
-        }
-        if (url.includes("/api/frank/turns")) {
-          return jsonResponse({ turns: [] });
-        }
-        if (url.includes("/api/frank/assets")) {
-          return jsonResponse({ assets: [] });
-        }
-        if (url.endsWith("/api/frank/provider-env") && method === "GET") {
-          return jsonResponse({
-            filePath: providerEnvPath,
-            fileExists: false,
-            envVars: ["OPENAI_API_KEY"],
-            configuredEnvVars: [],
-            missingEnvVars: ["OPENAI_API_KEY"],
-            notes: []
-          });
-        }
-        if (url.endsWith("/api/frank/provider-env/template") && method === "POST") {
-          providerEnvCalls.push("template");
-          return jsonResponse({
-            filePath: providerEnvPath,
-            fileExists: true,
-            created: true,
-            envVars: ["OPENAI_API_KEY"],
-            configuredEnvVars: [],
-            missingEnvVars: ["OPENAI_API_KEY"],
-            notes: []
-          }, 201);
-        }
-        if (url.endsWith("/api/frank/provider-env/save") && method === "POST") {
-          providerEnvCalls.push("save");
-          providerSaveBodies.push(JSON.parse(String(init?.body)));
-          return jsonResponse({
-            filePath: providerEnvPath,
-            fileExists: true,
-            envVars: ["OPENAI_API_KEY"],
-            configuredEnvVars: ["OPENAI_API_KEY"],
-            missingEnvVars: [],
-            savedEnvVars: ["OPENAI_API_KEY"],
-            ignoredEnvVars: [],
-            readiness: providerStatus,
-            notes: ["Secret values stay server-side."]
-          });
-        }
-        if (url.endsWith("/api/frank/provider-env/reload") && method === "POST") {
-          providerEnvCalls.push("reload");
-          return jsonResponse({
-            filePath: providerEnvPath,
-            fileExists: true,
-            envVars: ["OPENAI_API_KEY"],
-            configuredEnvVars: ["OPENAI_API_KEY"],
-            missingEnvVars: [],
-            loadedEnvVars: ["OPENAI_API_KEY"],
-            readiness: providerStatus,
-            notes: []
-          });
-        }
-        throw new Error(`Unhandled fetch: ${method} ${url}`);
-      })
-    );
-
-    const { container } = render(<App />);
-
-    await screen.findByLabelText("art-ificial studio");
-    openAdvanced();
-    expect(screen.getByText(providerEnvPath)).toBeInTheDocument();
-    expect(screen.getByText("Create the ignored template first.")).toBeInTheDocument();
-    expect(screen.getByLabelText("Save server provider keys")).toBeInTheDocument();
-
-    fireEvent.change(screen.getByLabelText("OPENAI_API_KEY"), { target: { value: "server-side-openai-secret" } });
-    fireEvent.click(screen.getByRole("button", { name: /Save server keys/i }));
-
-    expect(await screen.findByText("1 server key name saved. Secret values stayed server-side.")).toBeInTheDocument();
-    expect(providerSaveBodies).toEqual([{ keys: { OPENAI_API_KEY: "server-side-openai-secret" } }]);
-    expect(screen.queryByDisplayValue("server-side-openai-secret")).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /Create key file/i }));
-    expect(await screen.findByText("Server key file created. Fill it, then reload keys.")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /Reload keys/i }));
-
-    expect(await screen.findByText("1 server key name reloaded.")).toBeInTheDocument();
-    expect(screen.getByText("2 / 8 provider models ready")).toBeInTheDocument();
-    expect(providerEnvCalls).toEqual(["save", "template", "reload"]);
-    expect(screen.queryByText(/server-side-openai/i)).not.toBeInTheDocument();
-  });
-
-  it("warns when provider key placeholders are ignored", async () => {
-    const session = {
-      id: "session-provider-placeholder",
-      name: "Provider Placeholder QA",
-      mode: "image",
-      status: "active",
-      created_at: "2026-06-08T00:00:00Z",
-      updated_at: "2026-06-08T00:00:00Z"
-    };
-    const providerEnvPath = "F:\\AI Project\\Vibe Coding\\frankComfy\\ComfyUI\\user\\frank_create\\provider_keys.env";
-
-    vi.unstubAllGlobals();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = String(input);
-        const method = init?.method ?? "GET";
-        if (url.endsWith("/api/frank/health")) {
-          return jsonResponse({ ok: true, product: "Frank Create" });
-        }
-        if (url.endsWith("/api/frank/config")) {
-          return jsonResponse(fallbackConfig);
-        }
-        if (url.endsWith("/api/frank/sessions") && method === "GET") {
-          return jsonResponse({ sessions: [session] });
-        }
-        if (url.includes("/api/frank/turns")) {
-          return jsonResponse({ turns: [] });
-        }
-        if (url.includes("/api/frank/assets")) {
-          return jsonResponse({ assets: [] });
-        }
-        if (url.endsWith("/api/frank/provider-env") && method === "GET") {
-          return jsonResponse({
-            filePath: providerEnvPath,
-            fileExists: true,
-            envVars: ["OPENAI_API_KEY"],
-            configuredEnvVars: [],
-            missingEnvVars: ["OPENAI_API_KEY"],
-            notes: []
-          });
-        }
-        if (url.endsWith("/api/frank/provider-env/save") && method === "POST") {
-          return jsonResponse({
-            filePath: providerEnvPath,
-            fileExists: true,
-            envVars: ["OPENAI_API_KEY"],
-            configuredEnvVars: [],
-            missingEnvVars: ["OPENAI_API_KEY"],
-            savedEnvVars: [],
-            ignoredPlaceholderEnvVars: ["OPENAI_API_KEY"],
-            readiness: {
-              summary: {
-                modelCount: 8,
-                readyModels: 1,
-                waitingModels: 7,
-                configuredEnvVars: [],
-                missingEnvVars: ["OPENAI_API_KEY"]
-              },
-              providers: [],
-              models: fallbackConfig.models,
-              notes: []
-            },
-            notes: []
-          });
-        }
-        throw new Error(`Unhandled fetch: ${method} ${url}`);
-      })
-    );
-
-    render(<App />);
-
-    await screen.findByLabelText("art-ificial studio");
-    openAdvanced();
-    expect(screen.getByText(providerEnvPath)).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("OPENAI_API_KEY"), { target: { value: "YOUR_KEY_HERE" } });
-    fireEvent.click(screen.getByRole("button", { name: /Save server keys/i }));
-
-    expect(await screen.findByText("1 placeholder key value was ignored. Paste rotated keys before saving.")).toBeInTheDocument();
   });
 
   it("runs the Demo Doctor readiness check without exposing secrets", async () => {
@@ -2650,267 +2120,34 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText("Comfy is in the room.");
+    await screen.findByText("Studio backend connected.");
     openAdvanced();
     expect(screen.getByText("Demo Doctor")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Run demo check/i }));
 
-    await waitFor(() => expect(screen.getAllByText("Ready for Cliff").length).toBeGreaterThanOrEqual(2));
-    expect(screen.getByText("Reset demo before Cliff")).toBeInTheDocument();
-    expect(screen.getByText("12 visible image outputs; use Reset demo for the clean seed.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText("Ready for Cliff").length).toBeGreaterThanOrEqual(1));
     expect(screen.getByText("12 outputs, 1 refs, workflow smoke passed, 8 live models waiting.")).toBeInTheDocument();
     const doctorCheckList = screen.getByLabelText("Demo Doctor checks");
     expect(screen.getByText("Workflow smoke")).toBeInTheDocument();
     expect(within(doctorCheckList).getByText("Cliff Pack")).toBeInTheDocument();
     expect(within(doctorCheckList).getByText("1 approved asset ready for handoff.")).toBeInTheDocument();
-    expect(within(doctorCheckList).getByText("Demo evidence")).toBeInTheDocument();
-    expect(within(doctorCheckList).getByText("Latest demo evidence receipt is ready.")).toBeInTheDocument();
-    expect(within(doctorCheckList).getByText("Call brief")).toBeInTheDocument();
-    expect(within(doctorCheckList).getByText("Latest one-page Cliff call brief is ready.")).toBeInTheDocument();
-    expect(within(doctorCheckList).getByText("Readiness pack")).toBeInTheDocument();
-    expect(within(doctorCheckList).getByText("Latest Cliff readiness ZIP is ready.")).toBeInTheDocument();
     expect(screen.getByText("Provider keys")).toBeInTheDocument();
     expect(screen.getByText("Local renderer still demos end to end.")).toBeInTheDocument();
-    expect(screen.getByText("Latest receipt: frank-create-demo-evidence-latest.md")).toBeInTheDocument();
-    expect(screen.getByText("Call brief: frank-create-call-brief-latest.md")).toBeInTheDocument();
-    expect(screen.getByText("Call pack: frank-create-cliff-readiness-latest.zip")).toBeInTheDocument();
-    expect(screen.getByText("Verified SHA-256")).toBeInTheDocument();
-    expect(screen.getByText("dbea14b96e7fe0a78a61f8b85c0497a229b7ad26816e25c59b1ef85fae8e38c5")).toBeInTheDocument();
-    expect(screen.getByText("Implementation manifest: frank-create-implementation-manifest-latest.md")).toBeInTheDocument();
     expect(doctorCalls).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: /^Open latest receipt$/i }));
-    expect(openSpy).toHaveBeenCalledWith("/api/frank/demo/evidence/frank-create-demo-evidence-latest.md", "_blank");
-    expect(screen.getByText("Latest receipt link ready: /api/frank/demo/evidence/frank-create-demo-evidence-latest.md")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /^Open call brief$/i }));
-    expect(openSpy).toHaveBeenCalledWith("/api/frank/demo/call-brief/frank-create-call-brief-latest.md", "_blank");
-    expect(screen.getByText("Call brief link ready: /api/frank/demo/call-brief/frank-create-call-brief-latest.md")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /^Download call pack$/i }));
-    expect(openSpy).toHaveBeenCalledWith("/api/frank/demo/readiness-pack/frank-create-cliff-readiness-latest.zip", "_blank");
-    expect(screen.getByText("Call pack link ready: /api/frank/demo/readiness-pack/frank-create-cliff-readiness-latest.zip")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /^Open manifest$/i }));
-    expect(openSpy).toHaveBeenCalledWith("/api/frank/demo/readiness-pack/frank-create-implementation-manifest-latest.md", "_blank");
-    expect(screen.getByText("Implementation manifest link ready: /api/frank/demo/readiness-pack/frank-create-implementation-manifest-latest.md")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Save evidence/i }));
-    expect(await screen.findByText("Demo evidence link ready: /api/frank/demo/evidence/frank-create-demo-evidence-latest.md")).toBeInTheDocument();
-    expect(screen.getByText("Latest receipt: frank-create-demo-evidence-latest.md")).toBeInTheDocument();
-    expect(JSON.parse(evidenceCalls[0])).toMatchObject({ base_url: "http://localhost:3000" });
-    expect(openSpy).toHaveBeenCalledWith("/api/frank/demo/evidence/frank-create-demo-evidence-latest.md", "_blank");
-    fireEvent.click(screen.getByRole("button", { name: /Open latest receipt/i }));
-    expect(openSpy).toHaveBeenCalledWith("/api/frank/demo/evidence/frank-create-demo-evidence-latest.md", "_blank");
-    fireEvent.click(screen.getByRole("button", { name: /^Call brief$/i }));
-    expect(await screen.findByText("Call brief link ready: /api/frank/demo/call-brief/frank-create-call-brief-latest.md")).toBeInTheDocument();
-    expect(screen.getByText("Call brief: frank-create-call-brief-latest.md")).toBeInTheDocument();
-    expect(screen.getByText("Call decision: GO WITH WARNINGS")).toBeInTheDocument();
-    expect(screen.getByText("Present the local demo; name the expected live-key/checkpoint caveats.")).toBeInTheDocument();
-    expect(JSON.parse(callBriefCalls[0])).toMatchObject({ base_url: "http://localhost:3000" });
-    expect(openSpy).toHaveBeenCalledWith("/api/frank/demo/call-brief/frank-create-call-brief-latest.md", "_blank");
-    fireEvent.click(screen.getByRole("button", { name: /Open call brief/i }));
-    expect(openSpy).toHaveBeenCalledWith("/api/frank/demo/call-brief/frank-create-call-brief-latest.md", "_blank");
-    fireEvent.click(screen.getByRole("button", { name: /Build call pack/i }));
-    expect(await screen.findByText("Call pack link ready: /api/frank/demo/readiness-pack/frank-create-cliff-readiness-latest.zip")).toBeInTheDocument();
-    expect(screen.getByText("Call pack: frank-create-cliff-readiness-latest.zip")).toBeInTheDocument();
-    expect(screen.getByText("Implementation manifest: frank-create-implementation-manifest-latest.md")).toBeInTheDocument();
-    expect(screen.getByText("Call brief: frank-create-call-brief-latest.md")).toBeInTheDocument();
-    expect(screen.getByText("Activation checklist: frank-create-activation-checklist-latest.md")).toBeInTheDocument();
-    expect(screen.getByText("proof files")).toBeInTheDocument();
-    expect(screen.getByText("screenshots")).toBeInTheDocument();
-    expect(screen.getByText("missing")).toBeInTheDocument();
-    expect(screen.getByText("QA capture")).toBeInTheDocument();
-    expect(screen.getByText("captured")).toBeInTheDocument();
-    expect(screen.getAllByText("Verified SHA-256").length).toBeGreaterThan(0);
-    expect(screen.getByText("370ca38e9dddc96f774239d836d4b18b2a599b68f19544a3281145b2130cc353")).toBeInTheDocument();
-    expect(screen.getAllByText("Cliff Pack").length).toBeGreaterThan(0);
-    expect(screen.getByText("Open evidence first. Handoff included with 1 approved.")).toBeInTheDocument();
-    const cliffGuide = screen.getByLabelText("Cliff demo guide");
-    expect(within(cliffGuide).getByText("Cliff Run of Show")).toBeInTheDocument();
-    expect(within(cliffGuide).getByText("Image Studio")).toBeInTheDocument();
-    expect(within(cliffGuide).getByText("Product Shot Lab")).toBeInTheDocument();
-    expect(within(cliffGuide).getByText("Paint edit mask")).toBeInTheDocument();
-    expect(within(cliffGuide).getByText("Video Lab")).toBeInTheDocument();
-    expect(within(cliffGuide).getByText("Advanced Graph")).toBeInTheDocument();
-    expect(within(cliffGuide).getByText("Production checklist ready")).toBeInTheDocument();
-    expect(within(cliffGuide).getByText("6 QA screenshots ready")).toBeInTheDocument();
-    expect(within(cliffGuide).getByText("Model preflight proved")).toBeInTheDocument();
-    expect(within(cliffGuide).getByText("Local Generate proved")).toBeInTheDocument();
-    expect(within(cliffGuide).getByText("Masked edit proved")).toBeInTheDocument();
-    expect(within(cliffGuide).getByText("Handoff pack included")).toBeInTheDocument();
-    expect(JSON.parse(readinessPackCalls[0])).toMatchObject({ base_url: "http://localhost:3000" });
-    expect(openSpy).toHaveBeenCalledWith("/api/frank/demo/readiness-pack/frank-create-cliff-readiness-latest.zip", "_blank");
-    fireEvent.click(screen.getByRole("button", { name: /Download call pack/i }));
-    expect(openSpy).toHaveBeenCalledWith("/api/frank/demo/readiness-pack/frank-create-cliff-readiness-latest.zip", "_blank");
-    fireEvent.click(screen.getByRole("button", { name: /Open manifest/i }));
-    expect(openSpy).toHaveBeenCalledWith("/api/frank/demo/readiness-pack/frank-create-implementation-manifest-latest.md", "_blank");
-    fireEvent.click(screen.getByRole("button", { name: /Open activation checklist/i }));
-    expect(openSpy).toHaveBeenCalledWith(
-      "/api/frank/demo/activation-checklist/frank-create-activation-checklist-latest.md",
-      "_blank"
-    );
-    expect(
-      screen.getByText("Activation checklist link ready: /api/frank/demo/activation-checklist/frank-create-activation-checklist-latest.md")
-    ).toBeInTheDocument();
+    expect(evidenceCalls).toHaveLength(0);
+    expect(callBriefCalls).toHaveLength(0);
+    expect(readinessPackCalls).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: /Save evidence/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Build call pack/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Reset demo/i })).not.toBeInTheDocument();
+    expect(openSpy).not.toHaveBeenCalled();
     expect(screen.queryByText(/server-side-openai|sk-|r8_/i)).not.toBeInTheDocument();
-  });
-
-  it("resets the local Cliff demo from Demo Doctor", async () => {
-    const scratchSession = {
-      id: "session-scratch",
-      name: "Messy Scratch",
-      mode: "image",
-      status: "active",
-      created_at: "2026-06-08T00:00:00Z",
-      updated_at: "2026-06-08T00:00:00Z"
-    };
-    const demoSession = {
-      ...scratchSession,
-      id: "session-demo-reset",
-      name: "Frank Body Demo Studio",
-      project_id: "project-demo",
-      summary: "Coffee Scrub Product Image Lab"
-    };
-    const project = { id: "project-demo", name: "Frank Body Demo Campaign", client: "Frank Body", status: "active" };
-    const brief = {
-      id: "brief-demo",
-      project_id: project.id,
-      title: "Coffee Scrub Product Image Lab",
-      product_name: "Original Coffee Scrub",
-      task_type: "product-shot-lab",
-      channel: "PDP / paid social",
-      tone: "cheeky-director-ready",
-      prompt: "Place this Frank Body coffee scrub as a clean ecommerce product shot on a soft pink counter.",
-      negative_prompt: "Avoid warped labels.",
-      status: "draft"
-    };
-    const turn = {
-      id: "turn-demo-reset",
-      session_id: demoSession.id,
-      kind: "generate",
-      provider: "local",
-      model: "frank-local-comfy",
-      prompt: brief.prompt,
-      settings_json: JSON.stringify({ aspect_ratio: "1:1", image_size: "2K", count: 4 }),
-      reference_asset_ids_json: JSON.stringify(["asset-reference"]),
-      frank_body_mode: false,
-      preset_key: "product-shot-lab",
-      status: "complete"
-    };
-    const reference = {
-      id: "asset-reference",
-      session_id: demoSession.id,
-      kind: "reference",
-      title: "Frank Body Coffee Scrub Reference",
-      media_type: "image",
-      file_path: "input/frank_create/reference.png",
-      preview_url: "/api/view?filename=reference.png&type=input&subfolder=frank_create",
-      approval_status: "review"
-    };
-    const output = {
-      id: "asset-output",
-      session_id: demoSession.id,
-      turn_id: turn.id,
-      kind: "candidate",
-      title: "Local Comfy Product Shot",
-      media_type: "image",
-      file_path: "output/frank_create/output.png",
-      preview_url: "/api/view?filename=output.png&type=output&subfolder=frank_create",
-      approval_status: "review"
-    };
-    const doctor = {
-      status: "ready_with_warnings",
-      readyForDemo: true,
-      headline: "Ready for Cliff",
-      summary: {
-        activeSessionCount: 1,
-        outputAssetCount: 4,
-        approvedAssetCount: 0,
-        referenceAssetCount: 1,
-        workflowSmokeOk: false,
-        readyProviderModels: 1,
-        waitingProviderModels: 8
-      },
-      checks: [
-        { key: "demo_session", label: "Demo session", status: "ready", detail: "Frank Body Demo Studio is active." },
-        {
-          key: "workflow_smoke",
-          label: "Workflow smoke",
-          status: "warning",
-          detail: "Demo was reset. Run the workflow smoke again before the call."
-        }
-      ],
-      notes: []
-    };
-    const resetCalls: unknown[] = [];
-
-    vi.unstubAllGlobals();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = String(input);
-        const method = init?.method ?? "GET";
-        if (url.endsWith("/api/frank/health")) {
-          return jsonResponse({ ok: true, product: "Frank Create" });
-        }
-        if (url.endsWith("/api/frank/config")) {
-          return jsonResponse(fallbackConfig);
-        }
-        if (url.endsWith("/api/frank/sessions") && method === "GET") {
-          return jsonResponse({ sessions: [scratchSession] });
-        }
-        if (url.endsWith("/api/frank/turns?session_id=session-scratch")) {
-          return jsonResponse({ turns: [] });
-        }
-        if (url.endsWith("/api/frank/assets?session_id=session-scratch")) {
-          return jsonResponse({ assets: [] });
-        }
-        if (url.endsWith("/api/frank/demo/reset") && method === "POST") {
-          resetCalls.push(JSON.parse(String(init?.body)));
-          return jsonResponse(
-            {
-              session: demoSession,
-              project,
-              brief,
-              turn,
-              reference,
-              assets: [reference, output],
-              doctor
-            },
-            201
-          );
-        }
-        if (url.includes("/api/frank/exports")) {
-          return jsonResponse({ exports: [] });
-        }
-        if (url.endsWith("/api/frank/provider-env")) {
-          return jsonResponse({ filePath: "user/frank_create/provider_keys.env", fileExists: false, envVars: [], configuredEnvVars: [], missingEnvVars: [], notes: [] });
-        }
-        if (url.endsWith("/api/frank/brand-kit")) {
-          return jsonResponse({ brandKit: { style_guidance: "Frank style", negative_prompt: "", reference_notes: "", sync_status: "local" }, filePath: "user/frank_create/brand_kit.json" });
-        }
-        if (url.endsWith("/api/frank/projects")) {
-          return jsonResponse({ projects: [] });
-        }
-        throw new Error(`Unhandled fetch: ${method} ${url}`);
-      })
-    );
-
-    render(<App />);
-
-    expect(await screen.findByRole("heading", { name: "Messy Scratch" })).toBeInTheDocument();
-    openAdvanced();
-    fireEvent.click(screen.getByRole("button", { name: /Reset demo/i }));
-
-    await screen.findByText("Demo reset. Fresh Frank Body starter session loaded.");
-    expect(resetCalls).toEqual([expect.objectContaining({ create_assets: true })]);
-    expect(screen.getByRole("heading", { name: "Frank Body Demo Studio" })).toBeInTheDocument();
-    expect(screen.getByText("Local Comfy Product Shot")).toBeInTheDocument();
-    expect(screen.getByText("4 outputs, 1 refs, run workflow smoke, 8 live models waiting.")).toBeInTheDocument();
-    expect(screen.getByText("Demo was reset. Run the workflow smoke again before the call.")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Brief the image/i)).toHaveValue(brief.prompt);
   });
 
   it("uses the left rail to switch into Product Shot Lab mode", async () => {
     const { container } = render(<App />);
 
-    expect(await screen.findByText("Comfy offline")).toBeInTheDocument();
+    expect(await screen.findByText("Backend offline")).toBeInTheDocument();
     const productNav = navButton(container, "Product Shot Lab");
     fireEvent.click(productNav);
 
@@ -2989,7 +2226,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Comfy is in the room.")).toBeInTheDocument();
+    expect(await screen.findByText("Studio backend connected.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Open Product Shot Lab$/i }));
     const taskShortcuts = screen.getByLabelText("Product Image Lab task shortcuts");
     fireEvent.click(within(taskShortcuts).getByRole("button", { name: /Background sweep/i }));
@@ -3117,7 +2354,7 @@ describe("App", () => {
       session_id: session.id,
       kind: "video",
       provider: "local",
-      model: "frank-local-comfy",
+      model: "frank-local-renderer",
       prompt: "Create a short Frank Body motion board.",
       settings_json: JSON.stringify({ aspect_ratio: "16:9", image_size: "1K", count: 1 }),
       source_asset_id: sourceAsset.id,
@@ -3540,7 +2777,7 @@ describe("App", () => {
       session_id: session.id,
       kind: "generate",
       provider: "local",
-      model: "frank-local-comfy",
+      model: "frank-local-renderer",
       prompt: "Compare the product crops.",
       settings_json: JSON.stringify({ aspect_ratio: "1:1", image_size: "2K", count: 2 }),
       reference_asset_ids_json: "[]",
@@ -3557,7 +2794,7 @@ describe("App", () => {
       kind: "candidate",
       title: "First candidate",
       media_type: "image",
-      model: "frank-local-comfy",
+      model: "frank-local-renderer",
       settings_json: JSON.stringify({ aspect_ratio: "1:1" }),
       file_path: "output/frank_create/first.png",
       preview_url: "/api/view?filename=first.png&type=output&subfolder=frank_create",
@@ -3696,7 +2933,7 @@ describe("App", () => {
 
     const { container } = render(<App />);
 
-    await screen.findByText("Comfy connected");
+    await screen.findByText("Backend connected");
     openModelSettings();
     fireEvent.click(screen.getByRole("button", { name: /gpt-image-2/i }));
     fireEvent.change(screen.getByPlaceholderText(/Brief the image/i), {
@@ -3724,7 +2961,7 @@ describe("App", () => {
       session_id: session.id,
       kind: "generate",
       provider: "local",
-      model: "frank-local-comfy",
+      model: "frank-local-renderer",
       prompt: "Make a clean PDP image.",
       reference_asset_ids_json: "[]",
       output_asset_ids_json: "[]",
@@ -3773,7 +3010,7 @@ describe("App", () => {
 
     const { container } = render(<App />);
 
-    await screen.findByText("Comfy connected");
+    await screen.findByText("Backend connected");
     fireEvent.change(screen.getByPlaceholderText(/Brief the image/i), {
       target: { value: "Make a clean PDP image." }
     });
@@ -3827,15 +3064,15 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText("Comfy connected");
+    await screen.findByText("Backend connected");
     openModelSettings();
-    fireEvent.click(screen.getByRole("button", { name: /gpt-image-2/i }));
+    fireEvent.click(screen.getByRole("button", { name: /FLUX Ultra/i }));
     fireEvent.change(screen.getByPlaceholderText(/Brief the image/i), {
       target: { value: "Make a clean PDP image." }
     });
     fireEvent.click(screen.getByRole("button", { name: /Generate/i }));
 
-    await screen.findByText("Add OPENAI_API_KEY in the server key file, then reload keys.");
+    await screen.findByText("Add REPLICATE_API_TOKEN in the server key file, then reload keys.");
     expect(inferenceCalls).toEqual([]);
   });
 
@@ -3895,7 +3132,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText("Comfy connected");
+    await screen.findByText("Backend connected");
     openModelSettings();
     fireEvent.click(screen.getByRole("button", { name: /gpt-image-2/i }));
     fireEvent.change(screen.getByPlaceholderText(/Brief the image/i), {
@@ -3935,7 +3172,7 @@ describe("App", () => {
       session_id: session.id,
       kind: "generate",
       provider: "local",
-      model: "frank-local-comfy",
+      model: "frank-local-renderer",
       prompt: "Make a PDP image.",
       settings_json: JSON.stringify({ aspect_ratio: "1:1", image_size: "2K", count: 1 }),
       reference_asset_ids_json: JSON.stringify([references[0].id]),
@@ -3978,7 +3215,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText("Comfy connected");
+    await screen.findByText("Backend connected");
     expect(screen.getByText("2 refs selected")).toBeInTheDocument();
 
     const referenceDock = screen.getByLabelText("Reference images");
@@ -4092,7 +3329,7 @@ describe("App", () => {
     expect(screen.getByText("Reference removed from this session.")).toBeInTheDocument();
   });
 
-  it("uploads product reference images through Comfy and creates Frank reference assets", async () => {
+  it("uploads product reference images and creates Frank reference assets", async () => {
     const session = {
       id: "session-upload",
       name: "Upload QA",
@@ -4107,8 +3344,8 @@ describe("App", () => {
       kind: "reference",
       title: "coffee-scrub.png",
       media_type: "image",
-      file_path: "input/frank_create/coffee-scrub.png",
-      preview_url: "/api/view?filename=coffee-scrub.png&type=input&subfolder=frank_create",
+      file_path: "user-1/uploads/coffee-scrub.png",
+      preview_url: "https://storage.example/signed/coffee-scrub.png",
       favorite: false,
       approval_status: "review",
       sync_status: "local",
@@ -4140,7 +3377,11 @@ describe("App", () => {
           return jsonResponse({ assets: [] });
         }
         if (url.endsWith("/api/upload/image") && method === "POST") {
-          return jsonResponse({ name: "coffee-scrub.png", subfolder: "frank_create", type: "input" });
+          return jsonResponse({
+            name: "coffee-scrub.png",
+            storage_path: "user-1/uploads/coffee-scrub.png",
+            preview_url: "https://storage.example/signed/coffee-scrub.png"
+          });
         }
         if (url.endsWith("/api/frank/references") && method === "POST") {
           const body = JSON.parse(String(init?.body));
@@ -4153,7 +3394,7 @@ describe("App", () => {
 
     const { container } = render(<App />);
 
-    await screen.findByText("Comfy connected");
+    await screen.findByText("Backend connected");
     const input = container.querySelector<HTMLInputElement>('input[type="file"]');
     expect(input).not.toBeNull();
     const file = new File(["fake-image"], "coffee-scrub.png", { type: "image/png" });
@@ -4164,8 +3405,8 @@ describe("App", () => {
       expect.objectContaining({
         session_id: session.id,
         title: "coffee-scrub.png",
-        file_path: "input/frank_create/coffee-scrub.png",
-        preview_url: "/api/view?filename=coffee-scrub.png&type=input&subfolder=frank_create"
+        file_path: "user-1/uploads/coffee-scrub.png",
+        preview_url: "https://storage.example/signed/coffee-scrub.png"
       })
     ]);
     expect(within(container.querySelector(".reference-dock") as HTMLElement).getByRole("button", { name: /coffee-scrub.png/i })).toBeInTheDocument();
@@ -4217,14 +3458,14 @@ describe("App", () => {
 
     const { container } = render(<App />);
 
-    await screen.findByText("Comfy connected");
+    await screen.findByText("Backend connected");
     const input = container.querySelector<HTMLInputElement>('input[type="file"]');
     expect(input).not.toBeNull();
     fireEvent.change(input as HTMLInputElement, {
       target: { files: [new File(["fake-image"], "failed-reference.png", { type: "image/png" })] }
     });
 
-    await screen.findByText("Reference upload failed. Try again after restarting Comfy.");
+    await screen.findByText("Reference upload failed. Check the studio backend and try again.");
     expect(referenceCalls).toEqual([]);
     expect(within(container.querySelector(".reference-dock") as HTMLElement).queryByRole("button", { name: /failed-reference.png/i })).not.toBeInTheDocument();
   });
@@ -4561,7 +3802,8 @@ describe("App", () => {
 
     expect(await screen.findByText("Product image second")).toBeInTheDocument();
     expect(container.querySelector(".selected-output h3")).toHaveTextContent("Product image second");
-    expect(screen.getByRole("button", { name: /Paint edit mask/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Edit with selected model/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Use as reference/i })).toBeInTheDocument();
   });
 
   it("renders live video assets with playable video previews", async () => {
@@ -5222,7 +4464,7 @@ describe("App", () => {
     expect(copied).toContain("Model: OpenAI / gpt-image-2");
     expect(copied).toContain("Settings: 4:5 / 4096 / 2 variants");
     expect(copied).toContain("Workflow: comfy-checkpoint-txt2img / checkpoint_diffusion / frank-sdxl.safetensors");
-    expect(copied).toContain(`Raw Comfy: /comfy/?frankAssetId=${encodeURIComponent(outputAsset.id)}`);
+    expect(copied).not.toContain("Raw Comfy");
     expect(copied).toContain(`Workflow receipt: /api/frank/assets/${encodeURIComponent(outputAsset.id)}/workflow`);
     expect(copied).toContain("Source: Original pack shot");
     expect(copied).toContain("References: Coffee scrub texture ref");
@@ -5250,11 +4492,7 @@ describe("App", () => {
       asset_id: outputAsset.id,
       workflow_key: "comfy-checkpoint-txt2img",
       engine: "checkpoint_diffusion",
-      can_open_raw_canvas: true,
-      can_load_comfy_api_prompt: true,
-      raw_canvas_load_status: "api_prompt_attached",
-      comfy_node_types: ["CheckpointLoaderSimple", "SaveImage"],
-      raw_canvas_url: `/comfy/?frankAssetId=${encodeURIComponent(outputAsset.id)}`,
+      node_types: ["CheckpointLoaderSimple", "SaveImage"],
       workflow_receipt_url: `/api/frank/assets/${encodeURIComponent(outputAsset.id)}/workflow`
     });
     expect(workflowJson.settings.aspect_ratio).toBe("4:5");
@@ -5263,10 +4501,7 @@ describe("App", () => {
     expect(JSON.stringify(workflowJson)).not.toMatch(/sk-|r8_|AIza/i);
     expect(screen.getByText("Workflow JSON downloaded for this pick.")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Open in Comfy Canvas/i }));
-
-    expect(openSpy).toHaveBeenCalledWith(`/comfy/?frankAssetId=${encodeURIComponent(outputAsset.id)}`, "_blank");
-    expect(screen.getByText(`Comfy canvas link ready: /comfy/?frankAssetId=${encodeURIComponent(outputAsset.id)}`)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Open in Comfy Canvas/i })).not.toBeInTheDocument();
   });
 
   it("promotes a selected output into a selected reference for the next round", async () => {
@@ -5286,7 +4521,7 @@ describe("App", () => {
       title: "Approved campaign angle",
       media_type: "image",
       provider: "local",
-      model: "frank-local-comfy",
+      model: "frank-local-renderer",
       prompt: "Hero product on a pink bathroom counter.",
       settings_json: JSON.stringify({ aspect_ratio: "4:5", image_size: "2K", count: 1 }),
       file_path: "output/frank_create/approved-angle.png",
@@ -5357,7 +4592,7 @@ describe("App", () => {
           source_asset_id: outputAsset.id,
           media_type: "image",
           provider: "local",
-          model: "frank-local-comfy",
+          model: "frank-local-renderer",
           prompt: outputAsset.prompt
         })
       ])
@@ -5400,7 +4635,7 @@ describe("App", () => {
       session_id: session.id,
       kind: "edit",
       provider: "local",
-      model: "frank-local-comfy",
+      model: "frank-local-renderer",
       prompt: "Make another campaign round.",
       reference_asset_ids_json: "[]",
       output_asset_ids_json: "[]",
@@ -5436,7 +4671,7 @@ describe("App", () => {
         if (url.endsWith("/api/frank/inference/turn") && method === "POST") {
           const body = JSON.parse(String(init?.body));
           inferenceCalls.push(body);
-          return jsonResponse({ turn: roundTurn, status: "complete", localEngine: "comfy", assets: [] }, 201);
+          return jsonResponse({ turn: roundTurn, status: "complete", assets: [] }, 201);
         }
         throw new Error(`Unhandled fetch: ${method} ${url}`);
       })
@@ -5498,7 +4733,7 @@ describe("App", () => {
       session_id: session.id,
       kind: "edit",
       provider: "local",
-      model: "frank-local-comfy",
+      model: "frank-local-renderer",
       prompt: "Retouch the label and keep the Frank pink background.",
       reference_asset_ids_json: "[]",
       output_asset_ids_json: "[]",
@@ -5540,7 +4775,7 @@ describe("App", () => {
         if (url.endsWith("/api/frank/inference/turn") && method === "POST") {
           const body = JSON.parse(String(init?.body));
           inferenceCalls.push(body);
-          return jsonResponse({ turn: editTurn, status: "complete", localEngine: "comfy", assets: [editOutput] }, 201);
+          return jsonResponse({ turn: editTurn, status: "complete", assets: [editOutput] }, 201);
         }
         throw new Error(`Unhandled fetch: ${method} ${url}`);
       })
@@ -5600,8 +4835,8 @@ describe("App", () => {
       kind: "mask",
       title: "label-mask.png",
       media_type: "image",
-      file_path: "input/frank_create/label-mask.png",
-      preview_url: "/api/view?filename=label-mask.png&type=input&subfolder=frank_create",
+      file_path: "user-1/uploads/label-mask.png",
+      preview_url: "https://storage.example/signed/label-mask.png",
       favorite: false,
       approval_status: "review",
       sync_status: "local",
@@ -5650,7 +4885,11 @@ describe("App", () => {
           return jsonResponse({ assets: [outputAsset] });
         }
         if (url.endsWith("/api/upload/image") && method === "POST") {
-          return jsonResponse({ name: "label-mask.png", subfolder: "frank_create", type: "input" });
+          return jsonResponse({
+            name: "label-mask.png",
+            storage_path: "user-1/uploads/label-mask.png",
+            preview_url: "https://storage.example/signed/label-mask.png"
+          });
         }
         if (url.endsWith("/api/frank/assets") && method === "POST") {
           const body = JSON.parse(String(init?.body));
@@ -5710,7 +4949,7 @@ describe("App", () => {
         kind: "mask",
         session_id: session.id,
         title: "label-mask.png",
-        file_path: "input/frank_create/label-mask.png"
+        file_path: "user-1/uploads/label-mask.png"
       })
     ]);
   });
@@ -5807,7 +5046,7 @@ describe("App", () => {
       target: { files: [new File(["mask"], "failed-mask.png", { type: "image/png" })] }
     });
 
-    await screen.findByText("Mask upload failed. Try again after restarting Comfy.");
+    await screen.findByText("Mask upload failed. Check the studio backend and try again.");
     expect(assetCalls).toEqual([]);
     expect(screen.queryByText("Mask failed-mask.png")).not.toBeInTheDocument();
     expect(container.querySelector(".composer .primary-button")).toHaveTextContent("Edit");

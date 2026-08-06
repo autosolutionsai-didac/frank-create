@@ -9,6 +9,8 @@ const corsHeaders = {
 
 // Map studio model id -> Lovable AI Gateway model string
 const MODEL_MAP: Record<string, string> = {
+  "frank-local-renderer": "google/gemini-2.5-flash-image",
+  // Legacy alias kept so assets stored before the rename keep resolving.
   "frank-local-comfy": "google/gemini-2.5-flash-image",
   "google-nb-pro": "google/gemini-3-pro-image-preview",
   "google-nb-2": "google/gemini-3.1-flash-image-preview",

@@ -1,21 +1,14 @@
 import type {
   ActivationChecklist,
   Asset,
-  BrandContextReceiptResult,
   BrandKit,
   Brief,
-  DemoCallBriefResult,
-  DemoEvidenceResult,
   DemoDoctorStatus,
-  DemoReadinessPackResult,
   ExportRecord,
   FrankConfig,
-  LocalEngineStatus,
   ProviderAdapterAudit,
   ProviderEnvStatus,
   ProviderReadiness,
-  ProviderReadinessReceiptResult,
-  ProviderPreflight,
   PromptRemixVariant,
   Project,
   Run,
@@ -23,8 +16,7 @@ import type {
   StudioTurn,
   TurnRequest,
   UploadedImage,
-  VideoRequest,
-  WorkflowBlueprintsResponse
+  VideoRequest
 } from "./types";
 
 const frankBase = "/api/frank";
@@ -41,16 +33,6 @@ export async function fetchModels() {
   return fetchJson<Pick<FrankConfig, "models" | "backlogModels" | "promptPresets">>("/models");
 }
 
-export async function prepareLocalEngineFolders() {
-  return fetchJson<{ created_dirs: string[]; readme_path: string; localEngine: LocalEngineStatus }>("/local-engine/setup", {
-    method: "POST"
-  });
-}
-
-export async function fetchWorkflowBlueprints() {
-  return fetchJson<WorkflowBlueprintsResponse>("/local-engine/workflow-blueprints");
-}
-
 export async function fetchProviderStatus() {
   return fetchJson<ProviderReadiness>("/provider-status");
 }
@@ -63,55 +45,8 @@ export async function fetchActivationChecklist() {
   return fetchJson<ActivationChecklist>("/activation-checklist");
 }
 
-export async function preflightProvider(payload: Record<string, unknown>) {
-  return fetchJson<ProviderPreflight>("/provider-preflight", {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
-}
-
 export async function fetchDemoDoctor() {
   return fetchJson<DemoDoctorStatus>("/demo-doctor");
-}
-
-export async function resetDemo(payload: { create_assets: boolean }) {
-  return fetchJson<{
-    project: Project;
-    brief: Brief;
-    session: StudioSession;
-    turn: StudioTurn;
-    reference: Asset | null;
-    assets: Asset[];
-    doctor: DemoDoctorStatus;
-  }>("/demo/reset", {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
-}
-
-export async function createDemoEvidence(payload: { base_url?: string } = {}) {
-  return fetchJson<DemoEvidenceResult>("/demo/evidence", {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
-}
-
-export async function createDemoCallBrief(payload: { base_url?: string } = {}) {
-  return fetchJson<DemoCallBriefResult>("/demo/call-brief", {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
-}
-
-export async function createDemoReadinessPack(payload: { base_url?: string } = {}) {
-  return fetchJson<DemoReadinessPackResult>("/demo/readiness-pack", {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
-}
-
-export async function createProviderReadinessReceipt() {
-  return fetchJson<ProviderReadinessReceiptResult>("/demo/provider-readiness", { method: "POST" });
 }
 
 export async function remixPrompt(payload: { prompt: string; preset_key: string; frank_body_mode: boolean }) {
@@ -132,30 +67,8 @@ export async function updateBrandKit(payload: BrandKit) {
   });
 }
 
-export async function createBrandContextReceipt(payload: { session_id?: string } = {}) {
-  return fetchJson<BrandContextReceiptResult>("/demo/brand-context", {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
-}
-
 export async function fetchProviderEnvStatus() {
   return fetchJson<ProviderEnvStatus>("/provider-env");
-}
-
-export async function createProviderEnvTemplate() {
-  return fetchJson<ProviderEnvStatus>("/provider-env/template", { method: "POST" });
-}
-
-export async function reloadProviderEnv() {
-  return fetchJson<ProviderEnvStatus>("/provider-env/reload", { method: "POST" });
-}
-
-export async function saveProviderEnvKeys(keys: Record<string, string>) {
-  return fetchJson<ProviderEnvStatus>("/provider-env/save", {
-    method: "POST",
-    body: JSON.stringify({ keys })
-  });
 }
 
 export async function listProjects() {
@@ -267,7 +180,7 @@ export async function createInferenceTurn(payload: TurnRequest) {
     status: "queued" | "running" | "blocked" | "failed" | "complete";
     assets?: Asset[];
     providerPayload?: Record<string, unknown>;
-    localEngine?: "comfy" | "fallback" | "frank_renderer";
+    localEngine?: "fallback" | "frank_renderer";
     fallbackReason?: string;
     error?: { code: string; env_vars?: string[]; message?: string };
   }>("/inference/turn", {
@@ -377,10 +290,6 @@ export function assetWorkflowReceiptUrl(assetId: string) {
   return `${frankBase}/assets/${encodeURIComponent(assetId)}/workflow`;
 }
 
-export function comfyCanvasAssetUrl(assetId: string) {
-  return `/comfy/?frankAssetId=${encodeURIComponent(assetId)}`;
-}
-
 async function authHeader(): Promise<Record<string, string>> {
   try {
     const { supabase } = await import("./supabaseClient");
@@ -395,9 +304,6 @@ async function authHeader(): Promise<Record<string, string>> {
 export async function uploadImage(file: File) {
   const body = new FormData();
   body.append("image", file);
-  body.append("type", "input");
-  body.append("subfolder", "frank_create");
-  body.append("overwrite", "true");
 
   const response = await fetch("/api/upload/image", {
     method: "POST",
@@ -410,33 +316,6 @@ export async function uploadImage(file: File) {
   }
 
   return (await response.json()) as UploadedImage;
-}
-
-export async function queuePrompt(prompt: Record<string, unknown>, clientId = makeClientId()) {
-  const response = await fetch("/api/prompt", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...(await authHeader()) },
-    body: JSON.stringify({ client_id: clientId, prompt })
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `Prompt queue failed (${response.status})`);
-  }
-
-  return (await response.json()) as { prompt_id: string; number: number; node_errors?: Record<string, unknown> };
-}
-
-export async function fetchPromptHistory(promptId: string) {
-  const response = await fetch(`/api/history/${encodeURIComponent(promptId)}`, {
-    headers: { ...(await authHeader()) },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Prompt history unavailable (${response.status})`);
-  }
-
-  return (await response.json()) as unknown;
 }
 
 async function fetchJson<T>(path: string, init: RequestInit = {}) {
@@ -469,11 +348,4 @@ function apiErrorMessage(text: string, status: number) {
   } catch {
     return text;
   }
-}
-
-function makeClientId() {
-  if ("crypto" in window && "randomUUID" in window.crypto) {
-    return `frank-create-${window.crypto.randomUUID()}`;
-  }
-  return `frank-create-${Date.now()}`;
 }
