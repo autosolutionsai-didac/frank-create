@@ -29,7 +29,7 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /Demo Walkthrough/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Advanced$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Open Product Shot Lab$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Open Video Lab$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Video$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Generate$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Change model/i })).toBeInTheDocument();
     expect(screen.getByText("Model & output")).toBeInTheDocument();
@@ -786,7 +786,7 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByText("Comfy is in the room.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /^Open Video Lab$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Video$/i }));
     openSessionList();
     fireEvent.click(screen.getByRole("button", { name: /^New session$/i }));
 
@@ -5982,9 +5982,16 @@ describe("App", () => {
 });
 
 function navButton(container: HTMLElement, label: string) {
-  const currentLabel = label === "Approved Hot" ? "Approved" : label;
-  const button = Array.from(container.querySelectorAll<HTMLButtonElement>(".sidebar-nav-button")).find((item) =>
-    item.textContent?.includes(currentLabel)
+  // Video is a mode of the studio now, so it lives in the inspector's mode
+  // switch rather than the rail. Both carry the same `active` class.
+  const aliases: Record<string, { selector: string; text: string }> = {
+    "Approved Hot": { selector: ".sidebar-nav-button", text: "Approved" },
+    "Video Lab": { selector: ".mode-switch-option", text: "Video" },
+    "Image Studio": { selector: ".sidebar-nav-button", text: "Studio" }
+  };
+  const target = aliases[label] ?? { selector: ".sidebar-nav-button", text: label };
+  const button = Array.from(container.querySelectorAll<HTMLButtonElement>(target.selector)).find((item) =>
+    item.textContent?.includes(target.text)
   );
   expect(button).toBeDefined();
   return button as HTMLButtonElement;

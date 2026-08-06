@@ -5846,3 +5846,142 @@ i {
   margin-left: 0;
   align-self: flex-start;
 }
+
+/* ── inspector controls, per the design ──────────────────────────────────
+   Everything the round depends on is visible: mode, model, ratio, size.
+   Power users know where things are; nothing hides behind a disclosure. */
+.mode-switch {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--muted-08);
+}
+
+.mode-switch-option {
+  flex: 1;
+  min-height: 28px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+}
+
+.mode-switch-option.active {
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.field-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-block .eyebrow {
+  margin: 0;
+}
+
+/* One tinted note per card carries the model's own words plus its badges. */
+.model-note {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--tenant-border);
+  border-radius: var(--radius-paper-card);
+  background: var(--tenant-tint);
+}
+
+.model-note p {
+  color: var(--ink);
+  font-size: var(--text-caption);
+  line-height: 18px;
+  text-wrap: pretty;
+}
+
+.model-note small {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-light);
+  font-size: var(--text-caption);
+  letter-spacing: var(--tracking-label-xs);
+  color: var(--muted);
+}
+
+.model-note .capability-strip span {
+  background: var(--surface);
+  border: 1px solid var(--muted-20);
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-weight: var(--weight-light);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.ratio-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ratio-grid .eyebrow {
+  margin: 0;
+}
+
+.ratio-grid-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ratio-tile {
+  min-height: 74px;
+  border: 1px solid var(--muted-20);
+  border-radius: var(--radius-paper-card);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 6px 8px;
+}
+
+.ratio-tile:hover {
+  border-color: var(--ink);
+}
+
+.ratio-tile.selected {
+  border-color: var(--ink);
+}
+
+.ratio-glyph {
+  display: block;
+  flex-shrink: 0;
+  border: 1px solid var(--muted-25);
+  border-radius: var(--radius-hairline);
+  background: transparent;
+}
+
+.ratio-tile.selected .ratio-glyph {
+  background: var(--paper-350);
+}
+
+.ratio-tile small {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 14px;
+  text-align: center;
+}

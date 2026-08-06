@@ -2484,7 +2484,7 @@ export default function App() {
             onClick={showImageStudio}
           >
             <Wand2 size={16} />
-            Image Studio
+            Studio
           </button>
           <button
             className={`sidebar-nav-button ${studioMode === "product-shot-lab" ? "active" : ""}`}
@@ -2495,16 +2495,6 @@ export default function App() {
             <Layers3 size={16} />
             Product Shot Lab
           </button>
-          <button
-            className={`sidebar-nav-button ${studioMode === "video-lab" ? "active" : ""}`}
-            type="button"
-            aria-label="Open Video Lab"
-            onClick={showVideoLab}
-          >
-            <Film size={16} />
-            Video Lab
-          </button>
-
           <p className="sidebar-section-label">Review</p>
           <button
             className={`sidebar-nav-button ${reviewFilter === "approved" ? "active" : ""}`}
@@ -2857,15 +2847,40 @@ export default function App() {
             <p className="eyebrow">Settings</p>
             <h3>Model & output</h3>
           </div>
-          <div className="selected-model-summary">
-            <span>
-              <strong>{selectedModel?.short_label ?? selectedModel?.label ?? "Model pending"}</strong>
-              <small>
-                {settings.aspect_ratio} / {settings.image_size} / {settings.count} pick{settings.count === 1 ? "" : "s"}
-              </small>
-            </span>
-            <em>{selectedModel?.badge ?? "Ready"}</em>
+
+          {/* Mode switch. Video is a mode of the studio, not a separate lab,
+              so it moves off the rail and into the panel. */}
+          <div className="mode-switch" role="group" aria-label="Studio mode">
+            <button
+              className={`mode-switch-option ${studioMode !== "video-lab" ? "active" : ""}`}
+              type="button"
+              aria-pressed={studioMode !== "video-lab"}
+              onClick={showImageStudio}
+            >
+              <ImageIcon size={13} />
+              Image
+            </button>
+            <button
+              className={`mode-switch-option ${studioMode === "video-lab" ? "active" : ""}`}
+              type="button"
+              aria-pressed={studioMode === "video-lab"}
+              onClick={showVideoLab}
+            >
+              <Film size={13} />
+              Video
+            </button>
           </div>
+
+          <div className="model-note">
+            {selectedModel?.description ? <p>{selectedModel.description}</p> : null}
+            <div className="capability-strip">
+              <span>{selectedModel?.badge ?? "Ready"}</span>
+              <span>{modelOptions.referenceLimit} refs</span>
+              <span>{modelOptions.canEdit ? "Edits" : "Generate only"}</span>
+            </div>
+            {selectedModel?.cost_label ? <small>{selectedModel.cost_label}</small> : null}
+          </div>
+
           <button
             className="secondary-button handoff-button"
             type="button"
@@ -2920,18 +2935,26 @@ export default function App() {
                   </button>
                 ))}
               </div>
-              <div className="setting-row" data-tour-id="model-output-controls" data-tour-active={tourActive("model-output-controls")}>
-                <label>
-                  Aspect
-                  <select
-                    value={settings.aspect_ratio}
-                    onChange={(event) => handleAspectChange(event.target.value)}
-                  >
-                    {modelOptions.allowedAspectRatios.map((ratio) => (
-                      <option key={ratio}>{ratio}</option>
-                    ))}
-                  </select>
-                </label>
+              {/* Aspect ratio as a tile grid: each tile draws the ratio it
+                  sets, so the choice is visible rather than read. */}
+              <div className="ratio-grid" role="group" aria-label="Aspect ratio" data-tour-id="model-output-controls" data-tour-active={tourActive("model-output-controls")}>
+                <span className="eyebrow">Aspect ratio</span>
+                <div className="ratio-grid-tiles">
+                  {modelOptions.allowedAspectRatios.map((ratio) => (
+                    <button
+                      className={`ratio-tile ${settings.aspect_ratio === ratio ? "selected" : ""}`}
+                      key={ratio}
+                      type="button"
+                      aria-pressed={settings.aspect_ratio === ratio}
+                      onClick={() => handleAspectChange(ratio)}
+                    >
+                      <span className="ratio-glyph" style={ratioGlyphStyle(ratio)} />
+                      <small>{ratio}</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="setting-row">
                 <label>
                   Size
                   <select
@@ -5207,6 +5230,20 @@ function MaskPainterDialog({
       </div>
     </div>
   );
+}
+
+/* Draws a ratio tile's glyph at its own proportions. "match input" and
+   "auto" have no ratio to draw, so they get a square. */
+function ratioGlyphStyle(ratio: string): CSSProperties {
+  const parts = ratio.split(":");
+  const w = Number(parts[0]);
+  const h = Number(parts[1]);
+  if (!Number.isFinite(w) || !Number.isFinite(h) || !w || !h) {
+    return { width: "24px", height: "24px" };
+  }
+  const cap = 28;
+  const scale = cap / Math.max(w, h);
+  return { width: `${Math.round(w * scale)}px`, height: `${Math.round(h * scale)}px` };
 }
 
 function isPlayableVideoAsset(asset: Asset) {
