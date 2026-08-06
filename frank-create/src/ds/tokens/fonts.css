@@ -4,10 +4,12 @@
    Roboto — all reading copy at weight 500+, and the label role (uppercase
    eyebrows, counts, timestamps, tenant initials) at Light 300 with
    tabular figures.
-   Both ship as variable fonts from assets/fonts/, one roman and one italic
-   file each. No third face, no CDN. */
+   Both ship as variable fonts from assets/fonts/. No third face, no CDN.
+
+   Roman only in this app: every --type-* role is upright, nothing here sets
+   font-style: italic, and the italic Google Sans master alone is 5MB. The
+   italic faces are therefore not vendored — see `em, i` in styles.css, which
+   keeps <em> upright (it is used as a badge, not as emphasis). */
 
 @font-face{font-family:'Google Sans';src:url('../assets/fonts/GoogleSans-Variable.ttf') format('truetype-variations'),url('../assets/fonts/GoogleSans-Variable.ttf') format('truetype');font-weight:400 700;font-style:normal;font-display:swap}
-@font-face{font-family:'Google Sans';src:url('../assets/fonts/GoogleSans-Variable-Italic.ttf') format('truetype-variations'),url('../assets/fonts/GoogleSans-Variable-Italic.ttf') format('truetype');font-weight:400 700;font-style:italic;font-display:swap}
 @font-face{font-family:'Roboto';src:url('../assets/fonts/Roboto-Variable.ttf') format('truetype-variations'),url('../assets/fonts/Roboto-Variable.ttf') format('truetype');font-weight:100 900;font-style:normal;font-display:swap}
-@font-face{font-family:'Roboto';src:url('../assets/fonts/Roboto-Variable-Italic.ttf') format('truetype-variations'),url('../assets/fonts/Roboto-Variable-Italic.ttf') format('truetype');font-weight:100 900;font-style:italic;font-display:swap}

@@ -20,13 +20,16 @@ describe("App", () => {
   it("renders a guided studio first screen and hides technical setup by default", async () => {
     render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
-    expect(screen.getByText(/Add references, brief the image, generate picks/i)).toBeInTheDocument();
+    expect(await screen.findByLabelText("art-ificial studio")).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: /Frank Create navigation/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Open Image Studio$/i })).toBeInTheDocument();
+    expect(screen.getByText(/Brief in plain English\. References and settings are optional\./i)).toBeInTheDocument();
+    openSessionList();
     expect(screen.getByRole("button", { name: /^New session$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Demo Walkthrough/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Advanced$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Product Shot Lab$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Video Lab$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Open Product Shot Lab$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Open Video Lab$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Generate$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Change model/i })).toBeInTheDocument();
     expect(screen.getByText("Model & output")).toBeInTheDocument();
@@ -135,6 +138,7 @@ describe("App", () => {
 
     expect(await screen.findByRole("heading", { name: "Frank Body Demo Studio" })).toBeInTheDocument();
     expect(screen.getByText("Frank demo product shot")).toBeInTheDocument();
+    openSessionList();
     expect(screen.queryByRole("button", { name: /^Main demo$/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /^New session$/i }));
@@ -203,7 +207,7 @@ describe("App", () => {
     const { container } = render(<App />);
 
     expect(await screen.findByRole("heading", { name: "Frank Body Demo Studio" })).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Active session"), { target: { value: scratchSession.id } });
+    selectSessionByName("Scratch image session");
     expect(await screen.findByRole("heading", { name: "Scratch image session" })).toBeInTheDocument();
     const composerActions = container.querySelector<HTMLElement>(".composer-actions");
     expect(composerActions).not.toBeNull();
@@ -230,7 +234,7 @@ describe("App", () => {
   it("opens a modal walkthrough that dims the app and points at each real workspace area", async () => {
     const { container } = render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("art-ificial studio")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Demo Walkthrough/i }));
 
     const dialog = screen.getByRole("dialog", { name: /Demo Walkthrough guide/i });
@@ -487,14 +491,14 @@ describe("App", () => {
       ["Model summary", "model-settings"],
       ["Model drawer", "model-settings-drawer"],
       ["Output controls", "model-output-controls"],
-      ["Frank Body Mode", "frank-mode-toggle"],
+      ["Brand mode", "frank-mode-toggle"],
       ["Review desk", "review-panel"],
       ["Approve or reject", "review-actions"],
       ["Run metadata", "review-metadata"],
       ["Make another round", "variant-controls"],
       ["Edit, mask, and reuse", "edit-controls"],
       ["Exports", "export-controls"],
-      ["Cliff Pack handoff", "handoff-pack"],
+      ["Handoff pack", "handoff-pack"],
       ["Advanced tools", "advanced-tools"]
     ];
 
@@ -529,7 +533,7 @@ describe("App", () => {
   it("keeps technical setup inside Advanced until requested", async () => {
     render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("art-ificial studio")).toBeInTheDocument();
     expect(screen.queryByText("Provider Setup")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /^Advanced$/i }));
@@ -550,7 +554,7 @@ describe("App", () => {
   it("lets users close the model drawer from inside the opened panel", async () => {
     render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("art-ificial studio")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Change model/i }));
 
     const settingsDrawer = screen.getByLabelText("Model and output settings");
@@ -571,7 +575,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("art-ificial studio")).toBeInTheDocument();
     openAdvanced();
     expect(screen.getByText("Cliff key order")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Copy key plan/i }));
@@ -594,7 +598,7 @@ describe("App", () => {
   it("limits provider key inputs to Gemini, Replicate, and OpenAI", async () => {
     render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("art-ificial studio")).toBeInTheDocument();
     openAdvanced();
     expect(screen.getByText("Cliff key order")).toBeInTheDocument();
     const editor = screen.getByLabelText("Save server provider keys");
@@ -610,7 +614,7 @@ describe("App", () => {
 
     const { container } = render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("art-ificial studio")).toBeInTheDocument();
     expect(container.querySelector(".studio-shell")).toHaveClass("provider-audit-mode");
     expect(container.querySelector(".studio-shell")).toHaveAttribute("data-provider-audit", "open");
   });
@@ -782,7 +786,8 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByText("Comfy is in the room.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /^Video Lab$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Open Video Lab$/i }));
+    openSessionList();
     fireEvent.click(screen.getByRole("button", { name: /^New session$/i }));
 
     await waitFor(() =>
@@ -804,7 +809,7 @@ describe("App", () => {
 
     const { container } = render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("art-ificial studio")).toBeInTheDocument();
     expect(navButton(container, "Video Lab")).toHaveClass("active");
     expect(screen.getByRole("button", { name: /^Generate$/i })).toBeInTheDocument();
   });
@@ -981,7 +986,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("art-ificial studio")).toBeInTheDocument();
     openAdvanced();
     expect(screen.getByText("Comfy workflow blueprints")).toBeInTheDocument();
     expect(screen.getByText("Checkpoint txt2img")).toBeInTheDocument();
@@ -1130,7 +1135,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText("Frank Create");
+    await screen.findByLabelText("art-ificial studio");
     openAdvanced();
     const styleGuidance = screen.getByLabelText("Frank Brand Kit style guidance");
     expect(styleGuidance).toHaveValue("Initial FrankHub pink tiles and coffee scrub macro language.");
@@ -1146,7 +1151,7 @@ describe("App", () => {
         })
       ])
     );
-    expect(await screen.findByText("Brand kit saved for Frank Body Mode.")).toBeInTheDocument();
+    expect(await screen.findByText("Brand kit saved for brand mode.")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Save context brief/i }));
 
@@ -1544,6 +1549,7 @@ describe("App", () => {
 
     const promptInput = await screen.findByPlaceholderText(/Brief the image/i);
     fireEvent.change(promptInput, { target: { value: "Carryover prompt that should clear." } });
+    openSessionList();
     fireEvent.click(screen.getByRole("button", { name: /^New session$/i }));
 
     await screen.findByText("New session. Fresh canvas.");
@@ -1612,7 +1618,7 @@ describe("App", () => {
 
     const { container } = render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("art-ificial studio")).toBeInTheDocument();
     openAdvanced();
     fireEvent.click(screen.getByRole("button", { name: /Advanced Graph/i }));
 
@@ -1874,7 +1880,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("art-ificial studio")).toBeInTheDocument();
     openAdvanced();
     expect(screen.getByText("Production unlock checklist")).toBeInTheDocument();
     expect(screen.getByText("Activation checklist tracked: 3 unlock steps")).toBeInTheDocument();
@@ -1988,7 +1994,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Frank Create")).toBeInTheDocument();
+    expect(await screen.findByLabelText("art-ificial studio")).toBeInTheDocument();
     openAdvanced();
     expect(screen.getByText("Production unlock checklist")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Copy unlock plan/i }));
@@ -2198,7 +2204,7 @@ describe("App", () => {
 
     const { container } = render(<App />);
 
-    await screen.findByText("Frank Create");
+    await screen.findByLabelText("art-ificial studio");
     openAdvanced();
     expect(screen.getByText(providerEnvPath)).toBeInTheDocument();
     expect(screen.getByText("Create the ignored template first.")).toBeInTheDocument();
@@ -2294,7 +2300,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await screen.findByText("Frank Create");
+    await screen.findByLabelText("art-ificial studio");
     openAdvanced();
     expect(screen.getByText(providerEnvPath)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("OPENAI_API_KEY"), { target: { value: "YOUR_KEY_HERE" } });
@@ -2727,7 +2733,7 @@ describe("App", () => {
     expect(within(cliffGuide).getByText("Model preflight proved")).toBeInTheDocument();
     expect(within(cliffGuide).getByText("Local Generate proved")).toBeInTheDocument();
     expect(within(cliffGuide).getByText("Masked edit proved")).toBeInTheDocument();
-    expect(within(cliffGuide).getByText("Cliff Pack included")).toBeInTheDocument();
+    expect(within(cliffGuide).getByText("Handoff pack included")).toBeInTheDocument();
     expect(JSON.parse(readinessPackCalls[0])).toMatchObject({ base_url: "http://localhost:3000" });
     expect(openSpy).toHaveBeenCalledWith("/api/frank/demo/readiness-pack/frank-create-cliff-readiness-latest.zip", "_blank");
     fireEvent.click(screen.getByRole("button", { name: /Download call pack/i }));
@@ -2984,7 +2990,7 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByText("Comfy is in the room.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /^Product Shot Lab$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Open Product Shot Lab$/i }));
     const taskShortcuts = screen.getByLabelText("Product Image Lab task shortcuts");
     fireEvent.click(within(taskShortcuts).getByRole("button", { name: /Background sweep/i }));
 
@@ -4694,7 +4700,7 @@ describe("App", () => {
     render(<App />);
 
     await screen.findByText("Approved. Hot.");
-    const handoffSection = screen.getByText("Cliff Pack").closest("section")!;
+    const handoffSection = screen.getByText("Handoff pack").closest("section")!;
     expect(within(handoffSection).getByText("7 channel-ready exports per approved image")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Open review board/i }));
     expect(openSpy).toHaveBeenCalledWith("/api/frank/sessions/session-handoff/review-board", "_blank");
@@ -4704,15 +4710,15 @@ describe("App", () => {
     expect(openSpy).toHaveBeenCalledWith("/api/frank/sessions/session-handoff/sync-manifest", "_blank");
     expect(screen.getByText("Sync manifest link ready: /api/frank/sessions/session-handoff/sync-manifest")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Export Cliff Pack/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Export pack$/i }));
 
     await waitFor(() => expect(handoffCalls).toHaveLength(1));
     expect(JSON.parse(handoffCalls[0])).toMatchObject({ summary: "Approved Frank Create handoff for review." });
     expect(openSpy).toHaveBeenCalledWith("/api/frank/exports/export-handoff/download", "_blank");
-    expect(screen.getByText("Cliff Pack link ready: /api/frank/exports/export-handoff/download")).toBeInTheDocument();
+    expect(screen.getByText("Handoff pack link ready: /api/frank/exports/export-handoff/download")).toBeInTheDocument();
     expect(within(handoffSection).getByText("Packed 7 channel-ready exports across 1 approved image.")).toBeInTheDocument();
     const recentExports = screen.getByText("Recent exports").closest("section")!;
-    expect(within(recentExports).getByRole("button", { name: /Cliff Pack/i })).toBeInTheDocument();
+    expect(within(recentExports).getByRole("button", { name: /Handoff pack/i })).toBeInTheDocument();
     expect(within(recentExports).getByText(/1 approved \/ 2 refs/i)).toBeInTheDocument();
   });
 
@@ -4797,14 +4803,14 @@ describe("App", () => {
     render(<App />);
 
     await screen.findByText("Approved image");
-    const handoffSection = screen.getByText("Cliff Pack").closest("section")!;
+    const handoffSection = screen.getByText("Handoff pack").closest("section")!;
     expect(within(handoffSection).getByText("1")).toBeInTheDocument();
     expect(within(handoffSection).getByText("motion")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Export Cliff Pack/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Export pack$/i }));
 
     await waitFor(() => expect(handoffCalls).toHaveLength(1));
     expect(openSpy).toHaveBeenCalledWith("/api/frank/exports/export-mixed-handoff/download", "_blank");
-    expect(screen.getByText("Cliff Pack link ready: /api/frank/exports/export-mixed-handoff/download")).toBeInTheDocument();
+    expect(screen.getByText("Handoff pack link ready: /api/frank/exports/export-mixed-handoff/download")).toBeInTheDocument();
   });
 
   it("saves review notes for the selected output", async () => {
@@ -4936,7 +4942,7 @@ describe("App", () => {
     render(<App />);
 
     await screen.findByText("Maybe campaign pick");
-    const cliffPackButton = screen.getByRole("button", { name: /Export Cliff Pack/i });
+    const cliffPackButton = screen.getByRole("button", { name: /^Export pack$/i });
     expect(cliffPackButton).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: /^Approve$/i }));
@@ -5976,12 +5982,25 @@ describe("App", () => {
 });
 
 function navButton(container: HTMLElement, label: string) {
-  const currentLabel = label === "Approved Hot" ? "Approved only" : label;
-  const button = Array.from(container.querySelectorAll<HTMLButtonElement>(".nav-item, .task-chip")).find((item) =>
+  const currentLabel = label === "Approved Hot" ? "Approved" : label;
+  const button = Array.from(container.querySelectorAll<HTMLButtonElement>(".sidebar-nav-button")).find((item) =>
     item.textContent?.includes(currentLabel)
   );
   expect(button).toBeDefined();
   return button as HTMLButtonElement;
+}
+
+function openSessionList() {
+  const toggle = screen.getByRole("button", { name: "Active session" });
+  if (toggle.getAttribute("aria-expanded") !== "true") {
+    fireEvent.click(toggle);
+  }
+  return screen.getByLabelText("Studio sessions");
+}
+
+function selectSessionByName(name: string) {
+  const list = openSessionList();
+  fireEvent.click(within(list).getByRole("button", { name }));
 }
 
 function openAdvanced() {

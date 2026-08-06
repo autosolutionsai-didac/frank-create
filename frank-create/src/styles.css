@@ -563,16 +563,22 @@ button:disabled {
   box-shadow: 0 10px 22px rgba(48, 48, 48, 0.08);
 }
 
+/* Was an ink gradient card with white type; the glass-card rule later in the
+   file repainted it white and left the type invisible. It is a nav card, not
+   dense data, so it belongs on the light plane. */
 .advanced-map-section {
-  background: linear-gradient(135deg, var(--ink), #5a3a3d);
-  border-color: rgba(48, 48, 48, 0.28);
-  color: var(--white);
+  background: var(--surface);
+  border: 0;
+  color: var(--ink);
 }
 
-.advanced-map-section .eyebrow,
+.advanced-map-section .eyebrow {
+  color: var(--muted);
+}
+
 .advanced-map-section p,
 .advanced-map-section h3 {
-  color: var(--white);
+  color: var(--ink);
 }
 
 .advanced-map-section .provider-check-button {
@@ -5038,8 +5044,26 @@ input {
 }
 
 @media (max-width: 1180px) {
-  .studio-shell.guided-studio {
-    grid-template-columns: 236px minmax(0, 1fr) 340px;
+  /* The rail and inspector keep their OS widths; the centre column gives up
+     its 36px inset first, then the display title steps down a size. */
+  .studio-shell.guided-studio .composer,
+  .studio-shell.guided-studio .thread-surface {
+    margin-inline: 0;
+  }
+
+  .studio-shell.guided-studio .studio-topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .studio-shell.guided-studio .stat-row {
+    align-self: flex-start;
+  }
+
+  .studio-shell.guided-studio .studio-topbar h2 {
+    font-size: var(--text-display-sm);
+    line-height: 34px;
   }
 
   .studio-shell.guided-studio .output-grid {
@@ -5082,13 +5106,8 @@ input {
     padding-inline: 10px;
   }
 
-  .sidebar-session-card {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    align-items: center;
-  }
-
-  .sidebar-session-card p {
-    grid-column: 1 / -1;
+  .sidebar-footer-block {
+    margin-top: 0;
   }
 
   .studio-shell.guided-studio .conversation-column {
@@ -5593,4 +5612,99 @@ input {
   text-transform: none;
   letter-spacing: var(--tracking-tight);
   color: var(--ink);
+}
+
+/* The advanced drawer opens below the top bar so the OS lockup stays visible. */
+.studio-shell.guided-studio .control-panel.advanced-drawer {
+  inset: var(--topbar-height) 0 0 auto;
+  height: calc(100vh - var(--topbar-height));
+  padding: var(--panel-pad-y) 16px 16px;
+}
+
+/* Only roman faces are vendored; <em> is used as a badge, not as emphasis. */
+em,
+i {
+  font-style: normal;
+}
+
+/* ── stacked shell (narrow) ──────────────────────────────────────────────
+   Below 920px the three columns stack and the rail becomes a horizontal
+   band. The rail's flex column is built for a viewport-locked height, so it
+   has to be unwound here or `flex: 1` on the nav overflows into the footer. */
+@media (max-width: 920px) {
+  .guided-header.app-sidebar {
+    display: block;
+    padding: 12px;
+    border-bottom: 1px solid var(--muted-20);
+    overflow: visible;
+  }
+
+  .sidebar-brand-block {
+    justify-content: flex-start;
+    padding: 4px 6px 12px;
+  }
+
+  .sidebar-nav {
+    flex: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid #000;
+    padding-top: 8px;
+    gap: 4px;
+  }
+
+  .sidebar-nav-button {
+    width: auto;
+    border-radius: var(--radius-pill);
+  }
+
+  .sidebar-session-list {
+    grid-column: 1 / -1;
+  }
+
+  .sidebar-footer-block {
+    margin: 12px 0 0;
+    padding: 8px 0 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .sidebar-footer-block .sidebar-section-label {
+    width: 100%;
+    padding: 0 10px 4px;
+  }
+
+  .studio-shell.guided-studio .context-panel {
+    padding: 0 12px 16px;
+  }
+
+  .studio-shell.guided-studio .conversation-column {
+    padding: 18px 14px 24px;
+  }
+}
+
+@media (max-width: 920px) {
+  /* The viewport lock is a desktop affordance: with the columns stacked there
+     is no rail to keep in view, so the page itself becomes the scroller. */
+  .os-shell {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .os-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  .studio-shell.guided-studio {
+    flex: none;
+  }
+
+  .guided-header.app-sidebar {
+    height: auto;
+    max-height: none;
+  }
 }
