@@ -34,7 +34,7 @@ const models: StudioModel[] = [
 ];
 
 describe("studio helpers", () => {
-  it("keeps Frank Body Mode off by default in turn requests", () => {
+  it("keeps Brand mode off by default in turn requests", () => {
     const request = buildTurnRequest({
       sessionId: "session-1",
       modelId: "google-nb-pro",

@@ -183,7 +183,7 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   },
   {
     title: "Generated rounds",
-    detail: "Every generate or edit run lands here as a round. The card keeps the prompt, model, status, Frank Body Mode, and reference count attached to the output.",
+    detail: "Every generate or edit run lands here as a round. The card keeps the prompt, model, status, Brand mode, and reference count attached to the output.",
     points: ["Click an image to open the review desk on the right.", "Rounds stay in order, so the creative conversation remains explainable.", "Approved only can filter this thread when the team wants the shortlist."],
     target: "output-thread"
   },
@@ -208,7 +208,7 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     openSettings: true
   },
   {
-    title: "Frank Body Mode",
+    title: "Brand mode",
     detail: "This toggle is the brand brain. Off means the app sends only the user prompt. On adds Frank Body style guidance, guardrails, and preset structure.",
     points: ["Leave it off for neutral model tests.", "Turn it on for Frank Body campaign/product work.", "The mode is stored with the run metadata."],
     target: "frank-mode-toggle",
@@ -257,9 +257,9 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     selectOutput: true
   },
   {
-    title: "Cliff Pack handoff",
+    title: "Handoff pack",
     detail: "This package area collects approved picks, references, prompts, notes, metadata, and channel exports into one handoff route.",
-    points: ["Export Cliff Pack is the call-day deliverable.", "Review board gives a visual summary.", "Sync manifest is the future FrankHub/DAM bridge."],
+    points: ["The handoff pack is the call-day deliverable.", "Review board gives a visual summary.", "Sync manifest is the future FrankHub/DAM bridge."],
     target: "handoff-pack",
     selectOutput: true
   },
@@ -1359,7 +1359,7 @@ export default function App() {
       const updated = await updateBrandKit(brandKitDraft);
       setBrandKit(updated.brandKit);
       setBrandKitDraft(updated.brandKit);
-      setStatusText("Brand kit saved for Frank Body Mode.");
+      setStatusText("Brand kit saved for brand mode.");
     } catch (error) {
       setStatusText(error instanceof Error ? error.message : "Could not save the Brand Kit.");
     } finally {
@@ -2221,7 +2221,7 @@ export default function App() {
       setHandoffProofText(
         `Packed ${channelExportFiles} channel-ready exports across ${channelExportSets} approved image${channelExportSets === 1 ? "" : "s"}.`
       );
-      openStudioLink(created.download_url || exportDownloadUrl(created.handoff.id), "Cliff Pack", `${label} packed for Cliff.`);
+      openStudioLink(created.download_url || exportDownloadUrl(created.handoff.id), "Handoff pack", `${label} packed for Cliff.`);
     } catch (error) {
       setStatusText(error instanceof Error ? error.message : "Approve at least one image before exporting a handoff pack.");
     } finally {
@@ -2680,7 +2680,7 @@ export default function App() {
                     <p>{turn.prompt}</p>
                     <div className="turn-meta">
                       <span>{turn.status}</span>
-                      {turn.frank_body_mode ? <span>Frank Body Mode</span> : <span>User prompt</span>}
+                      {turn.frank_body_mode ? <span>Brand mode</span> : <span>User prompt</span>}
                       {parseJsonList(turn.reference_asset_ids_json).length ? (
                         <span>{referenceCountLabel(parseJsonList(turn.reference_asset_ids_json).length)}</span>
                       ) : null}
@@ -2946,7 +2946,7 @@ export default function App() {
               </div>
               <div className="context-toggle-row" data-tour-id="frank-mode-toggle" data-tour-active={tourActive("frank-mode-toggle")}>
                 <span>
-                  <strong>Frank Body Mode</strong>
+                  <strong>Brand mode</strong>
                   <small>{frankBodyMode ? "Brand guidance on" : "Prompt only"}</small>
                 </span>
                 <button
@@ -3164,7 +3164,7 @@ export default function App() {
           >
             <div className="section-title">
               <p className="eyebrow">Export</p>
-              <h3>Cliff Pack</h3>
+              <h3>Handoff pack</h3>
             </div>
             <p>
               Package approved images, motion boards, notes, prompts, settings, references, sync-ready metadata, and {imageExportPresetCount}{" "}
@@ -3194,7 +3194,7 @@ export default function App() {
               disabled={!activeSession || approvedCount === 0 || handoffBusy}
             >
               {handoffBusy ? <RefreshCw className="spin" size={16} /> : <Download size={16} />}
-              Export Cliff Pack
+              Export pack
             </button>
             <button
               className="secondary-button handoff-button"
@@ -3880,7 +3880,7 @@ export default function App() {
                   </span>
                   <span>
                     <strong>{readinessPackManifest.cliff_pack?.status === "included" ? "yes" : "no"}</strong>
-                    Cliff Pack
+                    Handoff pack
                   </span>
                   <span>
                     <strong>{readinessPackManifest.screenshot_capture?.status ?? "reused"}</strong>
@@ -3959,7 +3959,7 @@ export default function App() {
         <section className="control-section handoff-section">
           <div className="section-title">
             <p className="eyebrow">Handoff</p>
-            <h3>Cliff Pack</h3>
+            <h3>Handoff pack</h3>
           </div>
           <p>
             Package approved images, motion boards, notes, prompts, settings, references, sync-ready metadata, and {imageExportPresetCount}{" "}
@@ -3989,7 +3989,7 @@ export default function App() {
             disabled={!activeSession || approvedCount === 0 || handoffBusy}
           >
             {handoffBusy ? <RefreshCw className="spin" size={16} /> : <Download size={16} />}
-            Export Cliff Pack
+            Export pack
           </button>
           <button
             className="secondary-button handoff-button"
@@ -4145,7 +4145,7 @@ export default function App() {
 
         <section className="control-section toggle-section">
           <div>
-            <h3>Frank Body Mode</h3>
+            <h3>Brand mode</h3>
             <p>Off sends only your prompt. On adds Frank style, preset structure, and negatives server-side.</p>
           </div>
           <button
@@ -4703,7 +4703,7 @@ function FrankGraphView({
       step: "03",
       stage: "make",
       tone: "cherry",
-      title: "Frank Body Mode",
+      title: "Brand mode",
       meta: "Opt-in",
       detail: "Frank tone, soft pink, scrub texture, negatives, and preset structure.",
       icon: <Sparkles size={18} />
@@ -5325,7 +5325,7 @@ function normalizeExportRecord(record: ExportRecord, fallback: Partial<ExportRec
 
 function exportRecordLabel(record: ExportRecord, presets: ExportPreset[]) {
   if (record.preset === "session-handoff") {
-    return "Cliff Pack";
+    return "Handoff pack";
   }
   return presets.find((preset) => preset.key === record.preset)?.label ?? titleize(record.preset ?? "export-pack");
 }
@@ -5752,7 +5752,7 @@ function buildCliffGuideSteps(outputAssets: Asset[], referenceAssets: Asset[], a
   return [
     {
       label: "Image Studio",
-      detail: "Open with sessions, prompt thread, references, model picker, and Frank Body Mode.",
+      detail: "Open with sessions, prompt thread, references, model picker, and Brand mode.",
       status: outputAssets.length ? `${outputAssets.length} outputs` : "seed demo"
     },
     {
@@ -5789,7 +5789,7 @@ function buildCliffGuideProofs(doctor: DemoDoctorStatus | null, manifest: DemoRe
     doctor?.summary.workflowSmokeOk ? "Workflow smoke passed" : "Run workflow smoke",
     doctor?.summary.activationChecklistReady ? "Production checklist ready" : "Build call pack for checklist",
     screenshots > 0 ? `${screenshots} QA screenshots ready` : "Build call pack for screenshots",
-    manifest?.cliff_pack?.status === "included" ? "Cliff Pack included" : "Export Cliff Pack before sending",
+    manifest?.cliff_pack?.status === "included" ? "Handoff pack included" : "Export the pack before sending",
     browserQaChecks.has("studio_model_preflight") ? "Model preflight proved" : "Run selected model preflight",
     browserQaChecks.has("studio_local_generate") ? "Local Generate proved" : "Run local Generate proof",
     browserQaChecks.has("studio_masked_edit_generate") ? "Masked edit proved" : "Run masked edit proof"
