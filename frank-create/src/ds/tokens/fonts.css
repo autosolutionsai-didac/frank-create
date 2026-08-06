@@ -1,0 +1,13 @@
+/* AutoSolutions OS — webfonts. TWO faces, nothing else.
+   Google Sans — the interface voice: headings, buttons, tabs, nav, menus,
+   labels, and the boot status line.
+   Roboto — all reading copy at weight 500+, and the label role (uppercase
+   eyebrows, counts, timestamps, tenant initials) at Light 300 with
+   tabular figures.
+   Both ship as variable fonts from assets/fonts/, one roman and one italic
+   file each. No third face, no CDN. */
+
+@font-face{font-family:'Google Sans';src:url('../assets/fonts/GoogleSans-Variable.ttf') format('truetype-variations'),url('../assets/fonts/GoogleSans-Variable.ttf') format('truetype');font-weight:400 700;font-style:normal;font-display:swap}
+@font-face{font-family:'Google Sans';src:url('../assets/fonts/GoogleSans-Variable-Italic.ttf') format('truetype-variations'),url('../assets/fonts/GoogleSans-Variable-Italic.ttf') format('truetype');font-weight:400 700;font-style:italic;font-display:swap}
+@font-face{font-family:'Roboto';src:url('../assets/fonts/Roboto-Variable.ttf') format('truetype-variations'),url('../assets/fonts/Roboto-Variable.ttf') format('truetype');font-weight:100 900;font-style:normal;font-display:swap}
+@font-face{font-family:'Roboto';src:url('../assets/fonts/Roboto-Variable-Italic.ttf') format('truetype-variations'),url('../assets/fonts/Roboto-Variable-Italic.ttf') format('truetype');font-weight:100 900;font-style:italic;font-display:swap}

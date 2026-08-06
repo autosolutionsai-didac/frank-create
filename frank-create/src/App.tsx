@@ -1,7 +1,9 @@
 import {
   ArrowLeft,
+  Bell,
   Box,
   CheckCircle2,
+  ChevronDown,
   Clipboard,
   Cpu,
   Download,
@@ -83,6 +85,8 @@ import {
   updateSession,
   uploadImage
 } from "./lib/api";
+import { AmbientBackground } from "./ds";
+import osLockup from "./ds/assets/logos/autosolutions-os-sm.png";
 import { fallbackBrandKit, fallbackConfig } from "./lib/presets";
 import { supabase } from "./lib/supabaseClient";
 import { assetStatusCopy, createBriefPayload, makeStoredImagePath, makeViewUrl } from "./lib/frankWorkflow";
@@ -307,6 +311,7 @@ export default function App() {
   const [maskAsset, setMaskAsset] = useState<Asset | null>(null);
   const [maskPainterAsset, setMaskPainterAsset] = useState<Asset | null>(null);
   const [sessionCancelTarget, setSessionCancelTarget] = useState<StudioSession | null>(null);
+  const [sessionListOpen, setSessionListOpen] = useState(false);
   const [selectedReferenceIds, setSelectedReferenceIds] = useState<string[]>([]);
   const [assetNotesDraft, setAssetNotesDraft] = useState("");
   const [providerReadiness, setProviderReadiness] = useState<ProviderReadiness | null>(null);
@@ -2423,20 +2428,58 @@ export default function App() {
   }
 
   return (
-    <div
-      className={`studio-shell guided-studio ${providerAuditMode ? "provider-audit-mode" : ""} ${advancedOpen ? "advanced-open" : ""}`}
-      data-provider-audit={providerAuditMode ? "open" : undefined}
-    >
-      <aside className="guided-header app-sidebar" data-tour-id="app-header" data-tour-active={tourActive("app-header")}>
-        <div className="sidebar-brand-block">
-          <div className="brand-mark sidebar-brand-mark" aria-label="Frank Create">
-            <span>frank</span>
-            <span>create</span>
-          </div>
-          <p className="sidebar-app-copy">Add references, brief the image, generate picks, edit or approve one, export it.</p>
+    <div className="os-shell">
+      {/* z-index -1 keeps the blurred blob behind the shell's content: a
+          positioned z-index 0 layer would paint over every card background. */}
+      <AmbientBackground base="transparent" style={{ zIndex: -1 }} />
 
+      <header className="os-topbar">
+        <div className="os-topbar-logo" data-as-topbar-logo="">
+          <img src={osLockup} alt="autosolutions OS" />
         </div>
+        <div className="os-topbar-search">
+          <span className="os-search-field" aria-hidden="true">
+            <span className="os-search-glyph" />
+            Search sessions and picks
+          </span>
+        </div>
+        <div className="os-topbar-actions">
+          <span className="os-topbar-chip" aria-hidden="true">
+            <Bell size={14} />
+          </span>
+          <span className="os-avatar" aria-hidden="true" />
+          <button
+            className="secondary-button os-sign-out"
+            type="button"
+            onClick={() => {
+              void supabase.auth.signOut();
+            }}
+          >
+            Sign out
+          </button>
+        </div>
+      </header>
 
+      <div
+        className={`studio-shell guided-studio ${providerAuditMode ? "provider-audit-mode" : ""} ${advancedOpen ? "advanced-open" : ""}`}
+        data-provider-audit={providerAuditMode ? "open" : undefined}
+      >
+        <aside className="guided-header app-sidebar" data-tour-id="app-header" data-tour-active={tourActive("app-header")}>
+        <div className="sidebar-brand-block">
+          <svg
+            className="brand-mark sidebar-brand-mark"
+            viewBox="0 0 158 26"
+            role="img"
+            aria-label="art-ificial studio"
+          >
+            <text className="sidebar-lockup-name" x="0" y="19">
+              art-ificial
+            </text>
+            <text className="sidebar-lockup-qualifier" x="94" y="19">
+              STUDIO
+            </text>
+          </svg>
+        </div>
 
         <nav className="sidebar-nav" aria-label="Frank Create navigation">
           <p className="sidebar-section-label">Create</p>
@@ -2522,40 +2565,74 @@ export default function App() {
             {advancedOpen ? <XCircle size={16} /> : <GitBranch size={16} />}
             {advancedOpen ? "Close Advanced" : "Advanced"}
           </button>
+
+          <p className="sidebar-section-label">Sessions</p>
+          <button
+            className={`sidebar-nav-button sidebar-session-toggle ${sessionListOpen ? "active" : ""}`}
+            type="button"
+            aria-label="Active session"
+            aria-expanded={sessionListOpen}
+            onClick={() => setSessionListOpen((current) => !current)}
+          >
+            <ChevronDown size={16} className={sessionListOpen ? "" : "collapsed"} />
+            Sessions
+            <span className="sidebar-badge">{sessions.length}</span>
+          </button>
+          {sessionListOpen ? (
+            <div className="sidebar-session-list" aria-label="Studio sessions">
+              {sessions.map((session) => (
+                <div
+                  className={`sidebar-session-row ${session.id === activeSession?.id ? "active" : ""}`}
+                  key={session.id}
+                >
+                  <button
+                    className="sidebar-session-name"
+                    type="button"
+                    onClick={() => {
+                      if (session.id !== activeSession?.id) {
+                        void selectSession(session);
+                      }
+                    }}
+                  >
+                    {session.name}
+                  </button>
+                  <button
+                    className="sidebar-session-archive"
+                    type="button"
+                    aria-label={`Archive ${session.name}`}
+                    onClick={() => setSessionCancelTarget(session)}
+                  >
+                    <XCircle size={13} />
+                  </button>
+                </div>
+              ))}
+              <button className="sidebar-session-new" type="button" onClick={handleNewSession}>
+                <Plus size={13} />
+                New session
+              </button>
+              {showMainDemoAction ? (
+                <button className="sidebar-session-new" type="button" onClick={returnToMainDemo}>
+                  <ArrowLeft size={13} />
+                  Main demo
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </nav>
 
-        <div className="sidebar-session-card">
-          <label className="session-picker">
-            <span>Session</span>
-            <select
-              aria-label="Active session"
-              value={activeSession?.id ?? ""}
-              onChange={(event) => {
-                const next = sessions.find((session) => session.id === event.target.value);
-                if (next) {
-                  void selectSession(next);
-                }
-              }}
-            >
-              {sessions.map((session) => (
-                <option value={session.id} key={session.id}>
-                  {session.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <p>
-            {turns.length} rounds / {approvedCount} approved / {favoriteCount} fave{favoriteCount === 1 ? "" : "s"}
-          </p>
-          {showMainDemoAction ? (
-            <button className="secondary-button compact-action" type="button" onClick={returnToMainDemo}>
-              <ArrowLeft size={16} />
-              Main demo
-            </button>
-          ) : null}
-          <button className="secondary-button compact-action sidebar-new-session" type="button" onClick={handleNewSession}>
-            <Plus size={16} />
-            New session
+        <div className="sidebar-footer-block">
+          <p className="sidebar-section-label">Workspace</p>
+          <button
+            className="sidebar-workspace-row"
+            type="button"
+            onClick={() => openStudioLink(config.advancedGraphUrl, "Raw Comfy canvas")}
+          >
+            <span className="series-dot series-1" />
+            Comfy canvas
+          </button>
+          <button className="sidebar-workspace-row" type="button" onClick={showGraph}>
+            <span className="series-dot series-2" />
+            Workflow map
           </button>
         </div>
       </aside>
@@ -4259,6 +4336,7 @@ export default function App() {
           }}
         />
       ) : null}
+      </div>
     </div>
   );
 }

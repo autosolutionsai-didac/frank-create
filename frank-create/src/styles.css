@@ -1,102 +1,53 @@
-@font-face {
-  font-family: "Pitch";
-  src:
-    url("./assets/fonts/Pitch-Semibold.woff2") format("woff2"),
-    url("./assets/fonts/Pitch-Semibold.woff") format("woff");
-  font-display: swap;
-  font-style: normal;
-  font-weight: 600;
-}
+@import "./ds/tokens.css";
 
-@font-face {
-  font-family: "Founders Grotesk Text";
-  src:
-    url("./assets/fonts/FoundersGroteskText-Light.woff2") format("woff2"),
-    url("./assets/fonts/FoundersGroteskText-Light.woff") format("woff");
-  font-display: swap;
-  font-style: normal;
-  font-weight: 300;
-}
+/* AutoSolutions OS design language, frank body tenant.
+   Typography and colour now come from the OS token layer imported above:
+   Google Sans (interface) + Roboto (copy and the uppercase label role), ink
+   #303030, and the tenant's coral ambient ramp. frank body identity survives
+   as the tenant accent rather than as the page skin.
 
-@font-face {
-  font-family: "Founders Grotesk Text";
-  src: url("./assets/fonts/FoundersGroteskText-Regular.otf") format("opentype");
-  font-display: swap;
-  font-style: normal;
-  font-weight: 400;
-}
-
-@font-face {
-  font-family: "Founders Grotesk Text";
-  src: url("./assets/fonts/FoundersGroteskText-Medium.otf") format("opentype");
-  font-display: swap;
-  font-style: normal;
-  font-weight: 500;
-}
-
-@font-face {
-  font-family: "Founders Grotesk Text";
-  src: url("./assets/fonts/FoundersGroteskText-Semibold.otf") format("opentype");
-  font-display: swap;
-  font-style: normal;
-  font-weight: 600;
-}
-
-@font-face {
-  font-family: "Founders Grotesk Text";
-  src: url("./assets/fonts/FoundersGroteskText-Bold.otf") format("opentype");
-  font-display: swap;
-  font-style: normal;
-  font-weight: 700;
-}
-
+   The aliases below let the existing component rules keep working unchanged.
+   Names that also exist in the OS layer (--ink, --muted, --font-body,
+   --font-display, --font-mono) are deliberately NOT redeclared here: this
+   block would otherwise shadow the OS values for the whole document and the
+   design-system components would lose their own tokens. */
 :root {
   color-scheme: light;
   font-family: var(--font-body);
-  line-height: 1.4;
-  font-weight: 300;
-  color: #3f2a2d;
-  background: #fff7f5;
+  line-height: var(--leading-normal);
+  font-weight: var(--weight-regular);
+  color: var(--ink);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --frank-original-pink: #ffb6a5;
-  --frank-black: #3f2a2d;
-  --frank-white: #ffffff;
-  --ink: #3f2a2d;
-  --muted: rgba(63, 42, 45, 0.72);
-  --paper: #ffffff;
-  --white: #ffffff;
-  --shell: #fff7f5;
-  --pink: #ffb6a5;
-  --pink-soft: #ffd0c6;
-  --cherry: #3f2a2d;
-  --coffee: #3f2a2d;
-  --cream: #fff7f5;
-  --line: rgba(63, 42, 45, 0.16);
-  --shadow: 0 18px 48px rgba(63, 42, 45, 0.1);
-  --font-heading: "Pitch", "Courier New", monospace;
-  --font-body: "Founders Grotesk Text", Arial, sans-serif;
-  --font-brand: "Pitch", "Courier New", monospace;
-  --font-display: "Pitch", "Courier New", monospace;
-  --font-mono: "Pitch", "Courier New", monospace;
-  --frankhub-pink: #ffb6a5;
-  --frankhub-dark: #3f2a2d;
-  --frankhub-accent: #ffd0c6;
-  --frankhub-coffee: #3f2a2d;
-  --concern-acid-primary: #69e9d2;
-  --concern-acid-secondary: #acfaea;
-  --concern-barrier-primary: #4fa6e1;
-  --concern-barrier-secondary: #82ccf7;
-  --concern-firm-primary: #ffb2bc;
-  --concern-firm-secondary: #ffd1d5;
-  --concern-caffeinated-primary: #ffb6a5;
-  --concern-caffeinated-secondary: #ffd0c6;
-  --concern-anti-ageing-primary: #a0acff;
-  --concern-anti-ageing-secondary: #beccff;
-  --concern-tan-primary: #f4c3ab;
-  --concern-tan-secondary: #ffacb8;
-  --concern-relax-primary: #869ab7;
-  --concern-relax-secondary: #a3b2c8;
+  -webkit-font-smoothing: subpixel-antialiased;
+
+  --font-heading: var(--font-display);
+  --font-brand: var(--font-display);
+
+  --paper: var(--surface);
+  --white: var(--surface);
+  --cream: var(--surface-inset);
+  --shell: transparent;
+  --line: var(--border-hairline);
+  --shadow: var(--shadow-card-glow);
+
+  --pink: var(--tenant-accent);
+  --pink-soft: var(--tenant-bar);
+  --cherry: var(--ink);
+  --coffee: var(--ink);
+  --frank-original-pink: var(--tenant-blob);
+  --frank-black: var(--ink);
+  --frank-white: var(--surface);
+
+  --frankhub-pink: var(--tenant-accent);
+  --frankhub-dark: var(--ink);
+  --frankhub-accent: var(--tenant-bar);
+  --frankhub-coffee: var(--muted);
+
+  /* One field, three ingredients: this vertical ramp, the lower-left blurred
+     blob (AmbientBackground), and transparent rail and panel over both. The
+     rail reads deeper only because the blob sits under it. */
+  --tenant-ramp: linear-gradient(to top, #f9c0b9 0%, #fbd8ce 45%, #fdefe4 100%);
 }
 
 * {
@@ -107,9 +58,24 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background:
-    linear-gradient(90deg, rgba(255, 182, 165, 0.28) 0 1px, transparent 1px) 0 0 / 44px 44px,
-    linear-gradient(180deg, var(--white), var(--shell) 48%, rgba(255, 182, 165, 0.28));
+  background: var(--tenant-ramp) fixed;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: var(--weight-regular);
+  -webkit-font-smoothing: subpixel-antialiased;
+}
+
+/* The label role lost its monospaced face; tabular figures keep counts,
+   timestamps and columns aligned. */
+.eyebrow,
+time,
+td,
+th,
+[class*="mono"],
+[class*="-count"],
+[class*="-stats"],
+[class*="-meta"] {
+  font-variant-numeric: tabular-nums;
 }
 
 button,
@@ -138,8 +104,8 @@ button:disabled {
   grid-template-rows: auto minmax(0, 1fr);
   gap: 0;
   background:
-    linear-gradient(90deg, rgba(63, 42, 45, 0.045) 0 1px, transparent 1px) 0 0 / 56px 56px,
-    linear-gradient(180deg, #fffefd 0%, var(--shell) 52%, rgba(255, 182, 165, 0.2) 100%);
+    linear-gradient(90deg, rgba(48, 48, 48, 0.045) 0 1px, transparent 1px) 0 0 / 56px 56px,
+    linear-gradient(180deg, #fffefd 0%, var(--shell) 52%, rgba(249, 171, 170, 0.2) 100%);
 }
 
 .guided-header {
@@ -191,7 +157,7 @@ button:disabled {
   align-items: center;
   gap: 8px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: var(--paper);
   color: var(--muted);
   padding: 6px 8px;
@@ -243,9 +209,9 @@ button:disabled {
 }
 
 .walkthrough-card {
-  border: 1px solid rgba(63, 42, 45, 0.18);
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--paper), rgba(255, 208, 198, 0.58));
+  border: 1px solid rgba(48, 48, 48, 0.18);
+  border-radius: var(--radius-paper-card);
+  background: linear-gradient(135deg, var(--paper), rgba(246, 211, 220, 0.58));
   box-shadow: var(--shadow);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -273,11 +239,11 @@ button:disabled {
   width: 34px;
   height: 34px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--white);
   color: var(--ink);
   font-family: var(--font-brand);
-  font-weight: 900;
+  font-weight: var(--weight-medium);
 }
 
 .walkthrough-progress button.active {
@@ -290,7 +256,7 @@ button:disabled {
   position: fixed;
   inset: 0;
   z-index: 70;
-  background: rgba(63, 42, 45, 0.58);
+  background: rgba(48, 48, 48, 0.58);
   backdrop-filter: grayscale(0.45) blur(2px);
   pointer-events: all;
 }
@@ -299,18 +265,18 @@ button:disabled {
   position: fixed;
   z-index: 80;
   border: 2px solid var(--pink);
-  border-radius: 10px;
+  border-radius: var(--radius-paper-card);
   box-shadow:
     0 0 0 4px rgba(255, 255, 255, 0.86),
-    0 18px 48px rgba(63, 42, 45, 0.32);
+    0 18px 48px rgba(48, 48, 48, 0.32);
   pointer-events: none;
 }
 
 .walkthrough-popover {
   position: fixed;
   z-index: 90;
-  border: 1px solid rgba(63, 42, 45, 0.22);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.22);
+  border-radius: var(--radius-paper-card);
   background: var(--paper);
   box-shadow: 0 24px 70px rgba(42, 24, 27, 0.32);
   color: var(--ink);
@@ -326,7 +292,7 @@ button:disabled {
   width: 18px;
   height: 18px;
   background: var(--paper);
-  border: 1px solid rgba(63, 42, 45, 0.22);
+  border: 1px solid rgba(48, 48, 48, 0.22);
   transform: translateX(-50%) rotate(45deg);
 }
 
@@ -374,7 +340,7 @@ button:disabled {
   width: 34px;
   height: 34px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--white);
   color: var(--ink);
   display: grid;
@@ -383,12 +349,12 @@ button:disabled {
 
 .walkthrough-step-count {
   width: fit-content;
-  border: 1px solid rgba(63, 42, 45, 0.14);
-  border-radius: 999px;
+  border: 1px solid rgba(48, 48, 48, 0.14);
+  border-radius: var(--radius-pill);
   background: var(--cream);
   color: var(--muted);
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   padding: 5px 9px;
 }
 
@@ -400,8 +366,8 @@ button:disabled {
 .walkthrough-popover .walkthrough-progress span {
   width: 9px;
   height: 9px;
-  border-radius: 999px;
-  background: rgba(63, 42, 45, 0.2);
+  border-radius: var(--radius-pill);
+  background: rgba(48, 48, 48, 0.2);
 }
 
 .walkthrough-popover .walkthrough-progress span.active {
@@ -429,7 +395,7 @@ button:disabled {
 
 .task-chip {
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--white);
   color: var(--ink);
   display: inline-flex;
@@ -438,7 +404,7 @@ button:disabled {
   min-height: 34px;
   padding: 0 12px;
   font-size: 0.85rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 .task-chip.active {
@@ -466,17 +432,17 @@ button:disabled {
 
 .context-section {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: var(--paper);
-  box-shadow: 0 12px 28px rgba(63, 42, 45, 0.08);
+  box-shadow: 0 12px 28px rgba(48, 48, 48, 0.08);
   display: grid;
   gap: 12px;
   padding: 14px;
 }
 
 .selected-model-summary {
-  border: 1px solid rgba(63, 42, 45, 0.12);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-paper-card);
   background: var(--cream);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -497,11 +463,11 @@ button:disabled {
 }
 
 .selected-model-summary em {
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--ink);
   color: var(--white);
   font-style: normal;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   padding: 5px 8px;
   white-space: nowrap;
 }
@@ -513,7 +479,7 @@ button:disabled {
 
 .drawer-toolbar {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: var(--paper);
   color: var(--ink);
   display: flex;
@@ -534,7 +500,7 @@ button:disabled {
   font-family: var(--font-brand);
   text-transform: uppercase;
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
 }
 
 .drawer-toolbar small {
@@ -561,8 +527,8 @@ button:disabled {
 }
 
 .context-toggle-row {
-  border: 1px solid rgba(63, 42, 45, 0.12);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-paper-card);
   background: var(--cream);
   display: flex;
   align-items: center;
@@ -587,19 +553,19 @@ button:disabled {
   width: min(520px, 100vw);
   height: calc(100vh - 76px);
   border-width: 1px 0 0 1px;
-  box-shadow: -22px 0 48px rgba(63, 42, 45, 0.16);
+  box-shadow: -22px 0 48px rgba(48, 48, 48, 0.16);
 }
 
 .advanced-drawer-toolbar {
   position: sticky;
   top: 0;
   z-index: 2;
-  box-shadow: 0 10px 22px rgba(63, 42, 45, 0.08);
+  box-shadow: 0 10px 22px rgba(48, 48, 48, 0.08);
 }
 
 .advanced-map-section {
   background: linear-gradient(135deg, var(--ink), #5a3a3d);
-  border-color: rgba(63, 42, 45, 0.28);
+  border-color: rgba(48, 48, 48, 0.28);
   color: var(--white);
 }
 
@@ -677,13 +643,16 @@ button:disabled {
   border-radius: 0 8px 8px 0;
 }
 
+/* The label role: the only uppercase in the product. Light 300 + tracking
+   carries the register, not a monospaced face. */
 .eyebrow {
   margin: 0 0 4px;
-  color: var(--ink);
-  font-family: var(--font-heading);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.18em;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-light);
+  line-height: 14px;
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
 }
 
@@ -694,26 +663,31 @@ p {
   margin: 0;
 }
 
+/* Hierarchy comes from size, never weight or colour. Leading is stated in
+   whole even pixels so the baselines after it stay on the pixel grid. */
 h1,
 h2,
 h3 {
   color: var(--ink);
-  font-family: var(--font-heading);
-  letter-spacing: 0;
-  line-height: 1.05;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
+  letter-spacing: var(--tracking-tight);
 }
 
 h1 {
-  font-size: 1.8rem;
+  font-size: var(--text-title);
+  line-height: 28px;
 }
 
 h2 {
-  font-size: 2.55rem;
+  font-size: var(--text-display);
+  line-height: 46px;
+  letter-spacing: var(--tracking-display);
 }
 
 h3 {
-  font-size: 1.06rem;
+  font-size: var(--text-card-title);
+  line-height: 24px;
 }
 
 .nav-list,
@@ -727,6 +701,8 @@ h3 {
   gap: 8px;
 }
 
+/* The workspace is pill-shaped: controls are fully round. The 4-6px paper
+   radii survive only inside cards — list rows, inner wells, thumbnails. */
 .nav-item,
 .ghost-button,
 .session-item,
@@ -743,32 +719,57 @@ h3 {
 .mask-chip,
 .reference-dock button,
 .output-grid button {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--white);
-  color: var(--ink);
+  border: 1px solid var(--muted-25);
+  border-radius: var(--radius-pill);
+  background: var(--surface-solid);
+  color: var(--muted);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+  font-family: var(--font-display);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-tight);
+  transition:
+    background-color var(--dur-base) var(--ease-standard),
+    border-color var(--dur-base) var(--ease-standard),
+    color var(--dur-base) var(--ease-standard);
+}
+
+.model-card,
+.preset-list button,
+.task-shortcut-list button,
+.export-list button,
+.recent-export-list button,
+.reference-dock button,
+.output-grid button {
+  border-radius: var(--radius-paper-card);
 }
 
 .nav-item {
   justify-content: flex-start;
-  min-height: 42px;
-  padding: 10px 12px;
+  min-height: var(--control-md);
+  padding: 0 12px;
   width: 100%;
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink);
 }
 
+.nav-item:hover {
+  background: var(--rail-hover);
+}
+
+/* Selected is a solid ink pill with a white label — never an accent fill. */
 .nav-item.active,
 .session-item.selected,
 .model-card.selected,
 .preset-list button.selected,
 .task-shortcut-list button.selected,
 .output-grid button.selected {
-  background: var(--pink);
+  background: var(--ink);
   border-color: var(--ink);
+  color: var(--text-on-ink);
 }
 
 .rail-heading {
@@ -785,9 +786,9 @@ h3 {
 }
 
 .brief-rail-card {
-  border: 1px solid rgba(63, 42, 45, 0.18);
-  border-radius: 8px;
-  background: linear-gradient(180deg, var(--white), rgba(255, 208, 198, 0.54));
+  border: 1px solid rgba(48, 48, 48, 0.18);
+  border-radius: var(--radius-paper-card);
+  background: linear-gradient(180deg, var(--white), rgba(246, 211, 220, 0.54));
   display: grid;
   gap: 10px;
   padding: 12px;
@@ -800,7 +801,7 @@ h3 {
 .brief-rail-card label span {
   color: var(--coffee);
   font-size: 0.7rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   text-transform: uppercase;
 }
 
@@ -809,7 +810,7 @@ h3 {
   width: 100%;
   min-width: 0;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: rgba(255, 255, 255, 0.9);
   color: var(--ink);
   font-size: 0.8rem;
@@ -831,7 +832,7 @@ h3 {
 .brief-rail-actions small {
   color: var(--muted);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   line-height: 1.2;
   min-width: 0;
   overflow-wrap: anywhere;
@@ -851,14 +852,15 @@ h3 {
 }
 
 .mini-button {
-  min-height: 32px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--white);
+  min-height: var(--control-xs);
+  border: 1px solid var(--muted-25);
+  border-radius: var(--radius-pill);
+  background: var(--surface-solid);
   color: var(--muted);
-  padding: 0 9px;
-  font-size: 0.8rem;
-  font-weight: 800;
+  padding: 0 12px;
+  font-family: var(--font-display);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
 }
 
 .mini-button:disabled {
@@ -896,7 +898,7 @@ h3 {
 
 .connection-pill {
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 8px 10px;
   display: inline-flex;
   align-items: center;
@@ -908,7 +910,7 @@ h3 {
 .connection-pill span {
   width: 9px;
   height: 9px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #d7c4bf;
 }
 
@@ -922,8 +924,8 @@ h3 {
 
 .ghost-button,
 .secondary-button {
-  min-height: 42px;
-  padding: 0 12px;
+  min-height: var(--control-xs);
+  padding: 0 14px;
 }
 
 .conversation-column {
@@ -952,7 +954,7 @@ h3 {
 .capability-strip span {
   background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--muted);
   padding: 8px 12px;
 }
@@ -968,14 +970,14 @@ h3 {
 .composer,
 .control-section,
 .status-strip {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: var(--shadow);
+  background: var(--surface);
+  border: 0;
+  border-radius: var(--radius-glass-card);
+  box-shadow: var(--shadow-card-glow);
 }
 
 .turn-card {
-  padding: 16px;
+  padding: 18px;
   display: grid;
   gap: 14px;
 }
@@ -991,7 +993,7 @@ h3 {
   width: 10px;
   height: 10px;
   margin-top: 5px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #d7c4bf;
 }
 
@@ -1024,13 +1026,13 @@ h3 {
 
 .turn-meta span {
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 5px 8px;
   background: var(--white);
 }
 
 .turn-meta .turn-error {
-  border-color: rgba(196, 17, 47, 0.35);
+  border-color: rgba(48, 48, 48, 0.35);
   color: var(--cherry);
   overflow-wrap: anywhere;
 }
@@ -1038,9 +1040,10 @@ h3 {
 .output-placeholder,
 .empty-thread,
 .empty-panel {
-  border: 1px dashed rgba(63, 42, 45, 0.28);
-  border-radius: 8px;
-  background: var(--cream);
+  border: 1px dashed var(--border-dashed);
+  border-radius: var(--radius-paper-card);
+  background: var(--surface-inset);
+  color: var(--muted);
   display: grid;
   place-items: center;
   gap: 10px;
@@ -1080,12 +1083,12 @@ h3 {
   position: absolute;
   left: 8px;
   bottom: 8px;
-  border-radius: 999px;
-  background: rgba(255, 250, 248, 0.9);
+  border-radius: var(--radius-pill);
+  background: rgba(250, 250, 248, 0.9);
   color: var(--ink);
   padding: 4px 8px;
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 .composer {
@@ -1097,43 +1100,45 @@ h3 {
 .composer textarea {
   min-height: 116px;
   resize: vertical;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 12px;
+  border: 1px solid var(--muted-20);
+  border-radius: var(--radius-paper-card);
+  padding: 12px 14px;
   color: var(--ink);
-  background: var(--white);
+  background: var(--surface-inset);
   outline: none;
 }
 
+/* There is no focus ring in this system — focus moves the border to ink. */
 .composer textarea:focus,
 input:focus,
-select:focus {
-  border-color: var(--cherry);
-  box-shadow: 0 0 0 3px rgba(196, 17, 47, 0.12);
+select:focus,
+textarea:focus {
+  border-color: var(--ink);
+  box-shadow: none;
 }
 
 .edit-banner {
-  background: var(--pink-soft);
-  border: 1px solid rgba(196, 17, 47, 0.24);
-  border-radius: 8px;
+  background: var(--tenant-tint);
+  border: 1px solid var(--tenant-border);
+  border-radius: var(--radius-paper-card);
   color: var(--ink);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 9px 10px;
-  font-weight: 800;
+  padding: 9px 12px;
+  font-weight: var(--weight-regular);
 }
 
 .edit-banner button {
   border: 0;
   background: transparent;
   color: var(--cherry);
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 .mask-pill {
-  border-left: 1px solid rgba(42, 42, 42, 0.18);
+  border-left: 1px solid rgba(48, 48, 48, 0.18);
   color: var(--coffee);
   padding-left: 10px;
   font-family: var(--font-mono);
@@ -1155,8 +1160,8 @@ select:focus {
 
 .prompt-remix-panel button {
   min-height: 86px;
-  border: 1px solid rgba(196, 17, 47, 0.24);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.24);
+  border-radius: var(--radius-paper-card);
   background: var(--cream);
   color: var(--ink);
   padding: 10px;
@@ -1169,7 +1174,7 @@ select:focus {
 .prompt-remix-panel strong {
   font-family: var(--font-brand);
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   text-transform: uppercase;
 }
 
@@ -1181,7 +1186,9 @@ select:focus {
 }
 
 .remix-button {
-  font-weight: 800;
+  width: auto;
+  flex: 0 0 auto;
+  font-weight: var(--weight-medium);
 }
 
 .composer-cancel-button {
@@ -1194,16 +1201,16 @@ select:focus {
 .upload-button {
   min-height: 42px;
   padding: 0 12px;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 .mask-upload-button {
-  border-color: rgba(196, 17, 47, 0.28);
+  border-color: rgba(48, 48, 48, 0.28);
   box-shadow: inset 4px 0 0 var(--cherry);
 }
 
 .mask-paint-button {
-  border-color: rgba(93, 55, 37, 0.26);
+  border-color: rgba(48, 48, 48, 0.26);
   box-shadow: inset 4px 0 0 var(--coffee);
 }
 
@@ -1223,7 +1230,7 @@ select:focus {
   gap: 7px;
   max-width: 190px;
   padding: 0 9px;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 .mask-chip img {
@@ -1263,7 +1270,7 @@ select:focus {
   border-color: var(--cherry);
   box-shadow:
     inset 0 0 0 2px var(--cherry),
-    0 8px 16px rgba(196, 17, 47, 0.16);
+    0 8px 16px rgba(48, 48, 48, 0.16);
   opacity: 1;
 }
 
@@ -1274,7 +1281,7 @@ select:focus {
   bottom: 4px;
   width: 8px;
   height: 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--cherry);
   box-shadow: 0 0 0 2px var(--white);
 }
@@ -1288,7 +1295,7 @@ select:focus {
 .reference-selection-count {
   min-height: 42px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: var(--white);
   color: var(--coffee);
   display: inline-flex;
@@ -1296,18 +1303,23 @@ select:focus {
   padding: 0 10px;
   font-family: var(--font-mono);
   font-size: 0.74rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   white-space: nowrap;
 }
 
 .primary-button {
-  min-height: 46px;
-  padding: 0 16px;
+  min-height: var(--control-sm);
+  padding: 0 14px;
   background: var(--ink);
-  color: var(--white);
+  color: var(--text-on-ink);
   border-color: var(--ink);
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   white-space: nowrap;
+}
+
+.primary-button:hover:not(:disabled) {
+  background: #3a3a3e;
+  border-color: #3a3a3e;
 }
 
 .primary-button:disabled {
@@ -1322,9 +1334,9 @@ select:focus {
 
 .section-title {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
 }
 
 .model-card {
@@ -1354,11 +1366,11 @@ select:focus {
 }
 
 .model-card em {
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--ink);
   color: var(--paper);
   font-style: normal;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   min-width: 42px;
   padding: 5px 8px;
   text-align: center;
@@ -1376,18 +1388,21 @@ label {
   gap: 6px;
   color: var(--muted);
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 select,
 input {
   min-width: 0;
   width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--white);
+  min-height: 38px;
+  border: 1px solid var(--muted-20);
+  border-radius: var(--radius-field);
+  background: var(--surface);
   color: var(--ink);
-  padding: 10px 9px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 0 10px;
   outline: none;
 }
 
@@ -1403,8 +1418,8 @@ input {
 }
 
 .local-engine-note {
-  border: 1px solid rgba(42, 42, 42, 0.12);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-paper-card);
   background: var(--cream);
   padding: 10px;
   display: grid;
@@ -1423,8 +1438,8 @@ input {
 }
 
 .local-engine-note code {
-  border: 1px solid rgba(42, 42, 42, 0.12);
-  border-radius: 7px;
+  border: 1px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-paper-card);
   background: rgba(255, 255, 255, 0.72);
   color: var(--ink);
   font-size: 0.72rem;
@@ -1448,9 +1463,9 @@ input {
 }
 
 .local-engine-ignored {
-  border: 1px solid rgba(196, 17, 47, 0.2);
-  border-radius: 7px;
-  background: rgba(255, 226, 218, 0.48);
+  border: 1px solid rgba(48, 48, 48, 0.2);
+  border-radius: var(--radius-paper-card);
+  background: rgba(253, 241, 244, 0.48);
   display: grid;
   gap: 4px;
   padding: 8px;
@@ -1470,8 +1485,8 @@ input {
 }
 
 .local-engine-picks span {
-  border: 1px solid rgba(42, 42, 42, 0.1);
-  border-radius: 7px;
+  border: 1px solid rgba(48, 48, 48, 0.1);
+  border-radius: var(--radius-paper-card);
   background: rgba(255, 255, 255, 0.56);
   color: var(--coffee);
   display: grid;
@@ -1485,8 +1500,8 @@ input {
 }
 
 .workflow-blueprints {
-  border: 1px solid rgba(42, 42, 42, 0.1);
-  border-radius: 7px;
+  border: 1px solid rgba(48, 48, 48, 0.1);
+  border-radius: var(--radius-paper-card);
   background: rgba(255, 255, 255, 0.58);
   display: grid;
   gap: 6px;
@@ -1509,7 +1524,7 @@ input {
   grid-template-columns: minmax(0, 1fr) 34px;
   align-items: center;
   gap: 8px;
-  border-top: 1px solid rgba(42, 42, 42, 0.08);
+  border-top: 1px solid rgba(48, 48, 48, 0.08);
   padding-top: 6px;
 }
 
@@ -1582,19 +1597,19 @@ input {
 }
 
 .provider-key-list code {
-  border: 1px solid rgba(42, 42, 42, 0.12);
-  border-radius: 999px;
+  border: 1px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-pill);
   background: var(--white);
   color: var(--cherry);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   padding: 5px 7px;
   overflow-wrap: anywhere;
 }
 
 .provider-env-box {
-  border: 1px solid rgba(42, 42, 42, 0.12);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-paper-card);
   background: rgba(255, 255, 255, 0.7);
   display: grid;
   gap: 5px;
@@ -1608,7 +1623,7 @@ input {
 }
 
 .provider-env-box span {
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   text-transform: uppercase;
 }
 
@@ -1621,9 +1636,9 @@ input {
 .provider-unlock-plan {
   display: grid;
   gap: 7px;
-  border: 1px solid rgba(93, 55, 37, 0.16);
-  border-radius: 8px;
-  background: rgba(255, 252, 248, 0.76);
+  border: 1px solid rgba(48, 48, 48, 0.16);
+  border-radius: var(--radius-paper-card);
+  background: rgba(250, 250, 248, 0.76);
   padding: 9px;
 }
 
@@ -1637,7 +1652,7 @@ input {
 .provider-unlock-heading span {
   color: var(--ink);
   font-size: 0.72rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   text-transform: uppercase;
 }
 
@@ -1653,7 +1668,7 @@ input {
   gap: 8px;
   align-items: center;
   min-width: 0;
-  border-top: 1px solid rgba(42, 42, 42, 0.08);
+  border-top: 1px solid rgba(48, 48, 48, 0.08);
   padding-top: 7px;
 }
 
@@ -1667,7 +1682,7 @@ input {
   color: var(--pink);
   font-size: 0.68rem;
   font-style: normal;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
 }
 
 .provider-unlock-row div {
@@ -1693,12 +1708,12 @@ input {
 }
 
 .provider-unlock-row > span {
-  border: 1px solid rgba(196, 17, 47, 0.16);
-  border-radius: 999px;
-  background: rgba(255, 226, 218, 0.54);
+  border: 1px solid rgba(48, 48, 48, 0.16);
+  border-radius: var(--radius-pill);
+  background: rgba(253, 241, 244, 0.54);
   color: var(--ink);
   font-size: 0.68rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   padding: 4px 7px;
   white-space: nowrap;
 }
@@ -1706,9 +1721,9 @@ input {
 .activation-checklist {
   display: grid;
   gap: 8px;
-  border: 1px solid rgba(42, 42, 42, 0.12);
-  border-radius: 8px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 226, 218, 0.34));
+  border: 1px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-paper-card);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(253, 241, 244, 0.34));
   padding: 9px;
 }
 
@@ -1726,7 +1741,7 @@ input {
 .activation-checklist-heading span {
   color: var(--ink);
   font-size: 0.72rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   text-transform: uppercase;
 }
 
@@ -1740,7 +1755,7 @@ input {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   gap: 8px;
-  border-top: 1px solid rgba(42, 42, 42, 0.08);
+  border-top: 1px solid rgba(48, 48, 48, 0.08);
   padding-top: 8px;
 }
 
@@ -1749,12 +1764,12 @@ input {
   place-items: center;
   width: 25px;
   height: 25px;
-  border: 1px solid rgba(42, 42, 42, 0.14);
+  border: 1px solid rgba(48, 48, 48, 0.14);
   border-radius: 50%;
   background: var(--white);
   color: var(--ink);
   font-size: 0.62rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
 }
 
 .activation-step.ready > span {
@@ -1763,12 +1778,12 @@ input {
 }
 
 .activation-step.recommended > span {
-  border-color: rgba(93, 55, 37, 0.28);
+  border-color: rgba(48, 48, 48, 0.28);
   color: var(--coffee);
 }
 
 .activation-step.action_needed > span {
-  border-color: rgba(196, 17, 47, 0.28);
+  border-color: rgba(48, 48, 48, 0.28);
   color: var(--cherry);
 }
 
@@ -1799,23 +1814,23 @@ input {
 
 .activation-step em {
   font-style: normal;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 .activation-path {
   width: fit-content;
-  border: 1px solid rgba(42, 42, 42, 0.12);
-  border-radius: 999px;
+  border: 1px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-pill);
   background: var(--white);
   color: var(--ink);
   font-size: 0.68rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   padding: 5px 7px;
 }
 
 .provider-key-editor {
-  border: 1px solid rgba(196, 17, 47, 0.16);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.16);
+  border-radius: var(--radius-paper-card);
   background: rgba(255, 255, 255, 0.78);
   display: grid;
   gap: 8px;
@@ -1836,15 +1851,15 @@ input {
 .provider-key-editor label span {
   color: var(--ink);
   font-size: 0.68rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   text-transform: uppercase;
 }
 
 .provider-key-editor input {
   width: 100%;
   min-width: 0;
-  border: 1px solid rgba(42, 42, 42, 0.14);
-  border-radius: 7px;
+  border: 1px solid rgba(48, 48, 48, 0.14);
+  border-radius: var(--radius-paper-card);
   background: var(--white);
   color: var(--ink);
   font: inherit;
@@ -1854,7 +1869,7 @@ input {
 
 .provider-key-editor input:focus {
   border-color: var(--cherry);
-  box-shadow: 0 0 0 3px rgba(196, 17, 47, 0.12);
+  box-shadow: 0 0 0 3px rgba(48, 48, 48, 0.12);
   outline: none;
 }
 
@@ -1872,9 +1887,9 @@ input {
 }
 
 .launch-readiness {
-  border-color: rgba(255, 182, 165, 0.9);
+  border-color: rgba(249, 171, 170, 0.9);
   background:
-    linear-gradient(135deg, rgba(255, 182, 165, 0.34), rgba(255, 255, 255, 0.94)),
+    linear-gradient(135deg, rgba(249, 171, 170, 0.34), rgba(255, 255, 255, 0.94)),
     var(--white);
 }
 
@@ -1888,8 +1903,8 @@ input {
   grid-template-columns: 30px minmax(0, 1fr);
   align-items: start;
   gap: 8px;
-  border: 1px solid rgba(63, 42, 45, 0.12);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-paper-card);
   background: rgba(255, 255, 255, 0.78);
   padding: 8px;
 }
@@ -1899,12 +1914,12 @@ input {
   place-items: center;
   min-width: 26px;
   height: 26px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--ink);
   color: var(--white);
   font-family: var(--font-mono);
   font-size: 0.62rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   text-transform: uppercase;
 }
 
@@ -1942,8 +1957,8 @@ input {
 .provider-preflight-card {
   display: grid;
   gap: 8px;
-  border: 1px solid rgba(42, 42, 42, 0.12);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-paper-card);
   padding: 10px;
   background: var(--white);
 }
@@ -1955,8 +1970,8 @@ input {
 
 .provider-preflight-card.blocked,
 .provider-preflight-card.unsupported {
-  border-color: rgba(196, 17, 47, 0.28);
-  background: rgba(255, 226, 218, 0.58);
+  border-color: rgba(48, 48, 48, 0.28);
+  background: rgba(253, 241, 244, 0.58);
 }
 
 .provider-preflight-card > strong {
@@ -1989,7 +2004,7 @@ input {
 .provider-preflight-card dt {
   color: var(--ink);
   font-size: 0.68rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   text-transform: uppercase;
 }
 
@@ -2002,15 +2017,15 @@ input {
 .provider-audit-card {
   display: grid;
   gap: 8px;
-  border: 1px solid rgba(196, 17, 47, 0.16);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.16);
+  border-radius: var(--radius-paper-card);
   padding: 10px;
-  background: linear-gradient(135deg, rgba(255, 242, 245, 0.92), rgba(255, 255, 255, 0.96));
+  background: linear-gradient(135deg, rgba(250, 250, 248, 0.92), rgba(255, 255, 255, 0.96));
 }
 
 .studio-shell.provider-audit-mode .provider-audit-card {
   border-width: 2px;
-  box-shadow: 0 14px 28px rgba(196, 17, 47, 0.12);
+  box-shadow: 0 14px 28px rgba(48, 48, 48, 0.12);
 }
 
 .provider-audit-card > strong {
@@ -2035,8 +2050,8 @@ input {
   grid-template-columns: 18px minmax(0, 1fr);
   gap: 7px;
   align-items: start;
-  border: 1px solid rgba(42, 42, 42, 0.1);
-  border-radius: 7px;
+  border: 1px solid rgba(48, 48, 48, 0.1);
+  border-radius: var(--radius-paper-card);
   padding: 7px;
   background: rgba(255, 255, 255, 0.74);
 }
@@ -2079,7 +2094,7 @@ input {
 }
 
 .demo-doctor.needs_attention {
-  border-color: rgba(196, 17, 47, 0.28);
+  border-color: rgba(48, 48, 48, 0.28);
 }
 
 .demo-doctor > strong {
@@ -2099,8 +2114,8 @@ input {
 }
 
 .doctor-check {
-  border: 1px solid rgba(42, 42, 42, 0.12);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-paper-card);
   background: rgba(255, 255, 255, 0.72);
   display: grid;
   grid-template-columns: 32px minmax(0, 1fr);
@@ -2110,12 +2125,12 @@ input {
 
 .doctor-check > span {
   align-self: start;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--ink);
   color: var(--white);
   display: grid;
   font-size: 0.68rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   min-height: 26px;
   place-items: center;
   text-transform: uppercase;
@@ -2149,18 +2164,18 @@ input {
 
 .doctor-check em {
   font-style: normal;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 .demo-evidence-path {
-  border: 1px solid rgba(42, 42, 42, 0.12);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-paper-card);
   background: var(--cream);
   color: var(--coffee);
   display: block;
   font-family: var(--font-mono);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   line-height: 1.3;
   overflow-wrap: anywhere;
   padding: 8px 9px;
@@ -2176,8 +2191,8 @@ input {
 }
 
 .call-decision-card {
-  border: 1px solid rgba(42, 42, 42, 0.12);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-paper-card);
   background: var(--white);
   box-shadow: inset 5px 0 0 var(--pink);
   display: grid;
@@ -2199,31 +2214,31 @@ input {
 .call-decision-card small {
   color: var(--coffee);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   line-height: 1.25;
 }
 
 .demo-evidence-actions.provider-receipt-actions {
-  border-top: 1px solid rgba(42, 42, 42, 0.1);
+  border-top: 1px solid rgba(48, 48, 48, 0.1);
   margin-top: 2px;
   padding-top: 8px;
 }
 
 .demo-evidence-actions.brand-context-actions {
-  border-top: 1px solid rgba(42, 42, 42, 0.1);
+  border-top: 1px solid rgba(48, 48, 48, 0.1);
   margin-top: 4px;
   padding-top: 8px;
 }
 
 .demo-evidence-actions.nested {
-  border-top: 1px solid rgba(42, 42, 42, 0.1);
+  border-top: 1px solid rgba(48, 48, 48, 0.1);
   margin-top: 2px;
   padding-top: 8px;
 }
 
 .readiness-pack-proof {
-  border: 1px solid rgba(42, 42, 42, 0.12);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-paper-card);
   background: var(--white);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
@@ -2232,7 +2247,7 @@ input {
 }
 
 .readiness-pack-proof span {
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: var(--cream);
   color: var(--coffee);
   display: grid;
@@ -2241,7 +2256,7 @@ input {
   padding: 8px 5px;
   text-align: center;
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 .readiness-pack-proof strong {
@@ -2266,7 +2281,7 @@ input {
   grid-column: 1 / -1;
   color: var(--coffee);
   font-size: 0.74rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
@@ -2280,9 +2295,9 @@ input {
 }
 
 .cliff-demo-guide {
-  border: 1px solid rgba(196, 17, 47, 0.18);
-  border-radius: 8px;
-  background: linear-gradient(180deg, rgba(255, 242, 245, 0.88), rgba(255, 255, 255, 0.96));
+  border: 1px solid rgba(48, 48, 48, 0.18);
+  border-radius: var(--radius-paper-card);
+  background: linear-gradient(180deg, rgba(250, 250, 248, 0.88), rgba(255, 255, 255, 0.96));
   display: grid;
   gap: 10px;
   padding: 10px;
@@ -2299,18 +2314,18 @@ input {
   color: var(--ink);
   font-family: var(--font-display);
   font-size: 1rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   line-height: 1.1;
 }
 
 .cliff-guide-heading strong {
-  border: 1px solid rgba(42, 42, 42, 0.12);
-  border-radius: 999px;
+  border: 1px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-pill);
   background: var(--white);
   color: var(--cherry);
   flex: 0 0 auto;
   font-size: 0.64rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   max-width: 130px;
   overflow-wrap: anywhere;
   padding: 5px 7px;
@@ -2325,8 +2340,8 @@ input {
 
 .cliff-guide-step {
   align-items: center;
-  border: 1px solid rgba(42, 42, 42, 0.1);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.1);
+  border-radius: var(--radius-paper-card);
   background: rgba(255, 255, 255, 0.78);
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) auto;
@@ -2336,13 +2351,13 @@ input {
 }
 
 .cliff-guide-step > span {
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--ink);
   color: var(--white);
   display: grid;
   font-family: var(--font-mono);
   font-size: 0.72rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   height: 24px;
   place-items: center;
   width: 24px;
@@ -2367,12 +2382,12 @@ input {
 }
 
 .cliff-guide-step em {
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--cream);
   color: var(--coffee);
   font-size: 0.64rem;
   font-style: normal;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   max-width: 88px;
   overflow-wrap: anywhere;
   padding: 5px 7px;
@@ -2387,18 +2402,18 @@ input {
 }
 
 .cliff-guide-proofs span {
-  border: 1px solid rgba(42, 42, 42, 0.12);
-  border-radius: 999px;
+  border: 1px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-pill);
   background: var(--white);
   color: var(--ink);
   font-size: 0.68rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   line-height: 1.1;
   padding: 6px 8px;
 }
 
 .handoff-section {
-  border-color: rgba(196, 17, 47, 0.22);
+  border-color: rgba(48, 48, 48, 0.22);
   background: linear-gradient(180deg, var(--white), var(--pink-soft));
 }
 
@@ -2416,7 +2431,7 @@ input {
 
 .handoff-stats span {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: rgba(255, 255, 255, 0.72);
   color: var(--coffee);
   display: grid;
@@ -2432,11 +2447,11 @@ input {
 }
 
 .handoff-proof {
-  border: 1px solid rgba(196, 17, 47, 0.22);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.22);
+  border-radius: var(--radius-paper-card);
   background: rgba(255, 255, 255, 0.72);
   color: var(--cherry);
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   margin: 0;
   padding: 8px 10px;
 }
@@ -2447,10 +2462,17 @@ input {
   color: var(--white);
 }
 
+.secondary-button.handoff-button:hover:not(:disabled) {
+  background: #3a3a3e;
+  border-color: #3a3a3e;
+  color: var(--text-on-ink);
+}
+
 .secondary-button.handoff-button:disabled {
-  background: var(--pink-soft);
-  border-color: var(--line);
+  background: var(--surface-solid);
+  border-color: var(--muted-25);
   color: var(--muted);
+  opacity: 0.45;
 }
 
 .recent-exports-section {
@@ -2463,7 +2485,7 @@ input {
   justify-content: space-between;
   padding: 9px 10px;
   text-align: left;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 .recent-export-list button span {
@@ -2485,8 +2507,8 @@ input {
 }
 
 .empty-export-trail {
-  border: 1px dashed rgba(63, 42, 45, 0.25);
-  border-radius: 8px;
+  border: 1px dashed rgba(48, 48, 48, 0.25);
+  border-radius: var(--radius-paper-card);
   background: var(--cream);
   color: var(--coffee);
   padding: 10px;
@@ -2507,7 +2529,7 @@ input {
   width: 52px;
   height: 30px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #eadad6;
   padding: 3px;
 }
@@ -2516,7 +2538,7 @@ input {
   display: block;
   width: 22px;
   height: 22px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--white);
   transition: transform 160ms ease;
 }
@@ -2530,8 +2552,8 @@ input {
 }
 
 .brand-kit-section {
-  background: linear-gradient(180deg, var(--white), rgba(255, 226, 218, 0.55));
-  border-color: rgba(196, 17, 47, 0.18);
+  background: linear-gradient(180deg, var(--white), rgba(253, 241, 244, 0.55));
+  border-color: rgba(48, 48, 48, 0.18);
 }
 
 .brand-kit-field {
@@ -2541,7 +2563,7 @@ input {
 .brand-kit-field span {
   color: var(--coffee);
   font-size: 0.72rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   text-transform: uppercase;
 }
 
@@ -2550,7 +2572,7 @@ input {
   min-height: 76px;
   max-height: 170px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: rgba(255, 255, 255, 0.86);
   color: var(--ink);
   font-size: 0.8rem;
@@ -2570,20 +2592,20 @@ input {
 .brand-kit-actions small {
   color: var(--muted);
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: var(--weight-medium);
 }
 
 .project-brief-section {
   background: rgba(255, 255, 255, 0.78);
-  border-top: 1px solid rgba(59, 42, 40, 0.08);
-  border-bottom: 1px solid rgba(59, 42, 40, 0.08);
+  border-top: 1px solid rgba(48, 48, 48, 0.08);
+  border-bottom: 1px solid rgba(48, 48, 48, 0.08);
 }
 
 .project-brief-section textarea {
   width: 100%;
   min-height: 78px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: var(--white);
   color: var(--ink);
   line-height: 1.35;
@@ -2635,7 +2657,7 @@ input {
 .task-shortcut-icon {
   width: 28px;
   height: 28px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--ink);
   color: var(--white);
   display: grid;
@@ -2654,7 +2676,7 @@ input {
 .preview-slot {
   aspect-ratio: 1 / 1;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: var(--cream);
   display: grid;
   place-items: center;
@@ -2691,7 +2713,7 @@ input {
 .secondary-button,
 .export-list button {
   min-height: 38px;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 .approval-actions button {
@@ -2704,7 +2726,7 @@ input {
   gap: 6px;
   color: var(--coffee);
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 .review-notes textarea {
@@ -2713,8 +2735,23 @@ input {
 }
 
 .secondary-button {
+  background: var(--surface-solid);
+  border-color: var(--muted-25);
+  color: var(--muted);
+}
+
+.secondary-button:hover:not(:disabled) {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+/* Only the stacked lists in the inspector want full-width pills. */
+.review-tool-list .secondary-button,
+.review-export-list .secondary-button,
+.handoff-section .secondary-button,
+.session-cancel-actions .secondary-button,
+.sidebar-session-card .secondary-button {
   width: 100%;
-  background: var(--pink-soft);
 }
 
 .channel-set-button {
@@ -2724,14 +2761,19 @@ input {
 }
 
 .channel-set-button:hover {
-  border-color: var(--cherry);
-  background: var(--cherry);
+  border-color: #3a3a3e;
+  background: #3a3a3e;
 }
 
 .danger-button {
-  border-color: rgba(196, 17, 47, 0.28);
-  background: rgba(255, 226, 218, 0.82);
-  color: var(--cherry);
+  border-color: var(--muted-25);
+  background: var(--surface-solid);
+  color: var(--muted);
+}
+
+.danger-button:hover:not(:disabled) {
+  border-color: var(--ink);
+  color: var(--ink);
 }
 
 .review-metadata {
@@ -2771,7 +2813,7 @@ input {
 .review-metadata dt {
   color: var(--coffee);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   text-transform: uppercase;
 }
 
@@ -2780,7 +2822,7 @@ input {
   min-width: 0;
   color: var(--ink);
   font-size: 0.79rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   overflow-wrap: anywhere;
 }
 
@@ -2810,8 +2852,8 @@ input {
 }
 
 .compare-prompt {
-  border: 1px solid rgba(196, 17, 47, 0.28);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.28);
+  border-radius: var(--radius-paper-card);
   background: var(--pink-soft);
   color: var(--coffee);
   display: flex;
@@ -2829,12 +2871,12 @@ input {
 
 .compare-prompt button {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: var(--white);
   color: var(--ink);
   min-height: 30px;
   padding: 0 10px;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 .compare-button.active {
@@ -2851,7 +2893,7 @@ input {
 .round-starter-list button {
   min-height: 36px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: var(--white);
   color: var(--ink);
   display: inline-flex;
@@ -2859,7 +2901,7 @@ input {
   justify-content: flex-start;
   gap: 8px;
   padding: 0 10px;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 .round-starter-list button:first-child {
@@ -2884,7 +2926,7 @@ input {
   align-items: center;
   justify-content: space-between;
   font-family: var(--font-heading);
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   box-shadow: none;
 }
 
@@ -2894,8 +2936,8 @@ input {
 }
 
 .status-strip button {
-  border: 1px solid rgba(42, 42, 42, 0.16);
-  border-radius: 999px;
+  border: 1px solid rgba(48, 48, 48, 0.16);
+  border-radius: var(--radius-pill);
   background: var(--white);
   color: var(--ink);
   display: inline-flex;
@@ -2909,7 +2951,7 @@ input {
 
 .context-panel > .status-strip {
   border: 0;
-  border-top: 1px solid rgba(63, 42, 45, 0.12);
+  border-top: 1px solid rgba(48, 48, 48, 0.12);
   border-radius: 0;
   background: transparent;
   color: var(--muted);
@@ -2935,7 +2977,7 @@ input {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgba(24, 13, 12, 0.86);
+  background: rgba(0, 0, 0, 0.86);
   display: grid;
   place-items: center;
   padding: 24px;
@@ -2945,7 +2987,7 @@ input {
   position: fixed;
   inset: 0;
   z-index: 65;
-  background: rgba(63, 42, 45, 0.58);
+  background: rgba(48, 48, 48, 0.58);
   display: grid;
   place-items: center;
   padding: 24px;
@@ -2955,10 +2997,10 @@ input {
 .session-cancel-card {
   position: relative;
   width: min(440px, calc(100vw - 32px));
-  border: 1px solid rgba(63, 42, 45, 0.22);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.22);
+  border-radius: var(--radius-paper-card);
   background: var(--paper);
-  box-shadow: 0 24px 70px rgba(63, 42, 45, 0.28);
+  box-shadow: 0 24px 70px rgba(48, 48, 48, 0.28);
   display: grid;
   gap: 12px;
   padding: 22px;
@@ -2998,7 +3040,7 @@ input {
 .lightbox-inner video {
   max-width: min(980px, 94vw);
   max-height: 78vh;
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   box-shadow: 0 26px 70px rgba(0, 0, 0, 0.35);
 }
 
@@ -3009,8 +3051,8 @@ input {
   width: 36px;
   height: 36px;
   border: 1px solid rgba(255, 255, 255, 0.26);
-  border-radius: 999px;
-  background: rgba(255, 250, 248, 0.92);
+  border-radius: var(--radius-pill);
+  background: rgba(250, 250, 248, 0.92);
   color: var(--ink);
   display: grid;
   place-items: center;
@@ -3026,21 +3068,21 @@ input {
 .lightbox-actions button {
   min-height: 42px;
   border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: var(--paper);
   color: var(--ink);
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 0 14px;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 .mask-painter-backdrop {
   position: fixed;
   inset: 0;
   z-index: 65;
-  background: rgba(24, 13, 12, 0.88);
+  background: rgba(0, 0, 0, 0.88);
   display: grid;
   place-items: center;
   padding: 24px;
@@ -3050,7 +3092,7 @@ input {
   width: min(980px, 94vw);
   max-height: 92vh;
   border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: var(--paper);
   box-shadow: 0 26px 70px rgba(0, 0, 0, 0.35);
   display: grid;
@@ -3078,7 +3120,7 @@ input {
 .mask-painter-header span {
   color: var(--coffee);
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 .mask-painter .lightbox-close {
@@ -3090,8 +3132,8 @@ input {
   position: relative;
   min-height: 280px;
   max-height: 68vh;
-  border: 1px solid rgba(42, 42, 42, 0.12);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-paper-card);
   background: var(--ink);
   display: grid;
   place-items: center;
@@ -3131,7 +3173,7 @@ input {
 .mask-painter-controls label span {
   color: var(--ink);
   font-size: 0.72rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   text-transform: uppercase;
 }
 
@@ -3144,7 +3186,7 @@ input {
   position: fixed;
   inset: 0;
   z-index: 60;
-  background: rgba(24, 13, 12, 0.88);
+  background: rgba(0, 0, 0, 0.88);
   display: grid;
   place-items: center;
   padding: 24px;
@@ -3155,7 +3197,7 @@ input {
   max-height: 92vh;
   overflow: auto;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: var(--paper);
   box-shadow: 0 26px 80px rgba(0, 0, 0, 0.36);
 }
@@ -3189,7 +3231,7 @@ input {
 
 .compare-pane {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: var(--white);
   overflow: hidden;
 }
@@ -3228,12 +3270,12 @@ input {
 
 .compare-meta span {
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--cream);
   color: var(--coffee);
   padding: 5px 8px;
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 .compare-actions {
@@ -3245,22 +3287,22 @@ input {
 .compare-actions button {
   min-height: 38px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: var(--pink-soft);
   color: var(--ink);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 .graph-shell {
   min-height: 100vh;
   background:
     radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.72) 0 1px, transparent 1px) 0 0 / 18px 18px,
-    linear-gradient(90deg, rgba(232, 180, 180, 0.48), transparent 38%),
-    repeating-linear-gradient(90deg, rgba(42, 42, 42, 0.035) 0 1px, transparent 1px 34px),
+    linear-gradient(90deg, rgba(250, 250, 248, 0.48), transparent 38%),
+    repeating-linear-gradient(90deg, rgba(48, 48, 48, 0.035) 0 1px, transparent 1px 34px),
     var(--frankhub-pink);
   color: var(--frankhub-dark);
   display: grid;
@@ -3276,9 +3318,9 @@ input {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 18px;
-  border-bottom: 2px solid rgba(42, 42, 42, 0.1);
+  border-bottom: 2px solid rgba(48, 48, 48, 0.1);
   background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 14px 30px rgba(42, 42, 42, 0.06);
+  box-shadow: 0 14px 30px rgba(48, 48, 48, 0.06);
 }
 
 .graph-brand {
@@ -3292,7 +3334,7 @@ input {
   margin: 0;
   font-family: var(--font-brand);
   font-size: clamp(2rem, 4vw, 3.5rem);
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   line-height: 0.9;
   text-transform: uppercase;
 }
@@ -3302,7 +3344,7 @@ input {
   color: var(--frankhub-coffee);
   font-family: var(--font-mono);
   font-size: 0.9rem;
-  font-weight: 700;
+  font-weight: var(--weight-medium);
 }
 
 .graph-brand .brand-mark {
@@ -3348,10 +3390,10 @@ input {
 
 .graph-canvas,
 .graph-inspector {
-  border: 2px solid rgba(42, 42, 42, 0.1);
-  border-radius: 8px;
+  border: 2px solid rgba(48, 48, 48, 0.1);
+  border-radius: var(--radius-paper-card);
   background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 22px 56px rgba(42, 42, 42, 0.1);
+  box-shadow: 0 22px 56px rgba(48, 48, 48, 0.1);
 }
 
 .graph-canvas {
@@ -3360,11 +3402,11 @@ input {
   overflow: hidden;
   padding: 22px;
   background:
-    repeating-linear-gradient(135deg, rgba(111, 78, 55, 0.08) 0 2px, transparent 2px 12px),
-    linear-gradient(90deg, rgba(42, 42, 42, 0.08) 0 2px, transparent 2px 31.8%, rgba(111, 78, 55, 0.16) 31.8% calc(31.8% + 2px), transparent calc(31.8% + 2px) 65.5%, rgba(196, 17, 47, 0.12) 65.5% calc(65.5% + 2px), transparent calc(65.5% + 2px)),
+    repeating-linear-gradient(135deg, rgba(48, 48, 48, 0.08) 0 2px, transparent 2px 12px),
+    linear-gradient(90deg, rgba(48, 48, 48, 0.08) 0 2px, transparent 2px 31.8%, rgba(48, 48, 48, 0.16) 31.8% calc(31.8% + 2px), transparent calc(31.8% + 2px) 65.5%, rgba(48, 48, 48, 0.12) 65.5% calc(65.5% + 2px), transparent calc(65.5% + 2px)),
     linear-gradient(90deg, transparent 0 32%, rgba(255, 255, 255, 0.24) 32% 33%, transparent 33% 66%, rgba(255, 255, 255, 0.24) 66% 67%, transparent 67%),
-    radial-gradient(circle at 1px 1px, rgba(42, 42, 42, 0.12) 1px, transparent 0) 0 0 / 22px 22px,
-    linear-gradient(90deg, rgba(255, 255, 255, 0.72), rgba(248, 230, 230, 0.94)),
+    radial-gradient(circle at 1px 1px, rgba(48, 48, 48, 0.12) 1px, transparent 0) 0 0 / 22px 22px,
+    linear-gradient(90deg, rgba(255, 255, 255, 0.72), rgba(250, 250, 248, 0.94)),
     var(--frankhub-pink);
 }
 
@@ -3373,12 +3415,12 @@ input {
   position: absolute;
   inset: 18px;
   z-index: 0;
-  border: 1px solid rgba(42, 42, 42, 0.11);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.11);
+  border-radius: var(--radius-paper-card);
   pointer-events: none;
   box-shadow:
     inset 0 0 0 8px rgba(255, 255, 255, 0.16),
-    inset 0 -12px 0 rgba(232, 180, 180, 0.18);
+    inset 0 -12px 0 rgba(250, 250, 248, 0.18);
 }
 
 .graph-canvas::after {
@@ -3386,10 +3428,10 @@ input {
   position: absolute;
   right: -16px;
   bottom: 18px;
-  color: rgba(42, 42, 42, 0.055);
+  color: rgba(48, 48, 48, 0.055);
   font-family: var(--font-brand);
   font-size: clamp(5rem, 10vw, 11rem);
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   line-height: 0.8;
   pointer-events: none;
   text-transform: uppercase;
@@ -3412,18 +3454,18 @@ input {
 }
 
 .graph-brand-skin span {
-  border: 2px solid rgba(42, 42, 42, 0.14);
-  border-radius: 8px;
+  border: 2px solid rgba(48, 48, 48, 0.14);
+  border-radius: var(--radius-paper-card);
   background: rgba(255, 255, 255, 0.94);
   color: var(--frankhub-dark);
   font-family: var(--font-brand);
   font-size: 0.66rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   letter-spacing: 0.08em;
   line-height: 1;
   padding: 8px 10px 7px;
   text-transform: uppercase;
-  box-shadow: 0 12px 24px rgba(42, 42, 42, 0.08);
+  box-shadow: 0 12px 24px rgba(48, 48, 48, 0.08);
 }
 
 .graph-brand-skin span:first-child {
@@ -3435,13 +3477,13 @@ input {
 .graph-brand-skin span:nth-child(2) {
   box-shadow:
     inset 5px 0 0 var(--frankhub-coffee),
-    0 12px 24px rgba(42, 42, 42, 0.08);
+    0 12px 24px rgba(48, 48, 48, 0.08);
 }
 
 .graph-brand-skin span:nth-child(3) {
   box-shadow:
     inset 5px 0 0 var(--cherry),
-    0 12px 24px rgba(42, 42, 42, 0.08);
+    0 12px 24px rgba(48, 48, 48, 0.08);
 }
 
 .graph-brand-pulse {
@@ -3457,17 +3499,17 @@ input {
 }
 
 .graph-brand-pulse span {
-  border: 2px solid rgba(42, 42, 42, 0.13);
-  border-radius: 999px;
+  border: 2px solid rgba(48, 48, 48, 0.13);
+  border-radius: var(--radius-pill);
   background: var(--white);
   color: var(--frankhub-dark);
   font-family: var(--font-brand);
   font-size: 0.68rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   letter-spacing: 0.04em;
   padding: 7px 10px 6px;
   text-transform: uppercase;
-  box-shadow: 0 10px 20px rgba(42, 42, 42, 0.08);
+  box-shadow: 0 10px 20px rgba(48, 48, 48, 0.08);
 }
 
 .graph-brand-pulse span:first-child {
@@ -3483,15 +3525,15 @@ input {
   z-index: 3;
   width: min(260px, calc(100% - 44px));
   border: 2px solid var(--frankhub-dark);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 244, 240, 0.92)),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(250, 250, 248, 0.92)),
     var(--white);
   color: var(--frankhub-dark);
   padding: 11px 12px;
   box-shadow:
     inset 6px 0 0 var(--cherry),
-    0 18px 34px rgba(42, 42, 42, 0.12);
+    0 18px 34px rgba(48, 48, 48, 0.12);
   pointer-events: none;
 }
 
@@ -3504,7 +3546,7 @@ input {
   color: var(--cherry);
   font-family: var(--font-brand);
   font-size: 0.62rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -3527,11 +3569,11 @@ input {
   gap: 0;
   max-width: min(440px, calc(100% - 44px));
   border: 2px solid var(--frankhub-dark);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: rgba(255, 255, 255, 0.94);
   color: var(--frankhub-dark);
   overflow: hidden;
-  box-shadow: 0 20px 46px rgba(42, 42, 42, 0.14);
+  box-shadow: 0 20px 46px rgba(48, 48, 48, 0.14);
 }
 
 .graph-brand-ticket span {
@@ -3554,7 +3596,7 @@ input {
   color: var(--cherry);
   font-family: var(--font-brand);
   font-size: 0.72rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   letter-spacing: 0.09em;
   line-height: 1;
 }
@@ -3564,17 +3606,17 @@ input {
   color: var(--frankhub-coffee);
   font-family: var(--font-mono);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   line-height: 1.15;
   padding-bottom: 7px;
 }
 
 .graph-kit-card {
   border: 2px solid var(--frankhub-dark);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background:
-    repeating-linear-gradient(135deg, rgba(111, 78, 55, 0.12) 0 2px, transparent 2px 12px),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(248, 230, 230, 0.95)),
+    repeating-linear-gradient(135deg, rgba(48, 48, 48, 0.12) 0 2px, transparent 2px 12px),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(250, 250, 248, 0.95)),
     var(--white);
   color: var(--frankhub-dark);
   display: grid;
@@ -3583,27 +3625,27 @@ input {
   padding: 13px;
   box-shadow:
     inset 7px 0 0 var(--frankhub-coffee),
-    0 20px 42px rgba(42, 42, 42, 0.14);
+    0 20px 42px rgba(48, 48, 48, 0.14);
 }
 
 .graph-kit-card strong {
   color: var(--cherry);
   font-family: var(--font-brand);
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   letter-spacing: 0.08em;
   line-height: 1;
   text-transform: uppercase;
 }
 
 .graph-kit-card span {
-  border: 1px solid rgba(42, 42, 42, 0.1);
-  border-radius: 999px;
+  border: 1px solid rgba(48, 48, 48, 0.1);
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.78);
   color: var(--frankhub-dark);
   font-family: var(--font-mono);
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   line-height: 1;
   padding: 7px 9px 6px;
 }
@@ -3621,8 +3663,8 @@ input {
 }
 
 .graph-palette-strip span {
-  border: 2px solid rgba(42, 42, 42, 0.1);
-  border-radius: 999px;
+  border: 2px solid rgba(48, 48, 48, 0.1);
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.94);
   color: var(--frankhub-dark);
   display: inline-flex;
@@ -3630,16 +3672,16 @@ input {
   gap: 7px;
   font-family: var(--font-mono);
   font-size: 0.74rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   padding: 6px 9px;
-  box-shadow: 0 10px 20px rgba(42, 42, 42, 0.07);
+  box-shadow: 0 10px 20px rgba(48, 48, 48, 0.07);
 }
 
 .graph-palette-strip i {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(42, 42, 42, 0.14);
-  border-radius: 999px;
+  border: 2px solid rgba(48, 48, 48, 0.14);
+  border-radius: var(--radius-pill);
   display: inline-block;
 }
 
@@ -3672,8 +3714,8 @@ input {
 }
 
 .graph-status-board span {
-  border: 2px solid rgba(42, 42, 42, 0.12);
-  border-radius: 8px;
+  border: 2px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-paper-card);
   background: rgba(255, 255, 255, 0.94);
   color: var(--frankhub-dark);
   display: grid;
@@ -3681,19 +3723,19 @@ input {
   padding: 9px 10px;
   box-shadow:
     inset 5px 0 0 var(--frankhub-accent),
-    0 12px 24px rgba(42, 42, 42, 0.08);
+    0 12px 24px rgba(48, 48, 48, 0.08);
 }
 
 .graph-status-board span:nth-child(2) {
   box-shadow:
     inset 5px 0 0 var(--frankhub-coffee),
-    0 12px 24px rgba(42, 42, 42, 0.08);
+    0 12px 24px rgba(48, 48, 48, 0.08);
 }
 
 .graph-status-board span:nth-child(3) {
   box-shadow:
     inset 5px 0 0 var(--cherry),
-    0 12px 24px rgba(42, 42, 42, 0.08);
+    0 12px 24px rgba(48, 48, 48, 0.08);
 }
 
 .graph-status-board small,
@@ -3706,7 +3748,7 @@ input {
   color: var(--frankhub-coffee);
   font-family: var(--font-brand);
   font-size: 0.58rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   letter-spacing: 0.08em;
   line-height: 1;
   text-transform: uppercase;
@@ -3716,7 +3758,7 @@ input {
   color: var(--frankhub-dark);
   font-family: var(--font-mono);
   font-size: 0.8rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   line-height: 1.05;
   overflow-wrap: anywhere;
 }
@@ -3726,15 +3768,15 @@ input {
   grid-template-columns: 1fr;
   gap: 7px;
   border: 2px solid var(--frankhub-dark);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background:
-    repeating-linear-gradient(135deg, rgba(111, 78, 55, 0.12) 0 2px, transparent 2px 12px),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 230, 230, 0.94));
+    repeating-linear-gradient(135deg, rgba(48, 48, 48, 0.12) 0 2px, transparent 2px 12px),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(250, 250, 248, 0.94));
   color: var(--frankhub-dark);
   padding: 12px;
   box-shadow:
     inset 6px 0 0 var(--frankhub-coffee),
-    0 18px 34px rgba(42, 42, 42, 0.12);
+    0 18px 34px rgba(48, 48, 48, 0.12);
   pointer-events: none;
 }
 
@@ -3742,20 +3784,20 @@ input {
   color: var(--cherry);
   font-family: var(--font-brand);
   font-size: 0.74rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   letter-spacing: 0.08em;
   line-height: 1;
   text-transform: uppercase;
 }
 
 .graph-node-recipe span {
-  border: 1px solid rgba(42, 42, 42, 0.11);
-  border-radius: 999px;
+  border: 1px solid rgba(48, 48, 48, 0.11);
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.82);
   color: var(--frankhub-coffee);
   font-family: var(--font-mono);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   line-height: 1;
   padding: 7px 9px 6px;
 }
@@ -3784,17 +3826,17 @@ input {
 
 .graph-stage-labels span {
   width: fit-content;
-  border: 2px solid rgba(42, 42, 42, 0.12);
-  border-radius: 999px;
+  border: 2px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.9);
   color: var(--frankhub-coffee);
   font-family: var(--font-brand);
   font-size: 0.68rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   letter-spacing: 0.08em;
   padding: 7px 10px 6px;
   text-transform: uppercase;
-  box-shadow: 0 10px 24px rgba(42, 42, 42, 0.08);
+  box-shadow: 0 10px 24px rgba(48, 48, 48, 0.08);
 }
 
 .graph-stage-labels span:nth-child(2) {
@@ -3817,30 +3859,30 @@ input {
 
 .graph-path-labels span {
   width: fit-content;
-  border: 2px solid rgba(42, 42, 42, 0.12);
-  border-radius: 8px;
+  border: 2px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-paper-card);
   background: rgba(255, 255, 255, 0.9);
   color: var(--frankhub-dark);
   font-family: var(--font-mono);
   font-size: 0.7rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   line-height: 1;
   padding: 7px 9px 6px;
-  box-shadow: 0 10px 22px rgba(42, 42, 42, 0.08);
+  box-shadow: 0 10px 22px rgba(48, 48, 48, 0.08);
 }
 
 .graph-path-labels span:nth-child(2) {
   justify-self: center;
   box-shadow:
     inset 5px 0 0 var(--cherry),
-    0 10px 22px rgba(42, 42, 42, 0.08);
+    0 10px 22px rgba(48, 48, 48, 0.08);
 }
 
 .graph-path-labels span:nth-child(3) {
   justify-self: end;
   box-shadow:
     inset 5px 0 0 var(--frankhub-coffee),
-    0 10px 22px rgba(42, 42, 42, 0.08);
+    0 10px 22px rgba(48, 48, 48, 0.08);
 }
 
 .graph-lane-labels {
@@ -3855,11 +3897,11 @@ input {
 
 .graph-lane-labels span {
   align-self: stretch;
-  border-left: 2px solid rgba(42, 42, 42, 0.1);
-  color: rgba(42, 42, 42, 0.16);
+  border-left: 2px solid rgba(48, 48, 48, 0.1);
+  color: rgba(48, 48, 48, 0.16);
   font-family: var(--font-brand);
   font-size: clamp(1.8rem, 3.8vw, 4.6rem);
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   line-height: 0.88;
   padding-left: 14px;
   text-transform: uppercase;
@@ -3868,11 +3910,11 @@ input {
 }
 
 .graph-lane-labels span:nth-child(2) {
-  color: rgba(111, 78, 55, 0.2);
+  color: rgba(48, 48, 48, 0.2);
 }
 
 .graph-lane-labels span:nth-child(3) {
-  color: rgba(196, 17, 47, 0.14);
+  color: rgba(48, 48, 48, 0.14);
 }
 
 .graph-wordmark-watermark {
@@ -3882,7 +3924,7 @@ input {
   z-index: 1;
   display: inline-flex;
   align-items: stretch;
-  color: rgba(42, 42, 42, 0.1);
+  color: rgba(48, 48, 48, 0.1);
   font-family: var(--font-mono);
   font-size: clamp(2.1rem, 5vw, 5.4rem);
   line-height: 1;
@@ -3915,16 +3957,16 @@ input {
 
 .graph-edge-tags span {
   width: fit-content;
-  border: 2px solid rgba(42, 42, 42, 0.14);
-  border-radius: 999px;
+  border: 2px solid rgba(48, 48, 48, 0.14);
+  border-radius: var(--radius-pill);
   background: var(--frankhub-dark);
   color: var(--frankhub-pink);
   font-family: var(--font-mono);
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   line-height: 1;
   padding: 7px 10px 6px;
-  box-shadow: 0 10px 22px rgba(42, 42, 42, 0.14);
+  box-shadow: 0 10px 22px rgba(48, 48, 48, 0.14);
 }
 
 .graph-edge-tags span:nth-child(2) {
@@ -3945,7 +3987,7 @@ input {
   color: var(--frankhub-dark);
   font-family: var(--font-brand);
   font-size: 1.48rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   line-height: 1.05;
   text-transform: uppercase;
 }
@@ -3960,7 +4002,7 @@ input {
 
 .graph-links path {
   fill: none;
-  stroke: rgba(111, 78, 55, 0.52);
+  stroke: rgba(48, 48, 48, 0.52);
   stroke-width: 4;
   stroke-linecap: round;
   stroke-dasharray: 1 13;
@@ -4003,8 +4045,8 @@ input {
 .graph-node {
   width: clamp(178px, 17vw, 230px);
   min-height: 86px;
-  border: 2px solid rgba(42, 42, 42, 0.16);
-  border-radius: 8px;
+  border: 2px solid rgba(48, 48, 48, 0.16);
+  border-radius: var(--radius-paper-card);
   background: var(--white);
   color: var(--frankhub-dark);
   display: grid;
@@ -4015,7 +4057,7 @@ input {
   position: relative;
   overflow: hidden;
   text-align: left;
-  box-shadow: 0 14px 30px rgba(42, 42, 42, 0.1);
+  box-shadow: 0 14px 30px rgba(48, 48, 48, 0.1);
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -4036,10 +4078,10 @@ input {
   position: absolute;
   right: 10px;
   bottom: 8px;
-  color: rgba(42, 42, 42, 0.34);
+  color: rgba(48, 48, 48, 0.34);
   font-family: var(--font-mono);
   font-size: 0.64rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   line-height: 1;
   text-transform: uppercase;
 }
@@ -4049,10 +4091,10 @@ input {
   left: 13px;
   top: 10px;
   z-index: 1;
-  color: rgba(42, 42, 42, 0.38);
+  color: rgba(48, 48, 48, 0.38);
   font-family: var(--font-mono);
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   line-height: 1;
 }
 
@@ -4076,7 +4118,7 @@ input {
   border-color: var(--frankhub-dark);
   background: var(--frankhub-dark);
   color: var(--white);
-  box-shadow: 0 18px 34px rgba(42, 42, 42, 0.14);
+  box-shadow: 0 18px 34px rgba(48, 48, 48, 0.14);
   transform: translateY(-2px);
 }
 
@@ -4103,8 +4145,8 @@ input {
 .graph-node-sockets i {
   width: 6px;
   height: 6px;
-  border: 1px solid rgba(42, 42, 42, 0.22);
-  border-radius: 999px;
+  border: 1px solid rgba(48, 48, 48, 0.22);
+  border-radius: var(--radius-pill);
   background: var(--frankhub-pink);
 }
 
@@ -4123,7 +4165,7 @@ input {
 .graph-node-icon {
   width: 38px;
   height: 38px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--frankhub-dark);
   color: var(--white);
   display: grid;
@@ -4157,7 +4199,7 @@ input {
 .graph-node strong {
   font-family: var(--font-brand);
   font-size: 1rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   line-height: 1;
   text-transform: uppercase;
 }
@@ -4173,10 +4215,10 @@ input {
   position: absolute;
   right: 10px;
   top: 25px;
-  color: rgba(42, 42, 42, 0.24);
+  color: rgba(48, 48, 48, 0.24);
   font-family: var(--font-mono);
   font-size: 0.64rem;
-  font-weight: 800;
+  font-weight: var(--weight-medium);
   letter-spacing: 0;
   line-height: 1;
 }
@@ -4205,20 +4247,20 @@ input {
 .graph-brand-card {
   border: 0;
   border-left: 8px solid var(--frankhub-accent);
-  border-radius: 8px;
+  border-radius: var(--radius-paper-card);
   background: var(--frankhub-dark);
   color: var(--white);
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
   gap: 12px;
   padding: 16px;
-  box-shadow: 0 18px 40px rgba(42, 42, 42, 0.16);
+  box-shadow: 0 18px 40px rgba(48, 48, 48, 0.16);
 }
 
 .graph-brand-card > svg {
   width: 42px;
   height: 42px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.1);
   color: var(--frankhub-accent);
   padding: 10px;
@@ -4228,7 +4270,7 @@ input {
   color: var(--frankhub-accent);
   font-family: var(--font-brand);
   font-size: 0.92rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   text-transform: uppercase;
 }
 
@@ -4245,15 +4287,15 @@ input {
 }
 
 .graph-production-notes span {
-  border: 2px solid rgba(42, 42, 42, 0.1);
-  border-radius: 8px;
+  border: 2px solid rgba(48, 48, 48, 0.1);
+  border-radius: var(--radius-paper-card);
   background:
-    linear-gradient(90deg, rgba(232, 180, 180, 0.32), rgba(255, 255, 255, 0.96)),
+    linear-gradient(90deg, rgba(250, 250, 248, 0.32), rgba(255, 255, 255, 0.96)),
     var(--white);
   color: var(--frankhub-dark);
   font-family: var(--font-brand);
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   line-height: 1;
   padding: 12px;
   text-transform: uppercase;
@@ -4272,13 +4314,13 @@ input {
 }
 
 .graph-proof-strip span {
-  border: 2px solid rgba(42, 42, 42, 0.12);
-  border-radius: 999px;
+  border: 2px solid rgba(48, 48, 48, 0.12);
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.9);
   color: var(--frankhub-dark);
   font-family: var(--font-brand);
   font-size: 0.68rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   letter-spacing: 0.06em;
   padding: 7px 10px 6px;
   text-transform: uppercase;
@@ -4291,8 +4333,8 @@ input {
 
 .graph-stat-list span,
 .graph-mini-node {
-  border: 2px solid rgba(42, 42, 42, 0.1);
-  border-radius: 8px;
+  border: 2px solid rgba(48, 48, 48, 0.1);
+  border-radius: var(--radius-paper-card);
   background: var(--white);
   padding: 12px;
 }
@@ -4305,17 +4347,17 @@ input {
 }
 
 .graph-job-jacket {
-  border: 2px solid rgba(42, 42, 42, 0.13);
-  border-radius: 8px;
+  border: 2px solid rgba(48, 48, 48, 0.13);
+  border-radius: var(--radius-paper-card);
   background:
-    linear-gradient(135deg, rgba(248, 230, 230, 0.88), rgba(255, 255, 255, 0.96)),
+    linear-gradient(135deg, rgba(250, 250, 248, 0.88), rgba(255, 255, 255, 0.96)),
     var(--white);
   display: grid;
   gap: 1px;
   overflow: hidden;
   box-shadow:
     inset 7px 0 0 var(--frankhub-coffee),
-    0 18px 34px rgba(42, 42, 42, 0.08);
+    0 18px 34px rgba(48, 48, 48, 0.08);
 }
 
 .graph-job-jacket span {
@@ -4336,7 +4378,7 @@ input {
   color: var(--cherry);
   font-family: var(--font-brand);
   font-size: 0.66rem;
-  font-weight: 900;
+  font-weight: var(--weight-medium);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -4354,20 +4396,20 @@ input {
   align-items: center;
   gap: 10px;
   color: var(--frankhub-coffee);
-  font-weight: 800;
+  font-weight: var(--weight-medium);
 }
 
 .graph-shell[data-frank-surface="workflow-map"] {
   background:
-    linear-gradient(90deg, rgba(255, 182, 165, 0.18), transparent 34%),
-    radial-gradient(circle at 1px 1px, rgba(63, 42, 45, 0.08) 1px, transparent 0) 0 0 / 22px 22px,
+    linear-gradient(90deg, rgba(249, 171, 170, 0.18), transparent 34%),
+    radial-gradient(circle at 1px 1px, rgba(48, 48, 48, 0.08) 1px, transparent 0) 0 0 / 22px 22px,
     var(--frank-white);
   color: var(--frank-black);
 }
 
 .graph-shell[data-frank-surface="workflow-map"] .graph-topbar {
   min-height: 92px;
-  border-bottom-color: rgba(63, 42, 45, 0.16);
+  border-bottom-color: rgba(48, 48, 48, 0.16);
   background: rgba(255, 255, 255, 0.96);
   box-shadow: none;
 }
@@ -4391,7 +4433,7 @@ input {
 
 .graph-shell[data-frank-surface="workflow-map"] .graph-canvas,
 .graph-shell[data-frank-surface="workflow-map"] .graph-inspector {
-  border: 1px solid rgba(63, 42, 45, 0.15);
+  border: 1px solid rgba(48, 48, 48, 0.15);
   background: rgba(255, 255, 255, 0.94);
   box-shadow: none;
 }
@@ -4403,8 +4445,8 @@ input {
   gap: 22px;
   padding: 24px;
   background:
-    linear-gradient(90deg, rgba(255, 182, 165, 0.2), transparent 42%),
-    radial-gradient(circle at 1px 1px, rgba(63, 42, 45, 0.08) 1px, transparent 0) 0 0 / 18px 18px,
+    linear-gradient(90deg, rgba(249, 171, 170, 0.2), transparent 42%),
+    radial-gradient(circle at 1px 1px, rgba(48, 48, 48, 0.08) 1px, transparent 0) 0 0 / 18px 18px,
     var(--frank-white);
 }
 
@@ -4441,10 +4483,10 @@ input {
 
 .graph-stage-group {
   min-width: 0;
-  border: 1px solid rgba(63, 42, 45, 0.14);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.14);
+  border-radius: var(--radius-paper-card);
   background:
-    linear-gradient(180deg, rgba(255, 182, 165, 0.22), rgba(255, 255, 255, 0.82) 112px),
+    linear-gradient(180deg, rgba(249, 171, 170, 0.22), rgba(255, 255, 255, 0.82) 112px),
     var(--frank-white);
   display: grid;
   align-content: start;
@@ -4482,7 +4524,7 @@ input {
 .graph-shell[data-frank-surface="workflow-map"] .graph-node {
   width: 100%;
   min-height: 136px;
-  border-color: rgba(63, 42, 45, 0.16);
+  border-color: rgba(48, 48, 48, 0.16);
   background: var(--frank-white);
   color: var(--frank-black);
   grid-template-columns: 42px minmax(0, 1fr);
@@ -4496,12 +4538,12 @@ input {
 .graph-shell[data-frank-surface="workflow-map"] .graph-node:hover,
 .graph-shell[data-frank-surface="workflow-map"] .graph-node:focus-visible {
   border-color: var(--frank-black);
-  box-shadow: 0 12px 28px rgba(63, 42, 45, 0.1);
+  box-shadow: 0 12px 28px rgba(48, 48, 48, 0.1);
   transform: translateY(-1px);
 }
 
 .graph-shell[data-frank-surface="workflow-map"] .graph-node:focus-visible {
-  outline: 3px solid rgba(255, 182, 165, 0.7);
+  outline: 3px solid rgba(249, 171, 170, 0.7);
   outline-offset: 2px;
 }
 
@@ -4516,7 +4558,7 @@ input {
   right: 14px;
   top: 14px;
   bottom: auto;
-  color: rgba(63, 42, 45, 0.42);
+  color: rgba(48, 48, 48, 0.42);
   font-family: var(--font-heading);
   letter-spacing: 0.06em;
 }
@@ -4528,7 +4570,7 @@ input {
 .graph-shell[data-frank-surface="workflow-map"] .graph-node-step {
   left: 14px;
   top: 14px;
-  color: rgba(63, 42, 45, 0.5);
+  color: rgba(48, 48, 48, 0.5);
   font-family: var(--font-heading);
 }
 
@@ -4554,7 +4596,7 @@ input {
   color: var(--coffee);
   font-family: var(--font-body);
   font-size: 0.86rem;
-  font-weight: 700;
+  font-weight: var(--weight-medium);
 }
 
 .graph-node p {
@@ -4573,9 +4615,9 @@ input {
   position: absolute;
   right: 12px;
   bottom: 12px;
-  border: 1px solid rgba(63, 42, 45, 0.14);
-  border-radius: 999px;
-  background: rgba(255, 182, 165, 0.22);
+  border: 1px solid rgba(48, 48, 48, 0.14);
+  border-radius: var(--radius-pill);
+  background: rgba(249, 171, 170, 0.22);
   color: var(--frank-black);
   font-family: var(--font-heading);
   font-size: 0.68rem;
@@ -4596,7 +4638,7 @@ input {
 }
 
 .graph-shell[data-frank-surface="workflow-map"] .graph-proof-strip span {
-  border-color: rgba(63, 42, 45, 0.16);
+  border-color: rgba(48, 48, 48, 0.16);
   background: rgba(255, 255, 255, 0.86);
   color: var(--frank-black);
   font-family: var(--font-heading);
@@ -4605,8 +4647,8 @@ input {
 
 .graph-explainer,
 .graph-selected-panel {
-  border: 1px solid rgba(63, 42, 45, 0.14);
-  border-radius: 8px;
+  border: 1px solid rgba(48, 48, 48, 0.14);
+  border-radius: var(--radius-paper-card);
   background: var(--frank-white);
   padding: 14px;
 }
@@ -4631,9 +4673,9 @@ input {
 
 .graph-selected-step {
   width: fit-content;
-  border: 1px solid rgba(63, 42, 45, 0.15);
-  border-radius: 999px;
-  background: rgba(255, 182, 165, 0.22);
+  border: 1px solid rgba(48, 48, 48, 0.15);
+  border-radius: var(--radius-pill);
+  background: rgba(249, 171, 170, 0.22);
   color: var(--frank-black) !important;
   font-family: var(--font-heading);
   font-size: 0.72rem;
@@ -4669,7 +4711,7 @@ input {
 .recent-export-list button:hover,
 .output-grid button:hover {
   transform: translateY(-1px);
-  border-color: rgba(196, 17, 47, 0.45);
+  border-color: rgba(48, 48, 48, 0.45);
 }
 
 .spin {
@@ -4890,10 +4932,10 @@ input {
 
   .graph-lane-labels span {
     border-left: 0;
-    border: 2px solid rgba(42, 42, 42, 0.12);
-    border-radius: 999px;
+    border: 2px solid rgba(48, 48, 48, 0.12);
+    border-radius: var(--radius-pill);
     background: rgba(255, 255, 255, 0.9);
-    color: rgba(42, 42, 42, 0.58);
+    color: rgba(48, 48, 48, 0.58);
     font-size: 0.66rem;
     line-height: 1;
     padding: 7px 10px 6px;
@@ -5049,264 +5091,549 @@ input {
   }
 }
 
-/* Accepted Option A sidebar redesign. Kept as late overrides so older
-   Frank Create component rules remain available for the advanced drawer. */
-body {
-  background: #f8e6e6;
+/* ─────────────────────────────────────────────────────────────────────────
+   AutoSolutions OS shell.
+
+   The shell is viewport-locked: the page never scrolls, the main panel is the
+   only scroller. A 56px glass top bar sits over a 216px rail and a 28/32px
+   main panel. Both planes are transparent over one continuous ambient field —
+   the rail reads deeper only because the blurred blob sits under it, never
+   because it owns a fill.
+   ───────────────────────────────────────────────────────────────────────── */
+.os-shell {
+  position: relative;
+  z-index: 1;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.os-topbar {
+  flex-shrink: 0;
+  height: var(--topbar-height);
+  border-bottom: 1px solid var(--muted-20);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 20px;
+}
+
+.os-topbar-logo {
+  width: var(--rail-width);
+  margin-left: -20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+}
+
+.os-topbar-logo img {
+  width: 100%;
+  height: auto;
+  max-height: 30px;
+  object-fit: contain;
+  display: block;
+}
+
+.os-topbar-search {
+  flex: 1;
+  min-width: 140px;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.os-search-field {
+  flex: 1;
+  max-width: 320px;
+  height: 36px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  color: var(--muted);
+  font-size: var(--text-body);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.os-search-glyph {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+}
+
+.os-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.os-topbar-chip {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--radius-round);
+  background: var(--surface);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.os-avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--radius-round);
+  background: var(--paper-250);
+  border: 1px solid var(--paper-400);
+}
+
+.os-sign-out {
+  min-height: var(--control-xs);
+  padding: 0 14px;
 }
 
 .studio-shell.guided-studio {
   width: 100%;
-  min-height: 100vh;
-  height: 100vh;
+  flex: 1;
+  min-height: 0;
+  height: auto;
   display: grid;
-  grid-template-columns: 256px minmax(0, 1fr) 380px;
+  grid-template-columns: var(--rail-width) minmax(0, 1fr) 280px;
   grid-template-rows: minmax(0, 1fr);
   gap: 0;
   overflow: hidden;
-  background:
-    linear-gradient(90deg, rgba(42, 42, 42, 0.045) 0 1px, transparent 1px) 0 0 / 46px 46px,
-    linear-gradient(180deg, #fffefe 0%, #f8e6e6 100%);
-  color: #2a2a2a;
+  background: transparent;
+  color: var(--ink);
 }
 
+/* ── rail ───────────────────────────────────────────────────────────────
+   Transparent plane. A 10% ink tint and a 1px hairline are the only things
+   separating it from the panel — no fill, no per-rail gradient, no shadow. */
 .guided-header.app-sidebar {
   grid-column: 1;
   grid-row: 1;
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 20;
-  height: 100vh;
+  height: auto;
   min-height: 0;
-  padding: 0;
+  padding: 16px 12px 14px;
   border: 0;
-  border-right: 2px solid rgba(42, 42, 42, 0.1);
-  background: #fff;
-  box-shadow: 4px 0 24px rgba(42, 42, 42, 0.06);
+  border-right: 1px solid var(--muted-20);
+  background: var(--surface-rail);
+  box-shadow: none;
   backdrop-filter: none;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  justify-content: stretch;
-  gap: 0;
+  gap: 6px;
   overflow-y: auto;
 }
 
+/* Product lockup, optically centred, with a full-bleed black hairline under it. */
 .sidebar-brand-block {
-  padding: 18px 18px 14px;
-  border-bottom: 2px solid rgba(42, 42, 42, 0.1);
+  flex-shrink: 0;
+  padding: 14px 10px 0;
+  border: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sidebar-brand-mark {
-  width: 100%;
-  margin: 0 0 10px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  box-sizing: border-box;
-  font-size: 1.15rem;
+  width: 152px;
+  height: 26px;
+  margin: 0;
+  display: block;
+  font-size: inherit;
 }
 
-.sidebar-brand-mark span {
-  min-width: 0;
-  text-align: center;
-  padding: 10px 4px;
-  box-sizing: border-box;
-  overflow: hidden;
+.sidebar-lockup-name {
+  font-family: var(--font-display);
+  font-weight: var(--weight-medium);
+  font-size: 18px;
+  fill: var(--ink);
 }
 
-
-
-.sidebar-app-copy {
-  margin: 0 0 8px;
-  color: rgba(42, 42, 42, 0.62);
-  font-size: 0.82rem;
-  line-height: 1.25;
+.sidebar-lockup-qualifier {
+  font-family: var(--font-display);
+  font-weight: var(--weight-medium);
+  font-size: 11px;
+  letter-spacing: 2.5px;
+  fill: #8a8a8a;
 }
-
 
 .sidebar-nav {
   flex: 1;
   min-height: 0;
-  padding: 12px 0 14px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
+  border-top: 1px solid #000;
+  margin: 20px -12px 0;
+  padding-inline: 12px;
 }
 
+/* Mono-register eyebrow: the only uppercase in the rail. Solid black — --muted
+   is illegal here, it vanishes into the blob. */
 .sidebar-section-label {
-  margin: 12px 0 0;
-  padding: 7px 16px 5px;
-  color: rgba(42, 42, 42, 0.42);
-  font-family: var(--font-brand);
-  font-size: 0.64rem;
-  font-weight: 900;
-  letter-spacing: 0.15em;
+  margin: 0;
+  padding: 12px 10px 8px;
+  color: #000;
+  font-family: var(--font-display);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
 }
 
+/* 34px fully-round pill. Hover tints the pill; the label never changes
+   colour or weight. Active is a solid ink pill with a white label. */
 .sidebar-nav-button {
-  min-height: 38px;
+  min-height: var(--control-md);
+  height: var(--control-md);
   width: 100%;
+  flex-shrink: 0;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-pill);
   background: transparent;
-  color: #2a2a2a;
+  color: var(--ink);
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 16px;
+  padding: 0 12px;
   text-align: left;
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  font-family: var(--font-display);
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0;
+  text-transform: none;
+  transition: background-color var(--dur-base) var(--ease-standard);
 }
 
 .sidebar-nav-button svg {
   flex: none;
+  width: var(--glyph);
+  height: var(--glyph);
+  stroke-width: 1.75;
 }
 
-.sidebar-nav-button:hover,
+.sidebar-nav-button:hover {
+  background: var(--rail-hover);
+  color: var(--ink);
+  box-shadow: none;
+}
+
 .sidebar-nav-button.active {
-  background: #2a2a2a;
-  color: #fff;
-  box-shadow: 0 2px 10px rgba(42, 42, 42, 0.18);
+  background: var(--rail-active);
+  color: var(--text-on-ink);
+  box-shadow: none;
+}
+
+.sidebar-session-toggle svg.collapsed {
+  transform: rotate(-90deg);
 }
 
 .sidebar-badge {
   margin-left: auto;
   min-width: 22px;
-  border-radius: 999px;
-  background: #ffb6a5;
-  color: #2a2a2a;
+  border-radius: var(--radius-pill);
+  background: var(--tenant-accent);
+  color: var(--text-on-accent);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 2px 7px;
-  font-size: 0.68rem;
-  font-weight: 900;
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-light);
 }
 
 .sidebar-nav-button.active .sidebar-badge,
 .sidebar-nav-button:hover .sidebar-badge {
-  background: #fff;
+  background: var(--tenant-accent);
 }
 
-.sidebar-session-card {
-  padding: 12px 14px;
-  border-top: 2px solid rgba(42, 42, 42, 0.1);
-  display: grid;
+.sidebar-session-list {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0 4px;
+}
+
+.sidebar-session-row {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  height: 30px;
+  border-radius: var(--radius-pill);
+  padding: 0 6px 0 12px;
+  overflow: hidden;
 }
 
-.sidebar-session-card .session-picker {
-  min-width: 0;
-  width: 100%;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 4px;
-  border: 2px solid #2a2a2a;
-  border-radius: 8px;
-  background: #f8e6e6;
-  padding: 10px;
+.sidebar-session-row:hover {
+  background: var(--rail-hover);
 }
 
-.sidebar-session-card .session-picker select {
-  width: 100%;
+.sidebar-session-row.active {
+  background: var(--rail-active);
+}
+
+.sidebar-session-row.active .sidebar-session-name,
+.sidebar-session-row.active .sidebar-session-archive {
+  color: var(--text-on-ink);
+}
+
+.sidebar-session-name {
+  flex: 1;
   min-width: 0;
-  padding: 0;
-  font-size: 0.8rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.sidebar-session-card p {
-  margin: 0;
-  color: rgba(42, 42, 42, 0.58);
-  font-size: 0.78rem;
-  line-height: 1.25;
-}
-
-.sidebar-session-card .compact-action.secondary-button {
-  width: 100%;
-  min-height: 36px;
+.sidebar-session-archive {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: var(--radius-round);
+  background: transparent;
+  color: var(--ink);
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  background: #fff;
+  padding: 0;
 }
 
-.sidebar-session-card .sidebar-new-session {
-  background: #fff;
+.sidebar-session-archive:hover {
+  opacity: 1;
 }
 
+.sidebar-session-new {
+  height: 30px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.sidebar-session-new:hover {
+  background: var(--rail-hover);
+}
+
+/* Footer pinned to the bottom, above a full-bleed black hairline. Series dots
+   say WHICH thing; they are identity, not accent. */
+.sidebar-footer-block {
+  flex-shrink: 0;
+  margin: 12px -12px 0;
+  padding: 0 12px;
+  border-top: 1px solid #000;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-workspace-row {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  min-width: 0;
+  text-align: left;
+  font-size: var(--text-caption);
+}
+
+.series-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: var(--radius-round);
+}
+
+.series-dot.series-1 {
+  background: var(--series-1);
+}
+
+.series-dot.series-2 {
+  background: var(--series-2);
+}
+
+/* ── main panel ─────────────────────────────────────────────────────────
+   The only page scroller. Transparent — cards carry the content and the
+   field only shows in the gutters between them. */
 .studio-shell.guided-studio .conversation-column {
   grid-column: 2;
   grid-row: 1;
-  height: 100vh;
+  height: auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 20px 28px 32px;
+  background: transparent;
+  padding: var(--panel-pad-y) var(--panel-pad-x);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .studio-shell.guided-studio .studio-topbar {
   order: 1;
-  padding-bottom: 14px;
-  border-bottom: 2px solid rgba(42, 42, 42, 0.06);
+  padding-bottom: 0;
+  border-bottom: 0;
+  align-items: flex-start;
+  gap: 24px;
 }
 
 .studio-shell.guided-studio .studio-topbar h2 {
-  color: #2a2a2a;
-  font-size: clamp(2.1rem, 4vw, 3.3rem);
-  line-height: 0.94;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--text-display);
+  font-weight: var(--weight-display);
+  line-height: 46px;
+  letter-spacing: var(--tracking-display);
   max-width: 820px;
 }
 
 .studio-shell.guided-studio .studio-topbar-copy {
   margin-top: 6px;
-  color: rgba(42, 42, 42, 0.7);
-  font-size: 1rem;
+  color: var(--muted);
+  font-size: var(--text-body);
+  line-height: 21px;
+  max-width: 62ch;
+  text-wrap: pretty;
+}
+
+/* Stat cluster: one joined pill group, hairline dividers between cells. */
+.studio-shell.guided-studio .stat-row {
+  flex-shrink: 0;
+  gap: 0;
+  border: 1px solid var(--muted-20);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  background: transparent;
 }
 
 .studio-shell.guided-studio .stat-row span {
-  background: #fff;
-  color: rgba(42, 42, 42, 0.66);
-  border-color: rgba(42, 42, 42, 0.1);
-  padding: 8px 12px;
+  background: transparent;
+  color: var(--ink);
+  border: 0;
+  border-left: 1px solid var(--muted-20);
+  border-radius: 0;
+  padding: 8px 18px;
+  min-width: 80px;
+  font-family: var(--font-display);
+  font-size: var(--text-body);
+  letter-spacing: var(--tracking-tight);
+  text-transform: none;
+}
+
+.studio-shell.guided-studio .stat-row span:first-child {
+  border-left: 0;
+}
+
+/* Composer sits ABOVE the rounds thread, both inset from the column edges. */
+.studio-shell.guided-studio .composer {
+  order: 2;
+  margin-inline: 36px;
+  padding: 18px;
+  gap: 12px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: var(--radius-glass-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-card-glow);
 }
 
 .studio-shell.guided-studio .thread-surface {
   order: 3;
+  margin-inline: 36px;
   min-height: 0;
   flex: 0 0 auto;
-  gap: 16px;
+  gap: 14px;
   align-content: start;
 }
 
+/* The rounds well is a giant ink panel in both states — images read better
+   on black. Light-on-dark type inside. */
 .studio-shell.guided-studio .turn-card,
-.studio-shell.guided-studio .composer {
-  border-radius: 12px;
-  border: 1px solid rgba(42, 42, 42, 0.08);
-  background: #fff;
-  box-shadow: 0 3px 12px rgba(42, 42, 42, 0.05);
+.studio-shell.guided-studio .empty-thread {
+  border: 0;
+  border-radius: var(--radius-dark-panel);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-card-glow);
+  color: var(--text-on-ink);
 }
 
 .studio-shell.guided-studio .turn-card {
-  padding: 14px 16px;
+  padding: 18px;
 }
 
 .studio-shell.guided-studio .turn-copy {
   grid-template-columns: 10px minmax(0, 1fr);
-  gap: 10px;
+  gap: 12px;
 }
 
 .studio-shell.guided-studio .turn-copy h3 {
-  font-size: 1.05rem;
+  color: var(--text-on-ink);
+  font-family: var(--font-display);
+  font-size: var(--text-card-title);
+  line-height: 24px;
+}
+
+.studio-shell.guided-studio .turn-copy .eyebrow {
+  color: var(--on-dark-tertiary);
 }
 
 .studio-shell.guided-studio .turn-copy p:not(.eyebrow) {
-  color: rgba(42, 42, 42, 0.72);
-  font-size: 0.95rem;
+  color: var(--on-dark-body);
+  font-size: var(--text-body);
+  line-height: 21px;
+  text-wrap: pretty;
+}
+
+.studio-shell.guided-studio .turn-meta span {
+  color: var(--on-dark-tertiary);
+  background: transparent;
+  border: 1px solid var(--on-dark-line);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-light);
+  letter-spacing: var(--tracking-label-sm);
+  text-transform: uppercase;
+}
+
+.studio-shell.guided-studio .turn-meta .turn-error {
+  color: var(--tenant-accent);
+  border-color: var(--tenant-accent);
 }
 
 .studio-shell.guided-studio .output-grid {
@@ -5315,51 +5642,53 @@ body {
 }
 
 .studio-shell.guided-studio .output-grid button {
-  border: 1px solid rgba(42, 42, 42, 0.08);
-  border-radius: 10px;
-  background: #f8e6e6;
+  border: 0;
+  border-radius: var(--radius-paper-card);
+  background: var(--on-dark-well);
   box-shadow: none;
+  color: var(--on-dark-tertiary);
 }
 
 .studio-shell.guided-studio .output-grid button.selected {
-  border: 3px solid #2a2a2a;
+  border: 2px solid var(--text-on-ink);
+}
+
+.studio-shell.guided-studio .output-grid button span {
+  color: var(--on-dark-tertiary);
+  background: transparent;
+}
+
+.studio-shell.guided-studio .output-placeholder {
+  border-color: var(--on-dark-line);
+  color: var(--on-dark-tertiary);
+  background: transparent;
 }
 
 .studio-shell.guided-studio .empty-thread {
   min-height: 320px;
-  background: rgba(255, 255, 255, 0.62);
-  border-color: rgba(42, 42, 42, 0.14);
+  border: 0;
+  color: var(--on-dark-body);
 }
 
-.studio-shell.guided-studio .composer {
-  order: 2;
-  padding: 14px;
-  gap: 10px;
-  flex: 0 0 auto;
+.studio-shell.guided-studio .empty-thread strong {
+  color: var(--text-on-ink);
+  font-family: var(--font-display);
+  font-size: var(--text-card-title);
+  line-height: 24px;
 }
 
-.studio-shell.guided-studio .workflow-chip-row {
-  gap: 6px;
-}
-
-.studio-shell.guided-studio .task-chip {
-  min-height: 36px;
-  padding: 0 12px;
-  border-color: rgba(42, 42, 42, 0.12);
-}
-
-.studio-shell.guided-studio .task-chip.active {
-  background: #2a2a2a;
-  border-color: #2a2a2a;
-  color: #fff;
+.studio-shell.guided-studio .empty-thread svg {
+  color: var(--on-dark-line);
 }
 
 .studio-shell.guided-studio .composer textarea {
   min-height: 98px;
-  border-color: rgba(42, 42, 42, 0.12);
-  background: #fff;
-  color: #2a2a2a;
-  font-size: 1rem;
+  border: 1px solid var(--muted-20);
+  border-radius: var(--radius-paper-card);
+  background: var(--surface-inset);
+  color: var(--ink);
+  font-size: var(--text-body);
+  line-height: 21px;
 }
 
 .studio-shell.guided-studio .composer-actions {
@@ -5375,69 +5704,58 @@ body {
 }
 
 .studio-shell.guided-studio .remix-button {
-  flex: 1 1 180px;
+  flex: 0 0 auto;
   justify-content: center;
-  background: #ffd0c6;
+  background: var(--surface);
 }
 
 .studio-shell.guided-studio .composer .primary-button {
-  min-width: 132px;
-  background: #2a2a2a;
-  color: #fff;
+  min-width: 104px;
+  background: var(--ink);
+  color: var(--text-on-ink);
 }
 
 .studio-shell.guided-studio .composer-cancel-button {
   margin-left: auto;
 }
 
+.studio-shell.guided-studio .task-chip {
+  min-height: var(--control-xs);
+  padding: 0 12px;
+  border-color: var(--muted-20);
+  border-radius: var(--radius-pill);
+}
+
+.studio-shell.guided-studio .task-chip.active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--text-on-ink);
+}
+
+/* ── inspector ──────────────────────────────────────────────────────────
+   Transparent column; each section is its own opaque white glass card. */
 .studio-shell.guided-studio .context-panel {
   grid-column: 3;
   grid-row: 1;
-  position: sticky;
-  top: 0;
-  height: 100vh;
+  position: relative;
+  height: auto;
   min-height: 0;
   overflow-y: auto;
-  border-left: 2px solid rgba(42, 42, 42, 0.06);
-  background: #fff;
+  border: 0;
+  background: transparent;
   backdrop-filter: none;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 0 16px 16px;
-}
-
-.inspector-tabs {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  border-bottom: 1px solid rgba(42, 42, 42, 0.08);
-  background: #fff;
-}
-
-.inspector-tabs button {
-  min-height: 42px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  color: rgba(42, 42, 42, 0.45);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.inspector-tabs button.active {
-  border-bottom-color: #2a2a2a;
-  color: #2a2a2a;
+  padding: var(--panel-pad-y) 3px 16px 0;
 }
 
 .studio-shell.guided-studio .context-section {
-  border-radius: 10px;
-  border-color: rgba(42, 42, 42, 0.08);
-  box-shadow: 0 3px 12px rgba(42, 42, 42, 0.04);
+  border: 0;
+  border-radius: var(--radius-glass-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-card-glow);
+  padding: var(--card-pad);
 }
 
 .inspector-model-strip {
@@ -5462,9 +5780,10 @@ body {
 
 .studio-shell.guided-studio .status-strip {
   margin-top: auto;
-  border-radius: 10px;
-  box-shadow: none;
-  background: #fff;
+  border: 0;
+  border-radius: var(--radius-glass-card);
+  box-shadow: var(--shadow-card-glow);
+  background: var(--surface);
   position: static;
 }
 
@@ -5475,9 +5794,11 @@ body {
   width: min(420px, 100vw);
   height: 100vh;
   overflow-y: auto;
-  border-width: 0 0 0 2px;
-  background: #fff;
-  box-shadow: -8px 0 40px rgba(42, 42, 42, 0.16);
+  border-width: 0 0 0 1px;
+  border-left: 1px solid var(--muted-20);
+  border-radius: 0;
+  background: var(--surface);
+  box-shadow: var(--shadow-menu);
 }
 
 @media (max-width: 1180px) {
@@ -5506,7 +5827,7 @@ body {
     height: auto;
     max-height: none;
     border-right: 0;
-    border-bottom: 2px solid rgba(42, 42, 42, 0.1);
+    border-bottom: 2px solid rgba(48, 48, 48, 0.1);
   }
 
   .sidebar-nav {
@@ -5521,7 +5842,7 @@ body {
   }
 
   .sidebar-nav-button {
-    border-radius: 8px;
+    border-radius: var(--radius-paper-card);
     padding-inline: 10px;
   }
 
@@ -5550,7 +5871,7 @@ body {
     height: auto;
     overflow: visible;
     border-left: 0;
-    border-top: 2px solid rgba(42, 42, 42, 0.08);
+    border-top: 2px solid rgba(48, 48, 48, 0.08);
   }
 
   .studio-shell.guided-studio .studio-topbar {
@@ -5593,8 +5914,8 @@ body {
     width: auto;
     flex: 0 0 auto;
     min-height: 34px;
-    border: 1px solid rgba(42, 42, 42, 0.1);
-    border-radius: 8px;
+    border: 1px solid rgba(48, 48, 48, 0.1);
+    border-radius: var(--radius-paper-card);
     padding: 8px 10px;
     scroll-snap-align: start;
   }
@@ -5633,7 +5954,7 @@ body {
   flex-direction: column;
   gap: 4px;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--radius-paper-card);
   border: 1px solid var(--border, rgba(255,255,255,0.08));
   background: var(--surface-subtle, rgba(255,255,255,0.03));
   color: inherit;
@@ -5668,4 +5989,57 @@ body {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* ── OS control geometry inside the studio ───────────────────────────────
+   Late, narrow overrides for the places where Frank Create's own component
+   rules still set pre-OS control heights or widths. */
+.studio-shell.guided-studio .upload-button,
+.studio-shell.guided-studio .composer-cancel-button,
+.studio-shell.guided-studio .remix-button {
+  width: auto;
+  flex: 0 0 auto;
+  min-height: var(--control-xs);
+}
+
+.studio-shell.guided-studio .composer .reference-dock {
+  order: 2;
+}
+
+.studio-shell.guided-studio .composer .remix-button {
+  margin-left: auto;
+}
+
+.studio-shell.guided-studio .composer .primary-button,
+.studio-shell.guided-studio .composer .composer-cancel-button {
+  margin-left: 0;
+}
+
+/* The model badge is the one accent moment in the model card. */
+.selected-model-summary em,
+.model-card em {
+  border-radius: var(--radius-pill);
+  background: var(--tenant-accent);
+  color: var(--text-on-accent);
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-light);
+  font-style: normal;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+/* Copy stays at weight 300 — bolding is not how this system makes hierarchy. */
+.brand-kit-field textarea,
+.project-brief-section textarea,
+.review-notes textarea,
+.composer textarea {
+  font-family: var(--font-body);
+  font-weight: var(--weight-regular);
+}
+
+.review-notes,
+.brand-kit-field {
+  font-weight: var(--weight-regular);
 }
