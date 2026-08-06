@@ -4466,9 +4466,10 @@ input {
 .guided-header.app-sidebar {
   grid-column: 1;
   grid-row: 1;
-  position: relative;
+  position: sticky;
+  top: var(--topbar-height);
   z-index: 20;
-  height: auto;
+  height: calc(100vh - var(--topbar-height));
   min-height: 0;
   padding: 16px 12px 14px;
   border: 0;
@@ -5000,8 +5001,9 @@ input {
 .studio-shell.guided-studio .context-panel {
   grid-column: 3;
   grid-row: 1;
-  position: relative;
-  height: auto;
+  position: sticky;
+  top: var(--topbar-height);
+  height: calc(100vh - var(--topbar-height));
   min-height: 0;
   overflow-y: auto;
   border: 0;
@@ -5035,10 +5037,15 @@ input {
 
 .studio-shell.guided-studio .settings-drawer {
   max-height: none;
+  scroll-margin-top: calc(var(--topbar-height) + 14px);
+}
+
+.studio-shell.guided-studio .brand-kit-section {
+  scroll-margin-top: calc(var(--topbar-height) + 14px);
 }
 
 .studio-shell.guided-studio .model-list.compact {
-  max-height: 260px;
+  max-height: none;
 }
 
 .studio-shell.guided-studio .status-strip {
