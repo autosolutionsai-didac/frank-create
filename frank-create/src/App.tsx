@@ -2089,7 +2089,7 @@ export default function App() {
         <div className="sidebar-footer-block">
           <p className="sidebar-section-label">Workspace</p>
           <button className="sidebar-workspace-row" type="button" onClick={showGraph}>
-            <span className="series-dot series-2" />
+            <span className="series-dot series-1" />
             Workflow map
           </button>
         </div>
